@@ -1,6 +1,6 @@
 # Waimart Multi-Vendor Upgrade — Phase 1: Inspection, Impact Analysis and Plan
 
-**Date:** 18 October 2026 · **Status:** Phase 1 complete; business decisions recorded (§7); awaiting approval to start Phase 2
+**Date:** 18 October 2026 · **Status:** Phases 1–2 complete (see "Phase 2 results" at the end); awaiting approval to start Phase 3
 
 This document is for the client and for whoever builds or reviews the upgrade. It records the current system as inspected, what a multi-vendor marketplace changes, the target design, and the phased plan. No code or data has been changed in Phase 1.
 
@@ -231,3 +231,38 @@ Further defaults, stated so you can object:
 - **Minimum payout:** KES 500.
 - **Holding period:** 7 days after delivery or collection.
 - **Required seller documents:** a configurable list — ID for individuals; business registration certificate for registered businesses, initially optional.
+
+---
+
+## Phase 2 results (18 October 2026)
+
+**Backups taken before any change:**
+- Source code snapshot: `C:\xampp\backups\waimart\source-20261018-033226-pre-marketplace\` (342 files; excludes `vendor/` and `node_modules/`, which Composer/npm reinstall, plus logs).
+- Database, uploads and `config.local.php`: `C:\xampp\backups\waimart\waimart-20261018-033227-pre-marketplace.sql` (SHA-256 `977B014B…1D09E86`) plus its `-files` folder. These are copied outside `storage/backups`, so the 14-backup rotation can never delete them.
+- A further dump was taken just before migrating `waimart`: `storage/backups/waimart-20261018-034048.sql`.
+
+**Migrations applied** (to `waimart_test` first, then `waimart`):
+
+| Migration | Contents |
+|---|---|
+| `010_marketplace_sellers` | `sellers` (Official Store = id 1, at most one platform store), `seller_users`, `seller_applications` + history (one open application per user), `seller_documents`, `seller_payout_methods` (encrypted, one active per seller); 7 admin permissions granted to manager/finance/support; 10 marketplace settings recording the §7 decisions |
+| `011_product_ownership` | `products.seller_id` (NOT NULL, FK; all 56 existing products → Official Store) and moderation columns (existing products `published`) |
+| `012_seller_orders` | `seller_orders` + history (one per seller per order), `order_items.seller_id` (NOT NULL; back-filled) + `seller_order_id` + commission snapshot columns, `seller_order_id` on returns and refunds |
+| `013_marketplace_finance` | `commission_rules` (default 10% provisional; Official Store 0%; one active rule per target), `seller_ledger_entries` (append-only, exactly-once `posting_key`, non-zero amounts), `seller_payouts` (one open per seller; "paid" needs exact amount + unique reference) + history, `seller_disputes` (one open per seller order) + messages |
+
+**Code changes (minimal, so existing features keep working):**
+- New helper `app/Services/Sellers.php` looks up the Official Store.
+- The admin product creation (`CatalogueAdminService`), the demo seed and order placement (`OrderService`, which snapshots the item's seller) set the new mandatory columns.
+- The test fixtures (`DbTestCase`) keep the migration-seeded Official Store and commission rules between tests.
+
+**Verification:**
+- **Drill on a copy:** the pre-upgrade backup was restored into `waimart_test` and migrated. All 47 original tables kept their row counts. The only additions were the new permissions, settings and migration records.
+- **Data comparison:** 38 untouched tables were identical by `CHECKSUM TABLE`. In the altered tables, the original columns hashed identically row by row.
+- **Defect found and fixed:** the first drill showed the ownership back-fill restamped `products.updated_at` with the migration time. The migration now preserves it, and the rerun matched exactly, including timestamps.
+- **Main database:** the same checks passed on `waimart` against the backup taken just before migrating. All 56 products and all order items are attributed to the Official Store.
+- **Rollback:** `database/rollback/rollback_013_to_010.sql` (see BACKUP_RESTORE.md). Tested on the copy, it restored the identical schema (`SHOW CREATE TABLE` for all 47 tables) and identical data. Its guard refused to run once a third-party seller had a product, before dropping anything.
+- **Tests:** new `MarketplaceSchemaTest` (10 tests: platform store uniqueness, slug rules, mandatory seller on products and order items, one seller per user, one open application, commission scope/rate rules, one seller order per seller per order, exactly-once ledger postings, payout constraints, one active payout method, one open dispute).
+- **Full suite:** **273 tests, 1,726 assertions, all passing**, before and after migrating `waimart`.
+- **Live site after migration:** the browser checkout E2E placed WM-C8N854UW, attributed to the Official Store. The accessibility check passed.
+
+**Not yet visible to users:** nothing in the storefront or admin has changed. Seller-facing features start in Phase 3.

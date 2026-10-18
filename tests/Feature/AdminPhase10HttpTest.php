@@ -39,7 +39,7 @@ final class AdminPhase10HttpTest extends FeatureTestCase
     public function testStockReportShowsLowestOnScreenAndEverythingInCsv(): void
     {
         $cat = $this->db->insert('categories', ['name' => 'Bulk', 'slug' => 'bulk-' . bin2hex(random_bytes(3))]);
-        $pid = $this->db->insert('products', ['category_id' => $cat, 'name' => 'Bulk item', 'slug' => 'bulk-item-' . bin2hex(random_bytes(3))]);
+        $pid = $this->db->insert('products', ['seller_id' => \Waimart\Services\Sellers::platformId($this->db), 'category_id' => $cat, 'name' => 'Bulk item', 'slug' => 'bulk-item-' . bin2hex(random_bytes(3))]);
         for ($i = 0; $i < 205; $i++) {
             $v = $this->db->insert('product_variants', ['product_id' => $pid, 'sku' => sprintf('BULK-%03d', $i), 'name' => "Size $i", 'price' => '100', 'is_default' => (int) ($i === 0)]);
             $this->db->insert('inventory', ['variant_id' => $v, 'on_hand' => $i === 204 ? 0 : 50]);

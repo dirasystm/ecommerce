@@ -99,7 +99,8 @@ final class CatalogueAdminService
         $stock = $this->validateOpeningStock($in);
 
         return $this->db->transaction(function () use ($product, $variant, $stock, $actorId) {
-            $productId = $this->db->insert('products', $product);
+            // Products created in the admin belong to the Waimart Official Store; seller products come in Phase 4.
+            $productId = $this->db->insert('products', $product + ['seller_id' => Sellers::platformId($this->db)]);
             $this->insertVariant($productId, $variant + ['is_default' => 1], $stock, $actorId);
             AuditLogger::log('catalogue.product_created', 'product', $productId, null, $product + ['variant' => $variant], $actorId);
             return $productId;

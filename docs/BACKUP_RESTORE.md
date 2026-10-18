@@ -82,6 +82,24 @@ Orders placed after that backup are lost from the database. Check `pre-restore-�
 4. Run `php bin/restore.php --file=<backup>.sql --with-uploads`, then `php bin/migrate.php`.
 5. Recreate the scheduled tasks ([INSTALL.md](INSTALL.md), steps 8–9) and do the checks in INSTALL step 10.
 
+### Rolling back the marketplace upgrade (migrations 010–013)
+
+**Preferred:** restore the pre-upgrade backup, which is kept permanently in `C:
+mpp\backups\waimart\`, using the commands above. Orders taken after the upgrade are lost from the database.
+
+**To keep orders taken since the upgrade,** and only if no third-party seller has products or orders yet:
+
+```
+php bin/backup.php
+C:
+mpp\mysql\bin\mysql.exe -u root waimart < databaseollbackollback_013_to_010.sql
+```
+
+Then restore the pre-upgrade source code from `C:
+mpp\backups\waimart\source-20261018-033226-pre-marketplace\`.
+
+The script removes only the marketplace tables, columns and reference data. If any third-party seller has products or orders, it stops at its first statement and changes nothing; use the backup in that case.
+
 ### Test your backups
 
 A backup you have never restored is a hope, not a backup. Once a month, restore the latest backup into the **test** database, which is disposable and rebuilt by the test suite anyway:

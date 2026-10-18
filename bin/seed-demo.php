@@ -212,6 +212,7 @@ $db->transaction(function () use ($db, $categories, $brands, $products, $bgs, $m
     foreach ($products as $n => [$name, $sub, $brand, $kind, $colour, $price, $compare, $stock, $featured, $variants]) {
         $slug = slugify($name);
         $productId = $db->insert('products', [
+            'seller_id' => Waimart\Services\Sellers::platformId($db),
             'category_id' => $subIds[$sub],
             'brand_id' => $brandIds[$brand],
             'name' => $name,

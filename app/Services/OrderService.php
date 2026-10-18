@@ -84,6 +84,8 @@ final class OrderService
                 foreach ($draft['lines'] as $l) {
                     $itemId = $this->db->insert('order_items', [
                         'order_id' => $orderId,
+                        // Owning seller at the moment of ordering (snapshot; never changes afterwards).
+                        'seller_id' => (int) $this->db->value('SELECT seller_id FROM products WHERE id = ?', [$l['product_id']]),
                         'product_id' => $l['product_id'],
                         'variant_id' => $l['variant_id'],
                         'sku' => $l['sku'],

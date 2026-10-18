@@ -25,7 +25,7 @@ final class ProductListingTest extends DbTestCase
             ['Beta 55 inch TV', $brandB, '50000', null, 2],
             ['Beta Radio', $brandB, '2000', '2500', 9],
         ] as [$name, $brand, $price, $was, $stock]) {
-            $pid = $this->db->insert('products', ['category_id' => $this->cat, 'brand_id' => $brand, 'name' => $name, 'slug' => strtolower(str_replace(' ', '-', $name))]);
+            $pid = $this->db->insert('products', ['seller_id' => \Waimart\Services\Sellers::platformId($this->db), 'category_id' => $this->cat, 'brand_id' => $brand, 'name' => $name, 'slug' => strtolower(str_replace(' ', '-', $name))]);
             $vid = $this->db->insert('product_variants', ['product_id' => $pid, 'sku' => strtoupper(substr(md5($name), 0, 8)), 'price' => $price, 'compare_at_price' => $was, 'is_default' => 1]);
             $this->db->insert('inventory', ['variant_id' => $vid, 'on_hand' => $stock]);
         }

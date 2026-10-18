@@ -19,6 +19,8 @@ abstract class DbTestCase extends TestCase
 
     /** Tables with reference data that must survive cleanup. */
     private const KEEP = ['schema_migrations', 'counties', 'roles', 'permissions', 'role_permissions', 'settings'];
+    /** Tables cleaned only partially: the WHERE keeps reference rows seeded by migrations. */
+    private const KEEP_ROWS = ['sellers' => ' WHERE is_platform = 0'];
 
     protected function setUp(): void
     {
@@ -34,20 +36,26 @@ abstract class DbTestCase extends TestCase
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
         foreach ($this->db->all("SELECT table_name AS t FROM information_schema.tables WHERE table_schema = DATABASE()") as $r) {
             if (!in_array($r['t'], self::KEEP, true)) {
-                $pdo->exec('DELETE FROM `' . $r['t'] . '`');
+                $pdo->exec('DELETE FROM `' . $r['t'] . '`' . (self::KEEP_ROWS[$r['t']] ?? ''));
             }
         }
+        // Marketplace reference rows seeded by migrations 010/013, restored to their shipped values.
+        $pdo->exec("UPDATE sellers SET status = 'active', suspended_at = NULL, suspension_reason = NULL WHERE is_platform = 1");
+        $pdo->exec("INSERT INTO commission_rules (scope, seller_id, rate, note) VALUES
+            ('default', NULL, 10.00, 'Provisional default'), ('seller', 1, 0.00, 'Waimart Official Store')");
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
+        \Waimart\Services\Sellers::flush();
     }
 
     /** Creates a category, product and variant with the given stock; returns ids. */
-    protected function makeVariant(int $onHand = 10, string $price = '1000.00', ?int $productId = null, string $name = 'Default'): array
+    protected function makeVariant(int $onHand = 10, string $price = '1000.00', ?int $productId = null, string $name = 'Default', ?int $sellerId = null): array
     {
         if ($productId === null) {
             $catId = (int) ($this->db->value('SELECT id FROM categories LIMIT 1') ?: $this->db->insert('categories', [
                 'name' => 'Test Category', 'slug' => 'test-category-' . bin2hex(random_bytes(3)),
             ]));
             $productId = $this->db->insert('products', [
+                'seller_id' => $sellerId ?? \Waimart\Services\Sellers::platformId($this->db),
                 'category_id' => $catId,
                 'name' => 'Test Product',
                 'slug' => 'test-product-' . bin2hex(random_bytes(4)),
@@ -83,6 +91,7 @@ abstract class DbTestCase extends TestCase
         ], $overrides));
         $itemId = $this->db->insert('order_items', [
             'order_id' => $orderId,
+            'seller_id' => (int) $this->db->value('SELECT p.seller_id FROM products p WHERE p.id = ?', [$productId]),
             'product_id' => $productId,
             'variant_id' => $variantId,
             'sku' => 'SKU',
