@@ -144,8 +144,35 @@ $expires = $order['reservation_expires_at'];
             <?php endif; ?>
         </section>
 
+        <?php
+        $groups = $order['groups'] ?? [];
+        $marketplace = count($groups) > 1 || (count($groups) === 1 && (int) $groups[0]['seller_is_platform'] === 0);
+        ?>
         <section class="wm-card mb-3" aria-labelledby="itemsTitle">
             <h2 id="itemsTitle" class="fs-6 fw-bold text-uppercase px-3 pt-3 pb-2 mb-0 border-bottom">Items (<?= array_sum(array_column($order['items'], 'quantity')) ?>)</h2>
+            <?php if ($marketplace): ?>
+                <?php if (count($groups) > 1): ?>
+                    <p class="small text-muted px-3 pt-2 mb-0">This order includes items from <?= count($groups) ?> sellers. Each seller prepares their items separately, so parts of your order may arrive or be ready at different times.</p>
+                <?php endif; ?>
+                <?php foreach ($groups as $g): ?>
+                    <div class="px-3 pt-3 pb-1 d-flex flex-wrap justify-content-between gap-2 border-top mt-2">
+                        <div class="small"><strong>Sold by <a href="<?= e(url('/store/' . $g['seller_slug'])) ?>"><?= e($g['seller_name']) ?></a></strong>
+                            <span class="text-muted">· <?= e($g['sub_number']) ?></span></div>
+                        <span class="badge badge-soft-<?= in_array($g['status'], ['cancelled', 'rejected'], true) ? 'danger' : (in_array($g['status'], ['delivered', 'collected'], true) ? 'success' : 'muted') ?>"><?= e(\Waimart\Services\OrderPresenter::sellerOrderStatus((string) $g['status'])) ?></span>
+                    </div>
+                    <?php foreach ($g['items'] as $it): ?>
+                        <div class="wm-cart-line">
+                            <span class="wm-cart-img"><img src="<?= e(media($it['image_path'])) ?>" alt="" width="80" height="80" loading="lazy"></span>
+                            <div>
+                                <div class="fw-semibold small"><?= e($it['product_name']) ?></div>
+                                <?php if ($it['variant_name'] !== 'Default'): ?><div class="small text-muted"><?= e($it['variant_name']) ?></div><?php endif; ?>
+                                <div class="small text-muted">Qty <?= (int) $it['quantity'] ?> × <?= e(money($it['unit_price'])) ?></div>
+                            </div>
+                            <div class="text-end fw-bold small"><?= e(money($it['line_total'])) ?></div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php endforeach; ?>
+            <?php else: ?>
             <?php foreach ($order['items'] as $it): ?>
                 <div class="wm-cart-line">
                     <span class="wm-cart-img"><img src="<?= e(media($it['image_path'])) ?>" alt="" width="80" height="80" loading="lazy"></span>
@@ -157,6 +184,7 @@ $expires = $order['reservation_expires_at'];
                     <div class="text-end fw-bold small"><?= e(money($it['line_total'])) ?></div>
                 </div>
             <?php endforeach; ?>
+            <?php endif; ?>
         </section>
     </div>
 

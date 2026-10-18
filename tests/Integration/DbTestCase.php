@@ -89,9 +89,14 @@ abstract class DbTestCase extends TestCase
             'subtotal' => '1000.00',
             'grand_total' => '1000.00',
         ], $overrides));
+        $sellerId = (int) $this->db->value('SELECT p.seller_id FROM products p WHERE p.id = ?', [$productId]);
+        $number = (string) $this->db->value('SELECT order_number FROM orders WHERE id = ?', [$orderId]);
+        $soId = $this->db->insert('seller_orders', ['order_id' => $orderId, 'seller_id' => $sellerId, 'sub_number' => $number . '-1',
+            'items_subtotal' => '1000.00', 'commission_base' => '1000.00', 'seller_net' => '1000.00']);
         $itemId = $this->db->insert('order_items', [
             'order_id' => $orderId,
-            'seller_id' => (int) $this->db->value('SELECT p.seller_id FROM products p WHERE p.id = ?', [$productId]),
+            'seller_id' => $sellerId,
+            'seller_order_id' => $soId,
             'product_id' => $productId,
             'variant_id' => $variantId,
             'sku' => 'SKU',
@@ -101,7 +106,7 @@ abstract class DbTestCase extends TestCase
             'quantity' => $qty,
             'line_total' => '1000.00',
         ]);
-        return ['order_id' => $orderId, 'item_id' => $itemId];
+        return ['order_id' => $orderId, 'item_id' => $itemId, 'seller_order_id' => $soId];
     }
 
     /** Asserts a closure throws a PDOException whose message contains $needle. */

@@ -108,8 +108,15 @@ final class ContentService
     public function addSaleItem(int $saleId, string $sku, string $price, int $actorId): void
     {
         $sale = $this->db->one('SELECT * FROM flash_sales WHERE id = ?', [$saleId]) ?? throw ValidationException::withMessage('Flash sale not found.');
-        $v = $this->db->one('SELECT v.id, v.price, p.name FROM product_variants v JOIN products p ON p.id = v.product_id WHERE v.sku = ?', [strtoupper(trim($sku))])
-            ?? throw new ValidationException(['sku' => 'No product variant has that SKU.']);
+        $v = $this->db->one(
+            'SELECT v.id, v.price, p.name, s.is_platform, s.allow_promotions, s.name AS seller_name
+               FROM product_variants v JOIN products p ON p.id = v.product_id JOIN sellers s ON s.id = p.seller_id WHERE v.sku = ?',
+            [strtoupper(trim($sku))]
+        ) ?? throw new ValidationException(['sku' => 'No product variant has that SKU.']);
+        // A flash price lowers what a marketplace seller earns, so their products join only if they opted in.
+        if (!(int) $v['is_platform'] && !(int) $v['allow_promotions']) {
+            throw new ValidationException(['sku' => $v['seller_name'] . ' has not agreed to take part in Waimart flash sales.']);
+        }
         if (!preg_match('/^\d{1,10}(\.\d{1,2})?$/', trim($price))) {
             throw new ValidationException(['sale_price' => 'Enter a valid sale price.']);
         }

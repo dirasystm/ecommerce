@@ -80,12 +80,19 @@ final class OrderService
                     'ip_address' => $ip,
                 ]);
 
+                // One seller sub-order per seller in the cart, then each item with its sub-order and commission
+                // snapshot, then the sub-order totals — all in this same transaction.
+                $sellerOrders = new SellerOrderService($this->db);
+                $lines = array_map(fn ($l) => $l + ['seller_id' => (int) $this->db->value('SELECT seller_id FROM products WHERE id = ?', [$l['product_id']])], $draft['lines']);
+                $subOrders = $sellerOrders->open($orderId, $lines, $draft['user_id']);
+
                 $items = [];
-                foreach ($draft['lines'] as $l) {
-                    $itemId = $this->db->insert('order_items', [
+                foreach ($lines as $l) {
+                    $itemId = $this->db->insert('order_items', $sellerOrders->itemSnapshot($l['seller_id'], (int) $l['product_id'], (string) $l['line_total']) + [
                         'order_id' => $orderId,
                         // Owning seller at the moment of ordering (snapshot; never changes afterwards).
-                        'seller_id' => (int) $this->db->value('SELECT seller_id FROM products WHERE id = ?', [$l['product_id']]),
+                        'seller_id' => $l['seller_id'],
+                        'seller_order_id' => $subOrders[$l['seller_id']],
                         'product_id' => $l['product_id'],
                         'variant_id' => $l['variant_id'],
                         'sku' => $l['sku'],
@@ -97,6 +104,11 @@ final class OrderService
                         'line_total' => $l['line_total'],
                     ]);
                     $items[] = ['order_item_id' => $itemId, 'variant_id' => $l['variant_id'], 'quantity' => $l['quantity']];
+                }
+
+                $sellerOrders->close($orderId);
+                if ($status === 'confirmed') {
+                    $sellerOrders->mirrorParent($orderId, 'confirmed', ['type' => 'system'], 'COD order confirmed automatically');
                 }
 
                 $this->db->insert('order_fulfilment', $this->fulfilmentSnapshot($orderId, $draft['fulfilment']));
@@ -137,6 +149,9 @@ final class OrderService
         }
         $order = (array) $this->db->one('SELECT * FROM orders WHERE id = ?', [$orderId]);
         $this->notifyPlaced($order, $token, $draft);
+        if ($order['status'] === 'confirmed') {
+            (new SellerOrderService($this->db))->notifyConfirmed($orderId);
+        }
         return ['order' => $order, 'access_token' => $token, 'created' => true];
     }
 

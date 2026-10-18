@@ -245,7 +245,7 @@
                         var blocked = q.cod_allowed === false;
                         cod.disabled = blocked;
                         if (blocked && cod.checked) { cod.checked = false; }
-                        if (codReason) { codReason.hidden = !blocked; codReason.textContent = blocked ? 'Not available for the selected location.' : ''; }
+                        if (codReason) { codReason.hidden = !blocked; codReason.textContent = blocked ? (q.cod_reason || 'Not available for the selected location.') : ''; }
                     }
                 });
             }, 250);

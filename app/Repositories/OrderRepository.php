@@ -27,6 +27,8 @@ final class OrderRepository
     {
         $id = (int) $order['id'];
         $order['items'] = $this->db->all('SELECT * FROM order_items WHERE order_id = ? ORDER BY id', [$id]);
+        // Seller groups (one per seller sub-order), each with its own items and progress.
+        $order['groups'] = (new \Waimart\Services\SellerOrderService($this->db))->forOrder($id);
         $order['fulfilment'] = $this->db->one('SELECT * FROM order_fulfilment WHERE order_id = ?', [$id]) ?? [];
         $order['history'] = $this->db->all(
             'SELECT to_status, note, created_at FROM order_status_history WHERE order_id = ? ORDER BY id',

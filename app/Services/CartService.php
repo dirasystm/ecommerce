@@ -133,7 +133,7 @@ final class CartService
         $rows = $cartId === null ? [] : $this->db->all(
             'SELECT ci.variant_id, ci.quantity, v.sku, v.name AS variant_name, v.price, v.compare_at_price, v.is_active AS v_active,
                     p.id AS product_id, p.name AS product_name, p.slug, ' . CatalogueRepository::PUBLIC_EXPR . ' AS p_active, p.max_per_order,
-                    ps.name AS seller_name, ps.slug AS seller_slug,
+                    p.seller_id, ps.name AS seller_name, ps.slug AS seller_slug, ps.is_platform AS seller_is_platform,
                     c.is_active AS c_active, (i.on_hand - i.reserved) AS available, fs.sale_price,
                     (SELECT pi.path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.sort_order, pi.id LIMIT 1) AS image,
                     (SELECT COUNT(*) FROM product_variants v2 WHERE v2.product_id = p.id AND v2.is_active = 1) AS variant_count
@@ -184,6 +184,8 @@ final class CartService
                 'slug' => $r['slug'],
                 'seller_name' => $r['seller_name'],
                 'seller_slug' => $r['seller_slug'],
+                'seller_id' => (int) $r['seller_id'],
+                'seller_is_platform' => (int) $r['seller_is_platform'] === 1,
                 'image' => $r['image'],
                 'quantity' => $qty,
                 'max' => max(1, $limit),

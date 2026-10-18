@@ -474,3 +474,6 @@ p a:not(.btn), li > a:not(.btn):not(.dropdown-item):not(.nav-link):not(.page-lin
 }
 .wm-product-seller { font-size: .75rem; color: #5a6168; margin-top: .15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .wm-soldby { font-size: .875rem; }
+
+/* The hidden attribute must win over Bootstrap display utilities (d-flex etc. use !important). */
+[hidden] { display: none !important; }

@@ -33,8 +33,9 @@ for (const d of devices) {
     page.on('pageerror', (e) => errors.push(String(e)));
 
     // Optional: put a product in the cart first (WAIMART_CART_PRODUCT=slug) to render cart/checkout.
-    if (process.env.WAIMART_CART_PRODUCT) {
-        await page.goto(BASE + '/product/' + process.env.WAIMART_CART_PRODUCT, { waitUntil: 'networkidle0' });
+    // Comma-separated slugs put several products (e.g. from different sellers) in the cart.
+    for (const slug of (process.env.WAIMART_CART_PRODUCT || '').split(',').filter(Boolean)) {
+        await page.goto(BASE + '/product/' + slug, { waitUntil: 'networkidle0' });
         await page.click('[data-add-btn]');
         await page.waitForSelector('.toast', { timeout: 5000 });
     }

@@ -84,7 +84,7 @@ Orders placed after that backup are lost from the database. Check `pre-restore-�
 4. Run `php bin/restore.php --file=<backup>.sql --with-uploads`, then `php bin/migrate.php`.
 5. Recreate the scheduled tasks ([INSTALL.md](INSTALL.md), steps 8–9) and do the checks in INSTALL step 10.
 
-### Rolling back the marketplace upgrade (migrations 010–014)
+### Rolling back the marketplace upgrade (migrations 010 onwards)
 
 **Preferred:** restore the pre-upgrade backup, which is kept permanently in `C:\xampp\backups\waimart\`, using the commands above. Orders taken after the upgrade are lost from the database.
 
@@ -92,12 +92,12 @@ Orders placed after that backup are lost from the database. Check `pre-restore-�
 
 ```
 php bin/backup.php
-C:\xampp\mysql\bin\mysql.exe -u root waimart < database\rollback\rollback_014_to_010.sql
+C:\xampp\mysql\bin\mysql.exe -u root waimart < database\rollback\rollback_marketplace.sql
 ```
 
 Then restore the pre-upgrade source code from `C:\xampp\backups\waimart\source-20261018-033226-pre-marketplace\`, or check out the `main` branch in Git.
 
-The script removes only the marketplace tables, columns and reference data. If any third-party seller has products or orders, it stops at its first statement and changes nothing; use the backup in that case. It was tested on a copy: after migrations 010–014 and the rollback, the schema and data of all 47 tables were identical to the pre-upgrade backup.
+The script removes only the marketplace tables, columns and reference data. If any third-party seller has products or orders, it stops at its first statement and changes nothing; use the backup in that case. It is re-tested on a copy whenever a marketplace migration is added: after migrations 010–015 and the rollback, the schema and data of all 47 tables were identical to the pre-upgrade backup.
 
 ### Test your backups
 

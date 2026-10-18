@@ -90,6 +90,35 @@ final class HeavyConcurrencyTest extends DbTestCase
         ), 'no order is left with a partial reservation');
     }
 
+    public function testMultiSellerCartsRacingForTheLastUnitLeaveNoOrphans(): void
+    {
+        // The race worker pays cash on delivery; allow it for marketplace items during this test.
+        \Waimart\Core\Settings::set('marketplace_cod_policy', 'all');
+        try {
+            $seller = $this->db->insert('sellers', ['name' => 'Race Seller', 'slug' => 'race-seller']);
+            $last = $this->makeVariant(1, '900.00', null, 'Default', $seller)['variant_id'];
+            $plenty = $this->makeVariant(50)['variant_id'];
+            $jobs = [];
+            for ($i = 0; $i < 8; $i++) {
+                $cart = new CartService(null, null, $this->db);
+                $cart->add($plenty, 1);
+                $cart->add($last, 1);
+                $jobs[] = [(string) $cart->guestToken(), Crypto::token(32), sprintf('07150000%02d', $i)];
+            }
+            $results = $this->spawn('race_place_order.php', $jobs);
+
+            $this->assertCount(1, array_filter($results, fn ($r) => $r['ok']), 'exactly one buyer gets the last unit: ' . json_encode($results));
+            $this->assertSame(1, (int) $this->db->value('SELECT COUNT(*) FROM orders'));
+            $this->assertSame(2, (int) $this->db->value('SELECT COUNT(*) FROM seller_orders'), "the winner's two sub-orders, nothing from the losers");
+            $this->assertSame(2, (int) $this->db->value('SELECT COUNT(*) FROM order_items'));
+            $this->assertSame(0, (int) $this->db->value('SELECT COUNT(*) FROM seller_orders so WHERE NOT EXISTS (SELECT 1 FROM order_items oi WHERE oi.seller_order_id = so.id)'));
+            $this->assertSame([1, 1], [$this->levels($last)['reserved'], $this->levels($plenty)['reserved']]);
+            $this->assertInventoryConsistent();
+        } finally {
+            \Waimart\Core\Settings::set('marketplace_cod_policy', 'pickup_and_platform');
+        }
+    }
+
     public function testPaymentVerificationRacingTheExpiryWorker(): void
     {
         $staff = $this->staffUser();

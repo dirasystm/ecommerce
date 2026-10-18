@@ -22,7 +22,7 @@ final class PaymentOptions
     /**
      * @return array<string,array{label:string,available:bool,reason:?string}>
      */
-    public static function forFulfilment(?bool $codAllowed): array
+    public static function forFulfilment(?bool $codAllowed, ?string $codReason = null): array
     {
         $out = [];
         $configured = [
@@ -38,7 +38,7 @@ final class PaymentOptions
         $out['cod'] = [
             'label' => self::LABELS['cod'],
             'available' => $codAllowed !== false,
-            'reason' => $codAllowed === false ? 'Cash on delivery is not available for the selected location.' : null,
+            'reason' => $codAllowed === false ? ($codReason ?? 'Cash on delivery is not available for the selected location.') : null,
         ];
         return $out;
     }

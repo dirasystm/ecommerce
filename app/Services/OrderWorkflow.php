@@ -104,6 +104,8 @@ final class OrderWorkflow
             if ($actor['type'] === 'staff') {
                 AuditLogger::log('order.status_changed', 'order', $orderId, ['status' => $from], ['status' => $to, 'note' => $note], $actorId);
             }
+            // Keep the seller sub-orders in step (interim, until sellers drive fulfilment per sub-order in Phase 7).
+            (new SellerOrderService($this->db))->mirrorParent($orderId, $to, $actor, $note);
             $this->collectionVerified = null;     // one-shot
             return (array) $this->db->one('SELECT * FROM orders WHERE id = ?', [$orderId]);
         });

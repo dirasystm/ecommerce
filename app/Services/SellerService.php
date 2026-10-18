@@ -110,12 +110,13 @@ final class SellerService
         if (($in['county_id'] ?? '') !== '' && !$this->db->value('SELECT 1 FROM counties WHERE id = ?', [(int) $in['county_id']])) {
             throw new ValidationException(['county_id' => 'Select a valid county.']);
         }
-        $before = (array) $this->db->one('SELECT description, public_email, public_phone, show_contacts, county_id, town, logo_path FROM sellers WHERE id = ?', [$sellerId]);
+        $before = (array) $this->db->one('SELECT description, public_email, public_phone, show_contacts, allow_promotions, county_id, town, logo_path FROM sellers WHERE id = ?', [$sellerId]);
         $after = [
             'description' => trim((string) ($in['description'] ?? '')) ?: null,
             'public_email' => strtolower(trim((string) ($in['public_email'] ?? ''))) ?: null,
             'public_phone' => ($in['public_phone'] ?? '') !== '' ? Validator::normalizePhone((string) $in['public_phone']) : null,
             'show_contacts' => !empty($in['show_contacts']) ? 1 : 0,
+            'allow_promotions' => !empty($in['allow_promotions']) ? 1 : 0,
             'county_id' => ($in['county_id'] ?? '') !== '' ? (int) $in['county_id'] : null,
             'town' => trim((string) ($in['town'] ?? '')) ?: null,
             'logo_path' => $before['logo_path'] ?? null,
@@ -127,7 +128,7 @@ final class SellerService
             $after['logo_path'] = null;
         }
         $this->db->exec(
-            'UPDATE sellers SET description = ?, public_email = ?, public_phone = ?, show_contacts = ?, county_id = ?, town = ?, logo_path = ? WHERE id = ?',
+            'UPDATE sellers SET description = ?, public_email = ?, public_phone = ?, show_contacts = ?, allow_promotions = ?, county_id = ?, town = ?, logo_path = ? WHERE id = ?',
             [...array_values($after), $sellerId]
         );
         if (($before['logo_path'] ?? null) && $before['logo_path'] !== $after['logo_path']) {

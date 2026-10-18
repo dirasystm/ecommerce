@@ -76,6 +76,13 @@ $canEdit = in_array(SellerContext::role(), ['owner', 'manager'], true) && $selle
                     </div>
                     <div class="form-text">Your personal and business addresses, documents and payout details are never shown to customers.</div>
                 </div>
+                <div class="col-12">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="allow_promotions" name="allow_promotions" value="1" <?= fchecked('allow_promotions', (int) $seller['allow_promotions'] === 1) ?>>
+                        <label class="form-check-label" for="allow_promotions">Allow Waimart to include my products in flash sales</label>
+                    </div>
+                    <div class="form-text">A flash sale sells at a lower price agreed for the sale, and your earnings are based on the price the customer pays. Waimart cannot add your products to a flash sale unless this is ticked.</div>
+                </div>
             </fieldset>
             <?php if ($canEdit): ?><div class="wm-panel-body pt-0"><button class="btn btn-wm-green" type="submit">Save store profile</button></div><?php endif; ?>
         </form>

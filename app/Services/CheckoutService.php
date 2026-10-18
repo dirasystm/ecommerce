@@ -44,13 +44,15 @@ final class CheckoutService
         $customer = $this->validateCustomer($in, $user);
         $method = (string) ($in['fulfilment_method'] ?? '');
         $fulfilment = match ($method) {
-            'delivery' => $this->validateDelivery($in, $user, $summary['subtotal']),
-            'pickup' => $this->validatePickup($in, $summary['subtotal']),
+            'delivery' => $this->validateDelivery($in, $user, $summary['subtotal'], $summary['lines']),
+            'pickup' => $this->validatePickup($in, $summary['subtotal'], $summary['lines']),
             default => throw new ValidationException(['fulfilment_method' => 'Choose home delivery or a pickup station.']),
         };
 
+        // COD needs both the location's permission and the marketplace rule (MarketplacePolicy::cod).
+        $marketCod = MarketplacePolicy::cod($summary['lines'], $method);
         $payment = (string) ($in['payment_method'] ?? '');
-        $options = PaymentOptions::forFulfilment($fulfilment['cod_allowed']);
+        $options = PaymentOptions::forFulfilment((bool) $fulfilment['cod_allowed'] && $marketCod['allowed'], $marketCod['reason']);
         if (!isset($options[$payment])) {
             throw new ValidationException(['payment_method' => 'Choose a payment method.']);
         }
@@ -107,7 +109,7 @@ final class CheckoutService
     }
 
     /** @return array<string,mixed> */
-    private function validateDelivery(array $in, ?array $user, string $subtotal): array
+    private function validateDelivery(array $in, ?array $user, string $subtotal, array $lines): array
     {
         $addressId = (string) ($in['address_id'] ?? '');
         if ($user !== null && $addressId !== '' && $addressId !== 'new') {
@@ -129,7 +131,8 @@ final class CheckoutService
         }
         $quote = $this->delivery->quoteDelivery($addr['county_id'], $addr['town'], $subtotal);
         $county = (string) $this->db->value('SELECT name FROM counties WHERE id = ?', [$addr['county_id']]);
-        if ($quote === null) {
+        $fee = $quote === null ? null : MarketplacePolicy::fee(fn (string $s) => $this->delivery->quoteDelivery($addr['county_id'], $addr['town'], $s), $lines, $subtotal);
+        if ($quote === null || $fee === null) {
             throw new ValidationException(['town' => sprintf(
                 'Sorry, we do not deliver to %s, %s yet. Please choose a pickup station or a different address.', $addr['town'], $county
             )]);
@@ -145,14 +148,15 @@ final class CheckoutService
             'zone_name' => $quote['zone_name'],
             'eta_min' => $quote['eta_min'],
             'eta_max' => $quote['eta_max'],
-            'fee' => $quote['fee'],
-            'is_free' => $quote['is_free'],
+            'fee' => $fee['fee'],
+            'is_free' => $fee['is_free'],
+            'shipments' => $fee['shipments'],
             'cod_allowed' => $quote['cod_allowed'],
         ];
     }
 
     /** @return array<string,mixed> */
-    private function validatePickup(array $in, string $subtotal): array
+    private function validatePickup(array $in, string $subtotal, array $lines): array
     {
         $id = (string) ($in['pickup_point_id'] ?? '');
         $quote = ctype_digit($id) ? $this->delivery->quotePickup((int) $id, $subtotal) : null;
@@ -162,6 +166,11 @@ final class CheckoutService
         if ($quote['error'] !== null) {
             throw new ValidationException(['pickup_point_id' => $quote['error']]);
         }
+        $fee = MarketplacePolicy::fee(function (string $s) use ($id) {
+            $q = $this->delivery->quotePickup((int) $id, $s);
+            return $q === null || $q['error'] !== null ? null : ['fee' => $q['fee'], 'is_free' => Money::isZero($q['fee'])];
+        }, $lines, $subtotal);
+        $quote['fee'] = $fee['fee'] ?? $quote['fee'];
         $p = $quote['point'];
         return [
             'method' => 'pickup',
@@ -177,6 +186,7 @@ final class CheckoutService
             'pickup_instructions' => $p['instructions'],
             'fee' => $quote['fee'],
             'is_free' => Money::isZero($quote['fee']),
+            'shipments' => $fee['shipments'] ?? 1,
             'cod_allowed' => $quote['cod_allowed'],
         ];
     }

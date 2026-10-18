@@ -28,6 +28,14 @@ final class OrderNotifier
 
     public static function statusChanged(array $order): void
     {
+        if ($order['status'] === 'confirmed') {
+            try {
+                // Marketplace sellers start preparing once the order is confirmed (paid / COD confirmed).
+                (new SellerOrderService())->notifyConfirmed((int) $order['id']);
+            } catch (\Throwable $e) {
+                \Waimart\Core\Logger::error('Seller notification failed', ['order_id' => $order['id'], 'error' => $e->getMessage()]);
+            }
+        }
         $tpl = self::NOTIFY[$order['status']] ?? null;
         if ($tpl === null) {
             return;

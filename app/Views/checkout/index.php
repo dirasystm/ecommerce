@@ -187,16 +187,28 @@ foreach ($pickupPoints as $pp) {
         <aside class="col-lg-4">
             <div class="wm-card p-3 wm-sticky-summary">
                 <h2 class="fs-6 fw-bold text-uppercase border-bottom pb-2">Order summary</h2>
-                <ul class="list-unstyled small mb-2">
-                    <?php foreach ($cart['lines'] as $l): ?>
-                        <li class="d-flex justify-content-between gap-2 py-1">
-                            <span><?= (int) $l['quantity'] ?> × <?= e($l['name']) ?><?= $l['variant_name'] ? ' <span class="text-muted">(' . e($l['variant_name']) . ')</span>' : '' ?></span>
-                            <span class="text-nowrap"><?= e(money($l['line_total'])) ?></span>
-                        </li>
-                    <?php endforeach; ?>
-                </ul>
+                <?php
+                $sellerGroups = \Waimart\Services\MarketplacePolicy::groups($cart['lines']);
+                $multiSeller = count($sellerGroups) > 1 || !array_values($cart['lines'])[0]['seller_is_platform'];
+                ?>
+                <?php foreach ($sellerGroups as $g): ?>
+                    <?php if ($multiSeller): ?><div class="small fw-semibold mt-2">Sold by <?= e($g['seller_name']) ?></div><?php endif; ?>
+                    <ul class="list-unstyled small mb-2">
+                        <?php foreach ($g['lines'] as $l): ?>
+                            <li class="d-flex justify-content-between gap-2 py-1">
+                                <span><?= (int) $l['quantity'] ?> × <?= e($l['name']) ?><?= $l['variant_name'] ? ' <span class="text-muted">(' . e($l['variant_name']) . ')</span>' : '' ?></span>
+                                <span class="text-nowrap"><?= e(money($l['line_total'])) ?></span>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php endforeach; ?>
                 <div class="d-flex justify-content-between border-top pt-2"><span>Subtotal</span><span><?= e(money($cart['subtotal'])) ?></span></div>
                 <div class="d-flex justify-content-between"><span>Delivery</span><span data-fee>Select an option</span></div>
+                <?php if (count($sellerGroups) > 1): ?>
+                    <div class="small text-muted"><?= \Waimart\Services\MarketplacePolicy::feePolicy() === 'per_seller'
+                        ? 'Delivery is charged once for each seller (' . count($sellerGroups) . ' sellers).'
+                        : 'One delivery fee covers your whole order, even with several sellers.' ?></div>
+                <?php endif; ?>
                 <div class="d-flex justify-content-between text-success" data-discount-row hidden><span>Discount</span><span data-discount-amount></span></div>
                 <div class="small text-muted" data-eta></div>
                 <div class="d-flex justify-content-between border-top pt-2 mt-2 fs-5 fw-bold"><span>Total</span><span data-total><?= e(money($cart['subtotal'])) ?></span></div>

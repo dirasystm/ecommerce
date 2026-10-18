@@ -88,9 +88,10 @@ final class MarketplaceSchemaTest extends DbTestCase
     {
         $v = $this->makeVariant(3);
         $o = $this->makeOrder($v['variant_id']);
+        // makeOrder already created the Official Store's seller order for this order.
         $row = ['order_id' => $o['order_id'], 'seller_id' => Sellers::platformId($this->db), 'items_subtotal' => '1000'];
-        $this->db->insert('seller_orders', $row + ['sub_number' => 'WM-X-1']);
         $this->assertDbRejects(fn () => $this->db->insert('seller_orders', $row + ['sub_number' => 'WM-X-2']), 'Duplicate');
+        $this->assertDbRejects(fn () => $this->db->exec('UPDATE order_items SET seller_order_id = NULL WHERE id = ?', [$o['item_id']]), 'seller_order_id');
     }
 
     public function testLedgerPostingsAreExactlyOnceAndNonZero(): void

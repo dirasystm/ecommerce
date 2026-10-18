@@ -16,6 +16,7 @@ use Waimart\Services\CartService;
 use Waimart\Services\CheckoutService;
 use Waimart\Services\CouponService;
 use Waimart\Services\DeliveryService;
+use Waimart\Services\MarketplacePolicy;
 use Waimart\Services\OrderAccess;
 use Waimart\Services\OrderService;
 use Waimart\Services\PaymentOptions;
@@ -77,24 +78,36 @@ final class CheckoutController extends Controller
             }
             if (ctype_digit($county) && trim($town) !== '') {
                 $q = $delivery->quoteDelivery((int) $county, $town, $cart['subtotal']);
-                if ($q === null) {
+                $f = $q === null ? null : MarketplacePolicy::fee(fn (string $s) => $delivery->quoteDelivery((int) $county, $town, $s), $cart['lines'], $cart['subtotal']);
+                if ($q === null || $f === null) {
                     $out['message'] = 'We do not deliver to this location yet. Please choose a pickup station.';
                     $out['cod_allowed'] = false;
                 } else {
-                    $out = ['ok' => true, 'fee' => $q['fee'], 'eta' => $q['eta_min'] . '–' . $q['eta_max'] . ' business days (estimate)',
-                            'cod_allowed' => $q['cod_allowed'], 'message' => $q['is_free'] ? 'Free delivery applied.' : null];
+                    $out = ['ok' => true, 'fee' => $f['fee'], 'eta' => $q['eta_min'] . '–' . $q['eta_max'] . ' business days (estimate)',
+                            'cod_allowed' => $q['cod_allowed'], 'message' => $f['is_free'] ? 'Free delivery applied.'
+                                : ($f['shipments'] > 1 ? "Delivery is charged per seller ({$f['shipments']} sellers in this order)." : null)];
                 }
             }
         } elseif ($method === 'pickup') {
             $id = (string) $req->input('pickup_point_id', '');
             $q = ctype_digit($id) ? $delivery->quotePickup((int) $id, $cart['subtotal']) : null;
             if ($q !== null && $q['error'] === null) {
-                $out = ['ok' => true, 'fee' => $q['fee'], 'eta' => 'We will notify you when it is ready for collection', 'cod_allowed' => $q['cod_allowed'], 'message' => null];
+                $f = MarketplacePolicy::fee(function (string $s) use ($delivery, $id) {
+                    $p = $delivery->quotePickup((int) $id, $s);
+                    return $p === null || $p['error'] !== null ? null : ['fee' => $p['fee'], 'is_free' => Money::isZero($p['fee'])];
+                }, $cart['lines'], $cart['subtotal']);
+                $out = ['ok' => true, 'fee' => $f['fee'] ?? $q['fee'], 'eta' => 'We will notify you when it is ready for collection', 'cod_allowed' => $q['cod_allowed'], 'message' => null];
             } elseif ($q !== null) {
                 $out['message'] = $q['error'];
             }
         }
         $fee = $out['fee'] ?? '0.00';
+        // Marketplace COD rule on top of the location's own rule (same check as order placement).
+        $marketCod = MarketplacePolicy::cod($cart['lines'], $method);
+        if ($out['cod_allowed'] !== false && !$marketCod['allowed']) {
+            $out['cod_allowed'] = false;
+        }
+        $out['cod_reason'] = $out['cod_allowed'] === false ? ($marketCod['reason'] ?? 'Not available for the selected location.') : null;
 
         // Coupon preview (re-validated with a lock when the order is placed).
         $discount = '0.00';

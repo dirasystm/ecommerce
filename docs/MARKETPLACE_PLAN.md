@@ -1,6 +1,6 @@
 # Waimart Multi-Vendor Upgrade — Phase 1: Inspection, Impact Analysis and Plan
 
-**Date:** 18 October 2026 · **Status:** Phases 1–5 complete (see the "Phase N results" sections at the end); awaiting approval to start Phase 6
+**Date:** 18 October 2026 · **Status:** Phases 1–6 complete (see the "Phase N results" sections at the end); awaiting approval to start Phase 7
 
 This document is for the client and for whoever builds or reviews the upgrade. It records the current system as inspected, what a multi-vendor marketplace changes, the target design, and the phased plan. No code or data has been changed in Phase 1.
 
@@ -260,7 +260,7 @@ Further defaults, stated so you can object:
 - **Data comparison:** 38 untouched tables were identical by `CHECKSUM TABLE`. In the altered tables, the original columns hashed identically row by row.
 - **Defect found and fixed:** the first drill showed the ownership back-fill restamped `products.updated_at` with the migration time. The migration now preserves it, and the rerun matched exactly, including timestamps.
 - **Main database:** the same checks passed on `waimart` against the backup taken just before migrating. All 56 products and all order items are attributed to the Official Store.
-- **Rollback:** `database/rollback/rollback_014_to_010.sql` (see BACKUP_RESTORE.md). Tested on the copy, it restored the identical schema (`SHOW CREATE TABLE` for all 47 tables) and identical data. Its guard refused to run once a third-party seller had a product, before dropping anything.
+- **Rollback:** `database/rollback/rollback_marketplace.sql` (see BACKUP_RESTORE.md). Tested on the copy, it restored the identical schema (`SHOW CREATE TABLE` for all 47 tables) and identical data. Its guard refused to run once a third-party seller had a product, before dropping anything.
 - **Tests:** new `MarketplaceSchemaTest` (10 tests: platform store uniqueness, slug rules, mandatory seller on products and order items, one seller per user, one open application, commission scope/rate rules, one seller order per seller per order, exactly-once ledger postings, payout constraints, one active payout method, one open dispute).
 - **Full suite:** **273 tests, 1,726 assertions, all passing**, before and after migrating `waimart`.
 - **Live site after migration:** the browser checkout E2E placed WM-C8N854UW, attributed to the Official Store. The accessibility check passed.
@@ -382,7 +382,7 @@ Further defaults, stated so you can object:
 **Environment note:** one full run in this phase failed because Windows ran out of virtual memory ("paging file is too small"): a race-test worker couldn't start PHP cleanly. After memory recovered, the full suite passed unchanged, so it was not a code fault. Low free memory on this PC can affect the 16-process race tests.
 
 **Defect found and fixed (from Phase 2):** the rollback instructions in `BACKUP_RESTORE.md` had been corrupted when they were added. A scripting escape turned the backslashes in Windows paths into control characters, so `C:\xampp` became a line break and `\rollback` a carriage return. The section has been rewritten, and every tracked text file was scanned for control characters; none remain.
-- **Rollback script:** renamed `rollback_014_to_010.sql` and now also reverses migration 014.
+- **Rollback script:** renamed `rollback_marketplace.sql` and now also reverses migration 014.
 - **Re-tested on a copy:** the pre-upgrade backup was migrated through 010–014 and rolled back. The schema and data of all 47 tables were identical.
 
 ---
@@ -416,3 +416,64 @@ Further defaults, stated so you can object:
 - `StorePagesHttpTest` (7): store shows only its own live products (draft, pending, unlisted and other sellers' products excluded); 404 for unknown and suspended stores; 10 kinds of private data checked absent, and contacts shown only on opt-in; escaping of a script in the description; rating counts approved reviews only (4.5 from 2, ignoring pending and rejected); category filter and search stay within the store; "Sold by" on product page, cards and cart, with the SKU prefix hidden.
 - **Full suite: 325 tests, 2,216 assertions, all passing.**
 - **Browser:** 0 serious/critical accessibility issues on store pages (seller, Official, in-store search), the seller product page and the seller profile. Responsive checks passed for store pages, product page and cart at phone, tablet and desktop widths. Screenshots reviewed; fixtures removed.
+
+---
+
+## Phase 6 results (18 October 2026): multi-seller checkout, sub-orders, commission
+
+**One checkout, one order, one sub-order per seller.** The existing single placement transaction now also does steps 1–3 below, in order:
+1. **Opens** one seller sub-order per seller in the cart (`WM-XXXXXXXX-1`, `-2`, …). Each records its merchandise subtotal and its **share of any coupon discount**, allocated pro rata with the rounding remainder on the last group, so shares always add up exactly.
+2. **Inserts each item** linked to its seller and sub-order, with a **commission snapshot**: rate, amount, net and the rule used. Precedence is **seller rule > the product's category rule > its parent category's rule > default (10% provisional)**, and the Official Store pays 0%.
+3. **Totals** each sub-order's commission and seller net.
+
+Then, as before:
+- stock is locked and reserved;
+- any failure rolls everything back, including sub-orders;
+- the idempotency key returns the same order on a retry, with no second order or sub-orders.
+
+Changing commission rules later never changes placed orders (tested).
+
+**Money definitions (per sub-order):**
+- **Merchandise:** at the prices charged, including any flash-sale price.
+- **Coupons:** **platform-funded**: seller net is not reduced and commission is calculated on the full price.
+- **Delivery fees:** belong to Waimart (delivery-fee share 0).
+- **Nothing here is money received:** earnings ledger postings happen in Phase 8, after payment verification.
+
+**Client rules applied at checkout** (`MarketplacePolicy`, used by the checkout page, the live quote and order placement):
+- **Cash on delivery:** offered for pickup orders, or for home delivery of Official Store items only. Mixed or marketplace home deliveries must use M-Pesa. The checkout shows the reason, and the server refuses a forged COD submission. Setting `marketplace_cod_policy = all` lifts the rule.
+- **Delivery fee:** one zone fee per order (default), with a note when the cart has several sellers. `per_seller` charges once per seller group and is implemented and tested, but not enabled.
+
+**Existing orders (migration 015):** each existing order was back-filled with an Official Store sub-order, marked *pre-marketplace*:
+- no commission and no ledger effect;
+- status and timestamps copied from the order;
+- every item linked;
+- `order_items.seller_order_id` is now mandatory.
+
+**Checks:**
+- **Drill on a copy:** every order has sub-orders, every item points at the right seller, and subtotals and discounts reconcile. Orders, fulfilment, reservations, stock movements, inventory and payments were identical before and after.
+- **Main database:** then migrated (backup taken first).
+- **Rollback script:** renamed `rollback_marketplace.sql` and re-drilled through 010–015, with an identical result.
+
+**Interim bridge (until Phase 7):** the parent order still drives fulfilment. Every parent status change is mirrored onto the sub-orders: confirmed → accepted, cancelled or expired → cancelled with the reason, fulfilment stages copied. When an order is confirmed (payment verified or COD confirmed), each **marketplace seller is emailed** that their sub-order is ready to prepare; the Official Store is not. Phase 7 hands control of each sub-order to its seller and to Waimart staff.
+
+**Customer and admin views:**
+- **Checkout:** items grouped "Sold by …" when the cart has marketplace sellers.
+- **Order pages:** confirmation, tracking and account pages show each seller group with its sub-order number and its own progress.
+- **Admin order page:** new "Seller sub-orders" panel with merchandise, discount share, commission (with rate), seller net and a pre-marketplace marker. Customers never see commission.
+
+**Flash-sale consent:** a marketplace seller's product can be added to a Waimart flash sale only if the seller ticked "Allow Waimart to include my products in flash sales" (new Store profile option), because a flash price lowers their earnings.
+
+**Found and fixed:**
+- **Pre-existing bug:** the checkout's empty "Discount" row was visible because Bootstrap's `d-flex` overrode the `hidden` attribute. A global `[hidden]` rule fixes it.
+- **Wording:** the "parts may arrive at different times" note now appears only for orders with more than one seller.
+- **Duplicate text:** the COD explanation no longer appears twice on checkout.
+
+**Tests:**
+- `MultiSellerCheckoutTest` (9): three-seller split with exact commission (0%, 10%, 7.5% with half-up rounding); rule precedence and immutable snapshots; exact discount allocation; rollback leaves no sub-orders; idempotent retry; COD rule in four cases; both fee policies; sub-orders follow confirm, cancel and expiry, with the seller emailed (not the Official Store); flash-sale consent.
+- `MultiSellerOrderHttpTest` (2): checkout grouping, fee note and COD reason; COD forgery refused server-side; grouped confirmation page; admin sub-order panel; commission never shown to customers.
+- `HeavyConcurrencyTest`: 8 real processes racing for the last unit in mixed-seller carts — exactly 1 order with exactly its 2 sub-orders, no orphans, consistent stock (3 of 3 runs).
+- **Full suite: 337 tests, 2,299 assertions, all passing.**
+- **Browser:**
+  - mixed-seller cart and checkout, a seller's order tracking page and the admin order page: accessibility and responsive checks passed;
+  - storefront accessibility and responsive regression, plus the checkout E2E flow, passed;
+  - screenshots reviewed; fixtures and the fixture order removed.

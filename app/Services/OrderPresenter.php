@@ -49,6 +49,19 @@ final class OrderPresenter
         return self::STATUS_LABELS[$s] ?? ucfirst(str_replace('_', ' ', $s));
     }
 
+    /** Customer-facing labels for a seller's part of an order. */
+    public const SELLER_ORDER_LABELS = [
+        'pending_acceptance' => 'Waiting for confirmation', 'accepted' => 'Confirmed', 'rejected' => 'Not available from this seller',
+        'processing' => 'Being prepared', 'packed' => 'Packed', 'handed_over' => 'With Waimart for delivery',
+        'dispatched' => 'Dispatched', 'out_for_delivery' => 'Out for delivery', 'delivered' => 'Delivered',
+        'ready_for_collection' => 'Ready for collection', 'collected' => 'Collected', 'cancelled' => 'Cancelled',
+    ];
+
+    public static function sellerOrderStatus(string $s): string
+    {
+        return self::SELLER_ORDER_LABELS[$s] ?? ucfirst(str_replace('_', ' ', $s));
+    }
+
     public static function payment(string $s): string
     {
         return self::PAYMENT_LABELS[$s] ?? ucfirst(str_replace('_', ' ', $s));

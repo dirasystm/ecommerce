@@ -82,6 +82,28 @@ $labels = ['confirmed' => 'Confirm order', 'processing' => 'Start processing', '
             </table></div>
         </section>
 
+        <section class="wm-panel mb-3" aria-labelledby="soTitle">
+            <div class="wm-panel-head"><span id="soTitle">Seller sub-orders</span><span class="small text-muted fw-normal"><?= count($order['groups'] ?? []) ?></span></div>
+            <div class="table-responsive"><table class="table table-sm mb-0">
+                <thead><tr><th>Sub-order</th><th>Seller</th><th>Status</th><th class="text-end">Merchandise</th><th class="text-end">Discount share</th>
+                    <th class="text-end">Commission</th><th class="text-end">Seller net</th></tr></thead>
+                <tbody>
+                <?php foreach ($order['groups'] ?? [] as $g): $rates = array_unique(array_filter(array_column($g['items'], 'commission_rate'), fn ($r) => $r !== null)); ?>
+                    <tr>
+                        <td class="text-nowrap"><code><?= e($g['sub_number']) ?></code><?= (int) $g['is_legacy'] ? ' <span class="badge badge-soft-muted">Pre-marketplace</span>' : '' ?></td>
+                        <td><a href="<?= e(url('/admin/sellers/' . $g['seller_id'])) ?>"><?= e($g['seller_name']) ?></a></td>
+                        <td><?= e(\Waimart\Services\OrderPresenter::sellerOrderStatus((string) $g['status'])) ?></td>
+                        <td class="text-end"><?= e(money($g['items_subtotal'])) ?></td>
+                        <td class="text-end"><?= e(money($g['discount_share'])) ?></td>
+                        <td class="text-end"><?= e(money($g['commission_total'])) ?><?= $rates ? '<div class="small text-muted">' . e(implode(', ', array_map(fn ($r) => rtrim(rtrim((string) $r, '0'), '.') . '%', $rates))) . '</div>' : '' ?></td>
+                        <td class="text-end"><?= e(money($g['seller_net'])) ?></td>
+                    </tr>
+                <?php endforeach; ?>
+                </tbody>
+            </table></div>
+            <div class="wm-panel-body small text-muted pt-2">Commission is fixed at the rate in force when the order was placed. Delivery fees belong to Waimart. Coupon discounts are funded by Waimart and do not reduce seller net.</div>
+        </section>
+
         <section class="wm-panel mb-3">
             <div class="wm-panel-head">Stock reservations</div>
             <div class="table-responsive"><table class="table table-sm">
