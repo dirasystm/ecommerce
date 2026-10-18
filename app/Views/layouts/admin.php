@@ -55,7 +55,6 @@ $nav = [
         ['/admin/staff', 'person-badge', 'Staff & roles', 'users.manage'],
         ['/admin/audit', 'journal-text', 'Audit log', 'audit.view'],
         ['/admin/settings', 'gear', 'Settings', 'settings.manage'],
-        ['/admin/settings/branding', 'palette', 'Branding', 'settings.manage'],
     ]],
 ];
 // Highlight only the most specific matching link (e.g. /admin/sellers/applications, not also /admin/sellers).

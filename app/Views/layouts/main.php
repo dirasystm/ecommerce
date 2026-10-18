@@ -6,8 +6,13 @@
  */
 $storeName = brand_name();
 $tagline = \Waimart\Services\Brand::tagline();
-$pageTitle = isset($title) && $title !== '' ? $title . ' | ' . $storeName : $storeName . ($tagline !== '' ? ' — ' . $tagline : '');
-$metaDescription ??= 'Shop phones, electronics, fashion, groceries and more at ' . brand_name() . '. Pay with M-Pesa or cash on delivery. Home delivery or pickup across Kenya.';
+$seoTitle = trim((string) \Waimart\Core\Settings::get('seo_title', ''));
+$pageTitle = isset($title) && $title !== '' ? $title . ' | ' . $storeName
+    : ($seoTitle !== '' ? $seoTitle : $storeName . ($tagline !== '' ? ' — ' . $tagline : ''));
+// Default description (Admin → Settings → SEO), then the store description, then a neutral sentence.
+$metaDescription ??= (trim((string) \Waimart\Core\Settings::get('seo_description', '')) ?: trim((string) \Waimart\Core\Settings::get('store_description', '')))
+    ?: 'Shop online at ' . $storeName . '. Pay with M-Pesa or cash on delivery, with home delivery or pickup.';
+$noindex = \Waimart\Core\Settings::bool('seo_noindex');
 ?><!doctype html>
 <html lang="en-KE">
 <head>
@@ -15,6 +20,7 @@ $metaDescription ??= 'Shop phones, electronics, fashion, groceries and more at '
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($pageTitle) ?></title>
     <meta name="description" content="<?= e($metaDescription) ?>">
+    <?php if ($noindex): ?><meta name="robots" content="noindex, nofollow"><?php endif; ?>
     <link rel="stylesheet" href="<?= e(asset('vendor/bootstrap/bootstrap.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('vendor/bootstrap-icons/bootstrap-icons.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">

@@ -1,0 +1,25 @@
+-- Basemall 019: settings for the grouped settings pages (Admin → Settings). Additive: existing values are kept.
+-- Defaults keep today's behaviour: registration open, 24 products per page, shop open, no announcement.
+INSERT IGNORE INTO settings (setting_key, setting_value) VALUES
+('store_description',     ''),
+('products_per_page',     '24'),
+('whatsapp_number',       ''),
+('business_address',      ''),
+('postal_address',        ''),
+('business_hours',        ''),
+('legal_name',            ''),
+('social_facebook',       ''),
+('social_instagram',      ''),
+('social_x',              ''),
+('social_tiktok',         ''),
+('social_youtube',        ''),
+('social_linkedin',       ''),
+('seo_title',             ''),
+('seo_description',       ''),
+('seo_noindex',           '0'),
+('allow_registration',    '1'),
+('maintenance_mode',      '0'),
+('maintenance_message',   ''),
+('announcement_enabled',  '0'),
+('announcement_text',     ''),
+('announcement_link',     '');

@@ -5,9 +5,12 @@ use Waimart\Services\BrandingService;
 /** @var array<string,string> $values @var array<string,string> $palette */
 $previews = ['logo_header' => 'brand_logo_header', 'logo_icon' => 'brand_logo_icon', 'logo_full' => 'brand_logo_full', 'og_image' => 'brand_og_image'];
 ?>
-<div class="wm-admin-head"><h1>Branding</h1></div>
+<div class="wm-admin-head"><h1>Settings</h1></div>
+<div class="row g-3">
+    <div class="col-lg-3"><?= \Waimart\Core\View::partial('admin/settings/_nav', ['group' => 'branding']) ?></div>
+    <div class="col-lg-9">
 <p class="small text-muted">The store's name, colours and images, used across the shop, Seller Centre, admin, e-mails and text messages. Changes are live as soon as you save, and every change is recorded in the audit log.</p>
-<form method="post" action="<?= e(url('/admin/settings/branding')) ?>" enctype="multipart/form-data" style="max-width:920px" novalidate>
+<form method="post" action="<?= e(url('/admin/settings/branding')) ?>" enctype="multipart/form-data" novalidate>
     <?= csrf_field() ?>
     <section class="wm-panel mb-3">
         <div class="wm-panel-head">Name</div>
@@ -76,3 +79,5 @@ $previews = ['logo_header' => 'brand_logo_header', 'logo_icon' => 'brand_logo_ic
     </section>
     <button class="btn btn-wm-green" type="submit">Save branding</button>
 </form>
+    </div>
+</div>

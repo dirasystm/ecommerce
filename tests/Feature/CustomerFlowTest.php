@@ -11,7 +11,8 @@ final class CustomerFlowTest extends FeatureTestCase
     private function registerViaHttp(string $email = 'shopper@example.com'): array
     {
         $r = $this->post('/register', [
-            'first_name' => 'Amina', 'last_name' => 'Otieno', 'email' => $email, 'phone' => '0712345678',
+            // One account per phone number: each test account gets its own.
+            'first_name' => 'Amina', 'last_name' => 'Otieno', 'email' => $email, 'phone' => '07' . sprintf('%08d', crc32($email) % 100000000),
             'password' => 'Secret123', 'password_confirmation' => 'Secret123', 'accept_terms' => '1',
         ], '/register');
         $this->assertSame(303, $r['status']);

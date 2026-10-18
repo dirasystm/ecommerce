@@ -34,8 +34,10 @@ final class ProductListing
      *              in_stock?:bool,on_sale?:bool,flash_sale_id?:int,sort?:string} $c
      * @return array{items:list<array<string,mixed>>,total:int,page:int,pages:int,per_page:int,brands:list<array<string,mixed>>,sort:string}
      */
-    public function find(array $c, int $page = 1, int $perPage = 24): array
+    public function find(array $c, int $page = 1, int $perPage = 0): array
     {
+        // 0 = the shop's setting (Admin → Settings → General), kept within 12–96.
+        $perPage = $perPage > 0 ? $perPage : max(12, min(96, \Waimart\Core\Settings::int('products_per_page', 24)));
         [$where, $params, $relevance] = $this->conditions($c, true);
         $sort = $c['sort'] ?? '';
         if (!isset(self::SORTS[$sort]) && !($sort === 'relevance' && $relevance !== null)) {

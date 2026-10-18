@@ -64,9 +64,11 @@ final class PaymentHttpTest extends FeatureTestCase
     {
         $this->loginStaff('manager');
         $this->assertSame(403, $this->get('/admin/settings')['status'], 'managers lack settings.manage');
+        $this->assertSame(403, $this->get('/admin/settings/payments')['status']);
         $this->post('/logout', [], '/admin');
         $this->loginStaff('super_admin');
-        $page = $this->get('/admin/settings');
+        $this->assertStringEndsWith('/admin/settings/general', (string) ($this->get('/admin/settings')['headers']['location'] ?? ''));
+        $page = $this->get('/admin/settings/payments');
         $this->assertSame(200, $page['status']);
         $this->assertStringContainsString('Double-check every digit', $page['body']);
     }

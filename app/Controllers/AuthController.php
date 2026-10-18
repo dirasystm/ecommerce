@@ -23,13 +23,14 @@ final class AuthController extends Controller
     public function login(Request $req): Response
     {
         $guestToken = CartService::current()->guestToken();
-        $user = (new AuthService())->attempt((string) $req->input('email', ''), (string) ($req->post['password'] ?? ''), $req->ip());
+        $user = (new AuthService())->attempt((string) ($req->input('login', '') ?: $req->input('email', '')),   // email or phone; 'email' kept for older forms
+            (string) ($req->post['password'] ?? ''), $req->ip());
         return $this->afterSignIn((int) $user['id'], $guestToken, 'Welcome back, ' . $user['first_name'] . '!');
     }
 
     public function registerForm(Request $req): Response
     {
-        return $this->view('auth/register', ['title' => 'Create account']);
+        return $this->view('auth/register', ['title' => 'Create account', 'open' => \Waimart\Services\AccountService::registrationOpen()]);
     }
 
     public function register(Request $req): Response

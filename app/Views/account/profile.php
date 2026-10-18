@@ -29,7 +29,7 @@ ob_start(); ?>
             <?= field_error('email') ?>
         </div>
         <div class="col-12">
-            <label class="form-label" for="current_password">Current password <span class="text-muted fw-normal">(only needed to change your email)</span></label>
+            <label class="form-label" for="current_password">Current password <span class="text-muted fw-normal">(only needed to change your email or phone number)</span></label>
             <input class="form-control<?= invalid('current_password') ?>" id="current_password" name="current_password" type="password" autocomplete="current-password">
             <?= field_error('current_password') ?>
         </div>

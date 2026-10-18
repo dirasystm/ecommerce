@@ -24,6 +24,18 @@ $searchForm = function (string $id) use ($q): string {
     <?php return (string) ob_get_clean();
 };
 ?>
+<?php
+$announce = \Waimart\Core\Settings::bool('announcement_enabled') ? trim((string) \Waimart\Core\Settings::get('announcement_text', '')) : '';
+$announceLink = (string) \Waimart\Core\Settings::get('announcement_link', '');
+?>
+<?php if ($user !== null && (int) $user['is_staff'] === 1 && \Waimart\Core\Settings::bool('maintenance_mode')): ?>
+    <div class="wm-staff-notice" role="status"><i class="bi bi-cone-striped" aria-hidden="true"></i> Maintenance mode is on: customers see the maintenance page. You see the shop because you are signed in as staff.</div>
+<?php endif; ?>
+<?php if ($announce !== ''): ?>
+    <div class="wm-announcement" role="region" aria-label="Announcement">
+        <div class="container-wm"><?php if ($announceLink !== '' && \Waimart\Services\SettingsService::safeLink($announceLink)): ?><a href="<?= e(str_starts_with($announceLink, '/') ? url($announceLink) : $announceLink) ?>"><?= e($announce) ?> <i class="bi bi-arrow-right" aria-hidden="true"></i></a><?php else: ?><?= e($announce) ?><?php endif; ?></div>
+    </div>
+<?php endif; ?>
 <div class="wm-topbar">
     <div class="container-wm wm-topbar-inner">
         <div class="wm-promo">
@@ -79,7 +91,7 @@ $searchForm = function (string $id) use ($q): string {
                         </li>
                     <?php else: ?>
                         <li class="px-3 py-2"><a class="btn btn-wm w-100" href="<?= e(url('/login')) ?>">Sign in</a></li>
-                        <li><a class="dropdown-item" href="<?= e(url('/register')) ?>"><i class="bi bi-person-plus"></i>Create account</a></li>
+                        <?php if (\Waimart\Services\AccountService::registrationOpen()): ?><li><a class="dropdown-item" href="<?= e(url('/register')) ?>"><i class="bi bi-person-plus"></i>Create account</a></li><?php endif; ?>
                         <li><hr class="dropdown-divider"></li>
                         <li><a class="dropdown-item" href="<?= e(url('/track-order')) ?>"><i class="bi bi-truck"></i>Track an order</a></li>
                     <?php endif; ?>

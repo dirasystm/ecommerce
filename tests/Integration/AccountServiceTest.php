@@ -24,7 +24,9 @@ final class AccountServiceTest extends DbTestCase
     private function register(string $email = 'jane@example.com'): array
     {
         return $this->svc->register([
-            'first_name' => 'Jane', 'last_name' => 'Wanjiku', 'email' => $email, 'phone' => '0712 345 678',
+            // One account per phone number: jane@ keeps 0712 345 678 (the profile tests rely on it); others get their own.
+            'first_name' => 'Jane', 'last_name' => 'Wanjiku', 'email' => $email,
+            'phone' => strtolower($email) === 'jane@example.com' ? '0712 345 678' : '07' . sprintf('%08d', crc32($email) % 100000000),
             'password' => 'Secret123', 'password_confirmation' => 'Secret123', 'accept_terms' => '1',
         ], '10.0.0.' . random_int(1, 250));
     }

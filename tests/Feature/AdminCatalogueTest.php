@@ -17,7 +17,7 @@ final class AdminCatalogueTest extends FeatureTestCase
     {
         $this->db->insert('users', ['email' => 'cust@x.co', 'password_hash' => password_hash('Secret123', PASSWORD_DEFAULT), 'first_name' => 'C', 'last_name' => 'U']);
         $r = $this->post('/admin/login', ['email' => 'cust@x.co', 'password' => 'Secret123'], '/admin/login');
-        $this->assertStringContainsString('Incorrect email or password', $this->follow($r)['body'], 'customers cannot use the staff login');
+        $this->assertStringContainsString('Incorrect email, phone number or password', $this->follow($r)['body'], 'customers cannot use the staff login');
         $this->assertSame(303, $this->get('/admin')['status']);
     }
 
@@ -47,7 +47,7 @@ final class AdminCatalogueTest extends FeatureTestCase
         $u = $this->makeStaff('manager');
         for ($i = 0; $i < 5; $i++) {
             $r = $this->post('/admin/login', ['email' => $u['email'], 'password' => 'wrong'], '/admin/login');
-            $this->assertStringContainsString('Incorrect email or password', $this->follow($r)['body']);
+            $this->assertStringContainsString('Incorrect email, phone number or password', $this->follow($r)['body']);
         }
         // Even the right password is refused while locked out.
         $r = $this->post('/admin/login', ['email' => $u['email'], 'password' => $u['password']], '/admin/login');

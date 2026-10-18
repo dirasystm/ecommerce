@@ -94,6 +94,10 @@ p a:not(.btn), li > a:not(.btn):not(.dropdown-item):not(.nav-link):not(.page-lin
 }
 
 /* ---------- Top strip ---------- */
+/* Announcement bar (Admin → Settings → Maintenance & announcement): dark text on a light accent tint. */
+.wm-announcement { background: var(--wm-orange-50); border-bottom: 1px solid var(--wm-orange); color: var(--wm-text); font-size: .875rem; font-weight: 600; text-align: center; padding: 6px 0; }
+.wm-announcement a { color: var(--wm-text); text-decoration: underline; }
+.wm-staff-notice { background: #fff3cd; color: #4d3800; font-size: .8125rem; text-align: center; padding: 4px 12px; border-bottom: 1px solid #e0c36a; }
 .wm-topbar { background: var(--wm-green); color: #fff; font-size: .8125rem; }
 .wm-topbar a { color: #fff; }
 .wm-topbar .wm-topbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 34px; }

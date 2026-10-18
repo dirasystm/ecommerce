@@ -21,6 +21,9 @@ final class Kernel
             View::share('request', $req);
             $route = $this->router->match($req->method, $req->path);
             $req->params = $route['params'];
+            if (self::closedForMaintenance($req)) {
+                return $this->secure($this->maintenanceResponse($req));
+            }
 
             if (in_array($req->method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)
                 && !in_array('no_csrf', $route['middleware'], true)
@@ -127,6 +130,37 @@ final class Kernel
             default:
                 throw new \LogicException("Unknown middleware: $name");
         }
+    }
+
+    /**
+     * Maintenance mode (Admin → Settings → Maintenance): customers get a 503 page. Staff browse the shop as normal,
+     * and the admin, Seller Centre, sign-in and health check stay open so the shop can be worked on.
+     */
+    public static function closedForMaintenance(Request $req): bool
+    {
+        try {
+            if (!Settings::bool('maintenance_mode')) {
+                return false;
+            }
+        } catch (\Throwable) {
+            return false;   // settings unreadable: never lock everyone out because of it
+        }
+        foreach (['/admin', '/seller', '/login', '/logout', '/health', '/manifest.webmanifest'] as $open) {
+            if ($req->path === $open || str_starts_with($req->path, $open . '/')) {
+                return false;
+            }
+        }
+        $user = Auth::user();
+        return !($user !== null && (int) $user['is_staff'] === 1);
+    }
+
+    private function maintenanceResponse(Request $req): Response
+    {
+        $message = trim((string) Settings::get('maintenance_message', ''));
+        if ($req->isAjax()) {
+            return Response::json(['ok' => false, 'message' => $message !== '' ? $message : 'The shop is closed for maintenance.'], 503)->withHeader('Retry-After', '3600');
+        }
+        return Response::html(View::render('errors/503', ['message' => $message, 'status' => 503], 'layouts/minimal'), 503)->withHeader('Retry-After', '3600');
     }
 
     private function errorResponse(Request $req, int $status, string $message): Response

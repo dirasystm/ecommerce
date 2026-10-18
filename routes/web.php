@@ -228,8 +228,13 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     $r->post('/resolutions/{id:\d+}/cancel', [Admin\PaymentController::class, 'cancelRefund'], ['can:resolutions.manage']);
     $r->get('/cod', [Admin\PaymentController::class, 'cod'], ['can:cod.collect']);
     $r->post('/cod/{id:\d+}', [Admin\PaymentController::class, 'recordCod'], ['can:cod.collect']);
-    $r->get('/settings', [Admin\SettingsController::class, 'edit'], ['can:settings.manage']);
+    $r->get('/settings', [Admin\SettingsController::class, 'index'], ['can:settings.manage']);
     $r->post('/settings', [Admin\SettingsController::class, 'update'], ['can:settings.manage']);
+    $r->get('/settings/transfer', [Admin\SettingsController::class, 'transfer'], ['can:settings.manage']);
+    $r->get('/settings/export', [Admin\SettingsController::class, 'export'], ['can:settings.manage', 'throttle:30,3600']);
+    $r->post('/settings/import', [Admin\SettingsController::class, 'import'], ['can:settings.manage', 'throttle:10,3600']);
+    $r->get('/settings/{group:general|contact|social|seo|checkout|orders|payments|marketplace|maintenance}', [Admin\SettingsController::class, 'group'], ['can:settings.manage']);
+    $r->post('/settings/{group:general|contact|social|seo|checkout|orders|payments|marketplace|maintenance}', [Admin\SettingsController::class, 'saveGroup'], ['can:settings.manage']);
     $r->get('/settings/branding', [Admin\BrandingController::class, 'edit'], ['can:settings.manage']);
     $r->post('/settings/branding', [Admin\BrandingController::class, 'update'], ['can:settings.manage', 'throttle:30,3600']);
 

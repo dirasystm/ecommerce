@@ -7,8 +7,8 @@
 <?php endif; ?>
 <form method="post" action="<?= e(url('/admin/login')) ?>" style="text-align:left;max-width:360px;margin:16px auto 0">
     <?= csrf_field() ?>
-    <label for="email" style="display:block;font-weight:600;margin-bottom:4px">Email</label>
-    <input id="email" name="email" type="email" autocomplete="username" required value="<?= e(old('email')) ?>"
+    <label for="login" style="display:block;font-weight:600;margin-bottom:4px">Email or phone number</label>
+    <input id="login" name="login" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required value="<?= e((string) (old('login') ?: old('email'))) ?>"
            style="width:100%;padding:10px;border:1px solid #bbb;border-radius:4px;margin-bottom:12px">
     <label for="password" style="display:block;font-weight:600;margin-bottom:4px">Password</label>
     <input id="password" name="password" type="password" autocomplete="current-password" required

@@ -9,6 +9,7 @@ use Waimart\Core\Auth;
 use Waimart\Core\Crypto;
 use Waimart\Core\Database;
 use Waimart\Core\RateLimiter;
+use Waimart\Core\Settings;
 use Waimart\Core\ValidationException;
 use Waimart\Core\Validator;
 
@@ -29,6 +30,9 @@ final class AccountService
     /** @param array<string,mixed> $in @return array<string,mixed> the new user (not logged in) */
     public function register(array $in, string $ip): array
     {
+        if (!self::registrationOpen()) {
+            throw ValidationException::withMessage('New accounts cannot be created at the moment. You can still check out as a guest.');
+        }
         if (!(new RateLimiter($this->db))->attempt('register|' . $ip, 10, 3600)) {
             throw ValidationException::withMessage('Too many registrations from your network. Please try again later.');
         }
@@ -43,25 +47,38 @@ final class AccountService
         ], ['password_confirmation' => 'Password confirmation', 'accept_terms' => 'Acceptance of the terms']);
 
         $email = strtolower(trim((string) $in['email']));
+        $phone = Validator::normalizePhone((string) $in['phone']);
         if ($this->db->value('SELECT id FROM users WHERE email = ?', [$email])) {
             throw new ValidationException(['email' => 'An account with this email already exists. Sign in or reset your password.']);
+        }
+        // Phone numbers are unique so customers can sign in with either (uq_users_phone).
+        if ($this->db->value('SELECT id FROM users WHERE phone = ?', [$phone])) {
+            throw new ValidationException(['phone' => 'An account with this phone number already exists. Sign in or reset your password.']);
         }
         try {
             $id = $this->db->insert('users', [
                 'email' => $email,
-                'phone' => Validator::normalizePhone((string) $in['phone']),
+                'phone' => $phone,
                 'password_hash' => password_hash((string) $in['password'], PASSWORD_DEFAULT),
                 'first_name' => trim((string) $in['first_name']),
                 'last_name' => trim((string) $in['last_name']),
                 'marketing_opt_in' => !empty($in['marketing_opt_in']) ? 1 : 0,
             ]);
         } catch (\PDOException $e) {
-            if (Database::isDuplicateKey($e)) {      // concurrent registration with same email
-                throw new ValidationException(['email' => 'An account with this email already exists.']);
+            if (Database::isDuplicateKey($e)) {      // concurrent registration with the same email or phone
+                throw str_contains($e->getMessage(), 'uq_users_phone')
+                    ? new ValidationException(['phone' => 'An account with this phone number already exists.'])
+                    : new ValidationException(['email' => 'An account with this email already exists.']);
             }
             throw $e;
         }
         return (array) $this->db->one('SELECT * FROM users WHERE id = ?', [$id]);
+    }
+
+    /** Whether customers may create accounts (Admin → Settings → Checkout & accounts). */
+    public static function registrationOpen(): bool
+    {
+        return Settings::bool('allow_registration', true);
     }
 
     /** @param array<string,mixed> $in */
@@ -75,18 +92,22 @@ final class AccountService
         ]);
         $user = $this->user($userId);
         $email = strtolower(trim((string) $in['email']));
-        if ($email !== $user['email']) {
-            // Changing the sign-in email requires the current password.
+        $phone = Validator::normalizePhone((string) $in['phone']);
+        if ($email !== $user['email'] || $phone !== $user['phone']) {
+            // Email and phone both sign the customer in: changing either requires the current password.
             if (!password_verify((string) ($in['current_password'] ?? ''), $user['password_hash'])) {
-                throw new ValidationException(['current_password' => 'Enter your current password to change your email.']);
+                throw new ValidationException(['current_password' => 'Enter your current password to change your email or phone number.']);
             }
-            if ($this->db->value('SELECT id FROM users WHERE email = ? AND id <> ?', [$email, $userId])) {
+            if ($email !== $user['email'] && $this->db->value('SELECT id FROM users WHERE email = ? AND id <> ?', [$email, $userId])) {
                 throw new ValidationException(['email' => 'That email is used by another account.']);
+            }
+            if ($phone !== $user['phone'] && $this->db->value('SELECT id FROM users WHERE phone = ? AND id <> ?', [$phone, $userId])) {
+                throw new ValidationException(['phone' => 'That phone number is used by another account.']);
             }
         }
         $this->db->exec(
             'UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = ? WHERE id = ?',
-            [trim((string) $in['first_name']), trim((string) $in['last_name']), $email, Validator::normalizePhone((string) $in['phone']), $userId]
+            [trim((string) $in['first_name']), trim((string) $in['last_name']), $email, $phone, $userId]
         );
         Auth::reset();
     }

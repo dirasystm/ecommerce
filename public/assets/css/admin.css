@@ -62,3 +62,8 @@ body.wm-admin { background: #f4f6f5; padding-bottom: 0; }
     .wm-admin-side { width: 100%; border: 0; }
 }
 .wm-audit-json { max-width: 320px; word-break: break-word; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .75rem; }
+
+/* Section menus (e.g. Settings): the current item in the brand colour, not Bootstrap's default blue. */
+.wm-panel .list-group-item.active { background: var(--wm-green); border-color: var(--wm-green); color: #fff; }
+.wm-panel .list-group-item-action { text-decoration: none; }
+.wm-panel .list-group-item-action:not(.active):hover { background: var(--wm-green-50); }

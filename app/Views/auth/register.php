@@ -1,6 +1,10 @@
+<?php /** @var bool $open */ ?>
 <div class="container-wm">
     <div class="wm-auth-card wm-card">
         <h1>Create your account</h1>
+<?php if (!($open ?? true)): ?>
+        <div class="alert alert-info small">New accounts cannot be created at the moment. You can still <a href="<?= e(url('/cart')) ?>">check out as a guest</a> and track your order with its number.</div>
+<?php else: ?>
         <p class="text-muted small">Save addresses, track orders and checkout faster.</p>
         <form method="post" action="<?= e(url('/register')) ?>" novalidate>
             <?= csrf_field() ?>
@@ -50,6 +54,7 @@
             </div>
             <button class="btn btn-wm w-100 mt-4" type="submit">Create account</button>
         </form>
+<?php endif; ?>
         <p class="small text-center mt-3 mb-0">Already have an account? <a href="<?= e(url('/login')) ?>">Sign in</a></p>
     </div>
 </div>

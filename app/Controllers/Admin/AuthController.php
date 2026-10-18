@@ -25,7 +25,8 @@ final class AuthController
 
     public function login(Request $req): Response
     {
-        (new AuthService())->attempt((string) $req->input('email', ''), (string) ($req->post['password'] ?? ''), $req->ip(), true);
+        (new AuthService())->attempt((string) ($req->input('login', '') ?: $req->input('email', '')),   // email or phone
+            (string) ($req->post['password'] ?? ''), $req->ip(), true);
         $intended = (string) Session::get('intended', '/admin');
         Session::forget('intended');
         // Only allow internal admin paths as post-login destinations.

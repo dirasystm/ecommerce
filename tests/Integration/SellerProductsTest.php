@@ -29,7 +29,7 @@ final class SellerProductsTest extends DbTestCase
         $this->svc = new SellerProductService($this->db);
         $this->cat = $this->db->insert('categories', ['name' => 'Bags', 'slug' => 'bags-' . bin2hex(random_bytes(2))]);
         $this->staff = $this->db->insert('users', ['email' => 'mod@waimart.test', 'password_hash' => 'x', 'first_name' => 'M', 'last_name' => 'O', 'is_staff' => 1]);
-        Settings::set('product_moderation', 'required');
+        Settings::set('product_moderation', '1');
     }
 
     protected function tearDown(): void
@@ -40,7 +40,7 @@ final class SellerProductsTest extends DbTestCase
         foreach ($this->tmp as $f) {
             @unlink($f);
         }
-        Settings::set('product_moderation', 'required');
+        Settings::set('product_moderation', '1');
         parent::tearDown();
     }
 

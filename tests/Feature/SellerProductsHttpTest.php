@@ -17,7 +17,7 @@ final class SellerProductsHttpTest extends FeatureTestCase
     {
         parent::setUp();
         $this->cat = $this->db->insert('categories', ['name' => 'Crafts', 'slug' => 'crafts-' . bin2hex(random_bytes(2))]);
-        Settings::set('product_moderation', 'required');
+        Settings::set('product_moderation', '1');
     }
 
     protected function tearDown(): void

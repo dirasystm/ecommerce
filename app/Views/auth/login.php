@@ -5,8 +5,9 @@
         <form method="post" action="<?= e(url('/login')) ?>" novalidate>
             <?= csrf_field() ?>
             <div class="mb-3">
-                <label class="form-label" for="email">Email address</label>
-                <input class="form-control" id="email" name="email" type="email" autocomplete="email" required value="<?= e(old('email')) ?>">
+                <label class="form-label" for="login">Email or phone number</label>
+                <input class="form-control" id="login" name="login" type="text" autocomplete="username" autocapitalize="none" spellcheck="false" required
+                       placeholder="you@example.com or 0712 345 678" value="<?= e((string) (old('login') ?: old('email'))) ?>">
             </div>
             <div class="mb-2">
                 <label class="form-label" for="password">Password</label>
@@ -17,7 +18,7 @@
         </form>
         <hr>
         <p class="small text-center mb-2">New to <?= e(brand_name()) ?>?</p>
-        <a class="btn btn-outline-wm w-100" href="<?= e(url('/register')) ?>">Create an account</a>
+        <?php if (\Waimart\Services\AccountService::registrationOpen()): ?><a class="btn btn-outline-wm w-100" href="<?= e(url('/register')) ?>">Create an account</a><?php endif; ?>
         <p class="small text-muted text-center mt-3 mb-0">You can also <a href="<?= e(url('/cart')) ?>">check out as a guest</a> without an account.</p>
     </div>
 </div>

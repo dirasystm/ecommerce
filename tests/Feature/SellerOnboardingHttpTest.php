@@ -207,7 +207,7 @@ final class SellerOnboardingHttpTest extends FeatureTestCase
         $this->loginStaff('super_admin');
         $values = array_column($this->db->all('SELECT setting_key, setting_value FROM settings'), 'setting_value', 'setting_key');
         $values['doc_mode'] = ['national_id' => 'individual', 'business_registration' => 'business', 'tax_registration' => 'optional', 'other' => 'off'];
-        $r = $this->post('/admin/settings', $values, '/admin/settings');
+        $r = $this->post('/admin/settings/marketplace', $values, '/admin/settings/marketplace');
         $this->assertSame(303, $r['status'], $this->lastBody);
         Settings::flush();
         $this->assertSame(['individual' => ['national_id'], 'registered_business' => ['business_registration'], 'optional' => ['tax_registration']],

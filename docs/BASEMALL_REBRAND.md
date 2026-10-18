@@ -1,6 +1,6 @@
 # Basemall Rebrand and Database-Driven Management
 
-**Started:** 18 October 2026 · **Branch:** `feature/basemall-rebrand` (from `feature/multi-vendor`) · **Status:** Stage 1 complete; awaiting approval to start Stage 2
+**Started:** 18 October 2026 · **Branch:** `feature/basemall-rebrand` (from `feature/multi-vendor`) · **Status:** Stages 1–2 complete (plus sign-in with phone or email); awaiting approval to start Stage 3
 
 This is the plan and progress record for the owner's request "Rebrand the e-commerce platform to Basemall and implement full database-driven management". The marketplace work it builds on is recorded in `docs/MARKETPLACE_PLAN.md`.
 
@@ -144,3 +144,105 @@ Still hardcoded, and scheduled:
 **For the owner:**
 - The dev database's **demo products** still contain the old name (e.g. "Waimart Basics Long-Grain Rice 5kg"). These are product records, not code, and should be replaced or deleted with the other demo data before go-live; `bin/seed-demo.php` now uses the store name for new demo data.
 - Set the real sending address (`mail.from_email`) in `config.local.php` before go-live.
+
+---
+
+## Stage 2 results (18 October 2026): settings system, and sign-in with phone or email
+
+### Settings
+
+**Grouped, typed settings** (`SettingsService`, migration 019). The settings are a registry: each has a label, a validation rule (its type), help text, a group and a widget. **Admin → Settings** is now one page per group, with a section menu (Branding sits in it too):
+
+| Group | Settings |
+|---|---|
+| General | store description, products per page (12–96) |
+| Contact & business | customer-care phone and email, WhatsApp, business and postal address, care hours, registered business name |
+| Social media | Facebook, Instagram, X, TikTok, YouTube, LinkedIn (https:// only) |
+| Search & sharing (SEO) | home page title, default description, "hide the shop from search engines" (for a test copy) |
+| Checkout & accounts | allow customers to create accounts, require email for guest checkout |
+| Orders & returns | stock holds, COD auto-confirm, pickup hold, return window (moved from the old page) |
+| M-Pesa | till, paybill and Send Money details (moved; Stage 4 replaces this with payment-method management) |
+| Marketplace | product moderation, payout settings, seller onboarding documents (moved) |
+| Maintenance & announcement | close the shop for maintenance with a message; an announcement bar with an optional link |
+
+- **Saving one page touches only that page's settings**, so saving one page can never blank another.
+- Every change is audited (`settings.updated`). Changes to payment destinations also get their own `settings.payment_destination_changed` entry.
+- Settings are cached per request, and every write clears the cache, so changes apply on the next page load.
+- `/admin/settings` redirects to General. The old "save everything" form still works, for scripts.
+
+**What each new setting does on the shop:**
+- **Footer and Contact page:** contact details, a WhatsApp link (`wa.me`), social icons, address and hours. The copyright line shows the registered business name (otherwise the store name) and the current year. The footer tagline now comes from Branding; it was still hardcoded.
+- **SEO:** the home page title override and the default meta description (falling back to the store description, then a neutral sentence). With "hide from search engines" ticked, every shop page carries `noindex, nofollow`.
+- **Products per page:** applies to category, search, store and flash-sale listings, always kept within 12–96 even if a bad value is stored.
+- **Closed registration** is enforced on the server (`AccountService::register`); a crafted request is refused too. The Register page explains it and points to guest checkout, and the "Create account" links are hidden.
+- **Maintenance mode:** customers get a branded "We'll be back soon" page with the admin's message, HTTP **503** and `Retry-After: 3600`, so search engines treat it as temporary. That covers every shop page and action, including adding to the cart.
+  - Staff see the shop as normal, with a reminder bar.
+  - The admin, Seller Centre, sign-in pages, health check and manifest stay open.
+- **Announcement bar:** dark text on a light accent tint, optionally linked. Links may only be a page on this site (`/…`) or an `https://` address; `javascript:`, `data:`, `//host` and quote tricks are refused.
+
+**Export & import** (Settings → Export & import):
+- Export downloads the settings as JSON (audited).
+- Import validates every value exactly as the pages do, and **applies nothing if any value is invalid**.
+- **M-Pesa payment numbers are never exported or imported**, and branding is not importable through settings. Unknown keys are reported, not applied.
+- Exporting then importing an unchanged shop changes nothing. To make that exact, migration 021 stores the product-moderation switch as `1`/`0` like every other on/off setting; the code accepts both forms, so behaviour is unchanged.
+
+**Hardcoded content converted:** footer tagline; footer contact block (now phone, email, WhatsApp and hours); copyright holder; home page title; default meta description (it mentioned specific product categories and "across Kenya"); products per page (24 in code).
+
+### Sign-in with phone or email
+
+- **All sign-in pages** (customers and sellers at `/login`, staff at `/admin/login`) have one field, **"Email or phone number"**. It uses `autocomplete="username"`, so password managers keep working.
+- `AuthService::identify()`: anything containing `@` is an email. Anything else is read as a Kenyan phone number in any common form (`0712 345 678`, `0712345678`, `+254 712 345 678`, `254712345678`, `712345678`), normalised to `2547…`. Anything else is not looked up at all.
+- **Security is unchanged or stronger:**
+  - one generic error, "Incorrect email, phone number or password.", whether the account exists or not, with the same timing (a dummy hash is checked);
+  - the 5-attempts-per-15-minutes lock is keyed on the *normalised* identifier, so trying every spelling of a number counts against one limit;
+  - the per-network limit (30 per 15 minutes) covers email and phone attempts together;
+  - customers cannot use the staff sign-in, and suspended accounts cannot sign in.
+- **One account per phone number** (migration 020, `uq_users_phone`), checked with a clear message at registration and when staff add a person.
+  - Accounts without a phone are unaffected.
+  - If existing data had two accounts sharing a number, the migration would be refused and nothing would change; the file says how to find and fix them. The dev data had none.
+- **Changing your phone number now needs your current password**, like changing your email, because both sign you in.
+- Older forms that post `email` still work.
+- Password reset stays by email: no SMS gateway is connected yet. SMS reset can come with one.
+
+### Database
+
+- Migrations 019 (new settings with today's behaviour as defaults), 020 (unique phone) and 021 (flag format) were applied to the dev database after a backup (`storage/backups/waimart-20261018-210318.sql`).
+- `rollback_basemall.sql` covers 018–021.
+- **Re-drilled on a copy of the pre-upgrade backup** (010–021 forward, both rollbacks back): identical schema, and identical data apart from one restored setting's `updated_at` (all 17 settings' keys and values identical). The drill caught the users table's indexes coming back in a different order; the rollback now rebuilds them in the original order.
+
+### Found and fixed
+
+- Product moderation was stored as `required`/`none` while the settings form saves `1`/`0`. It was harmless (both are understood) but made exports inexact; normalised.
+- Two older tests had silently relied on shared state: one wrote the old moderation format, and several test helpers registered every account with the same phone number. Both now set their own values.
+- The selected item in admin section menus used Bootstrap's default blue; it now uses the brand colour.
+
+### Tests
+
+- **`SettingsGroupsTest` (6):**
+  - every setting has a group and a stored default, and the defaults keep today's behaviour;
+  - saving one page leaves other pages' settings untouched, including an unrelated checkbox, and is audited;
+  - validation of social links (https only), announcement links (5 attack forms refused), page size, length limits, WhatsApp;
+  - export excludes payment numbers; a round trip changes nothing; import is all-or-nothing, ignores payment numbers, branding and unknown keys, is audited, and refuses junk;
+  - page size drives listings and is clamped;
+  - closed registration is refused by the service.
+- **`PhoneSignInTest` (6):**
+  - identifier recognition in every form, including an injection-shaped value that is never looked up;
+  - sign-in with email (any case) or phone (four forms);
+  - a shared lock across spellings, and the per-network limit across email and phone;
+  - staff sign-in by phone; customers refused at the staff sign-in; suspended accounts refused;
+  - phone uniqueness (service and database), many accounts without a phone allowed, and password-protected phone changes.
+- **`SettingsHttpTest` (5):**
+  - three non-super-admin roles get 403 on all 11 settings pages and on saving, and cannot close the shop;
+  - super admins reach every page, and unknown groups give 404;
+  - contact, social and SEO settings show on the shop; bad links are refused with messages, nothing changes, and noindex works;
+  - maintenance: customers get 503 with the message and `Retry-After` on five pages and on add-to-cart; sign-in, admin sign-in, health and manifest stay open; sellers keep working; staff see the shop with the reminder; the announcement bar and its link show;
+  - closed registration: the page notice, the hidden link, and a crafted POST refused;
+  - export download and import upload.
+- **`PhoneSignInHttpTest` (3):**
+  - the customer page signs in by phone (two forms) and email;
+  - the old `email` field still works;
+  - a generic error for a wrong password and for an unknown number, with the typed identifier kept;
+  - staff sign-in by phone, customers refused there;
+  - registration refuses a taken number.
+- **Full suite: 422 tests, 3,585 assertions, all passing.**
+- **Browser:** 0 serious/critical accessibility issues on all 11 settings pages, both sign-in pages, the register page, the maintenance page and the shop with the announcement bar. Responsive checks passed (the maintenance page's 503 status shows as an expected console message). Screenshots reviewed.

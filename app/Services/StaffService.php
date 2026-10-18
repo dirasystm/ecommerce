@@ -43,6 +43,10 @@ final class StaffService
             if ($existing !== null && (int) $existing['is_staff'] === 1) {
                 throw new ValidationException(['email' => 'This person is already a staff member.']);
             }
+            $phone = ($p = trim((string) ($in['phone'] ?? ''))) !== '' ? Validator::normalizePhone($p) : null;
+            if ($existing === null && $phone !== null && $this->db->value('SELECT 1 FROM users WHERE phone = ?', [$phone])) {
+                throw new ValidationException(['phone' => 'That phone number belongs to another account (phone numbers sign people in, so each must be unique).']);
+            }
             if ($existing !== null) {
                 $id = (int) $existing['id'];       // promote an existing customer account
                 $this->db->exec("UPDATE users SET is_staff = 1, status = 'active' WHERE id = ?", [$id]);
@@ -53,7 +57,7 @@ final class StaffService
                     'password_hash' => password_hash(bin2hex(random_bytes(32)), PASSWORD_DEFAULT),
                     'first_name' => trim((string) $in['first_name']),
                     'last_name' => trim((string) $in['last_name']),
-                    'phone' => ($p = trim((string) ($in['phone'] ?? ''))) !== '' ? Validator::normalizePhone($p) : null,
+                    'phone' => $phone,
                     'is_staff' => 1,
                 ]);
             }

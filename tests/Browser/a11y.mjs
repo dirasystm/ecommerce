@@ -19,7 +19,7 @@ const page = await browser.newPage();
 await page.setViewport({ width: 1280, height: 900 });
 if (process.env.WAIMART_LOGIN_EMAIL) {
     await page.goto(BASE + (process.env.WAIMART_LOGIN_PATH || '/admin/login'), { waitUntil: 'networkidle0' });
-    await page.type('#email', process.env.WAIMART_LOGIN_EMAIL);
+    await page.type('#login', process.env.WAIMART_LOGIN_EMAIL);
     await page.type('#password', process.env.WAIMART_LOGIN_PASSWORD || '');
     await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), page.$eval('#password', (el) => el.form.requestSubmit())]);
 }
