@@ -96,6 +96,30 @@ final class RouteSecurityTest extends TestCase
         }
     }
 
+    public function testMarketplaceMoneyRoutesNeedTheirPermissions(): void
+    {
+        $seen = 0;
+        foreach ($this->routes() as $r) {
+            $p = $r['pattern'];
+            $need = match (true) {
+                str_starts_with($p, '/admin/commissions') => 'can:commissions.manage',
+                str_starts_with($p, '/admin/payouts') => $r['method'] === 'POST' ? 'can:payouts.manage' : 'can:payouts.view',
+                str_ends_with($p, '/ledger') && str_starts_with($p, '/admin/') => 'can:payouts.view',
+                default => null,
+            };
+            if ($need !== null) {
+                $seen++;
+                $this->assertContains($need, $r['middleware'], "{$r['method']} $p must require $need");
+            }
+            if ($r['method'] === 'POST' && str_starts_with($p, '/seller/finance')) {
+                $seen++;
+                $this->assertContains('seller_role:owner', $r['middleware'], "POST $p: only store owners move money");
+                $this->assertNotEmpty(array_filter($r['middleware'], fn ($m) => str_starts_with($m, 'throttle:')), "POST $p must be rate-limited");
+            }
+        }
+        $this->assertSame(11, $seen, 'all commission, payout, ledger and seller payout routes are covered');
+    }
+
     public function testNoRouteOptsOutOfCsrf(): void
     {
         foreach ($this->routes() as $r) {

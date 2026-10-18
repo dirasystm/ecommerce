@@ -8,12 +8,12 @@ $user = Auth::user();
 $seller = SellerContext::current();
 $req = View::shared('request');
 $path = $req instanceof \Waimart\Core\Request ? $req->path : '';
-// Finance is added in a later phase.
 $nav = [
     ['My store', [
         ['/seller', 'speedometer2', 'Dashboard'],
         ['/seller/orders', 'receipt', 'Orders'],
         ['/seller/products', 'box-seam', 'Products'],
+        ['/seller/finance', 'wallet2', 'Earnings & payouts'],
         ['/seller/profile', 'shop', 'Store profile'],
     ]],
     ['My account', [

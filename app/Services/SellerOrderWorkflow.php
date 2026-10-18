@@ -214,6 +214,7 @@ final class SellerOrderWorkflow
                     $params[] = mb_substr($reason, 0, 500);
                 }
                 $this->refundPartIfPaid($order, $so, $reason, $actorId);
+                (new SellerLedgerService($this->db))->reversePart($id, $reason, $actorId);
                 $this->outbox[] = ['type' => 'withdrawn', 'order' => $order, 'so' => $so + ['reason' => $reason], 'code' => null];
                 break;
         }

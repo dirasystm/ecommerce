@@ -1,4 +1,4 @@
--- EMERGENCY ROLLBACK of the marketplace migrations (010 onwards; currently 010–015). Run only after taking a backup:
+-- EMERGENCY ROLLBACK of the marketplace migrations (010 onwards; currently 010–016). Run only after taking a backup:
 --   php bin/backup.php
 --   C:\xampp\mysql\bin\mysql.exe -u root waimart < database\rollback\rollback_013_to_010.sql
 -- Removes the marketplace tables/columns and their reference data, returning the schema to migration 009.
@@ -14,6 +14,8 @@ SET @third_party_order_items := (SELECT COUNT(*) FROM order_items WHERE seller_i
 CREATE TEMPORARY TABLE rollback_guard (ok TINYINT, CONSTRAINT ck_rollback_guard CHECK (ok = 1));
 INSERT INTO rollback_guard VALUES (IF(@third_party_products = 0 AND @third_party_order_items = 0, 1, 0));
 DROP TEMPORARY TABLE rollback_guard;
+
+-- 016 (append-only triggers) needs nothing of its own: the triggers are dropped with their tables under 013 below.
 
 -- 015 (back-filled seller orders) needs nothing of its own: the seller_orders table and order_items.seller_order_id are
 -- dropped with 012 below.
@@ -62,4 +64,4 @@ DELETE FROM permissions WHERE slug IN ('sellers.view','sellers.manage','products
 DELETE FROM settings WHERE setting_key IN ('marketplace_delivery_handler','marketplace_delivery_fee_policy','marketplace_cod_policy',
     'marketplace_commission_provisional','product_moderation','payout_min_amount','payout_hold_days','payout_requires_fulfilment',
     'seller_terms_version','seller_required_documents');
-DELETE FROM schema_migrations WHERE filename IN ('015_backfill_seller_orders.sql', '014_seller_stock_actor.sql', '010_marketplace_sellers.sql','011_product_ownership.sql','012_seller_orders.sql','013_marketplace_finance.sql');
+DELETE FROM schema_migrations WHERE filename IN ('016_ledger_immutability.sql', '015_backfill_seller_orders.sql', '014_seller_stock_actor.sql', '010_marketplace_sellers.sql','011_product_ownership.sql','012_seller_orders.sql','013_marketplace_finance.sql');

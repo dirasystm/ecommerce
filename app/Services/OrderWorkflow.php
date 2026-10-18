@@ -198,6 +198,10 @@ final class OrderWorkflow
             case 'confirmed':
                 $this->reservations->holdUntilFulfilment($id);
                 $sets[] = 'confirmed_at = NOW()';
+                // M-Pesa money verified: marketplace sellers' earnings accrue (pending until the payout policy is met).
+                if ($o['payment_status'] === 'verified') {
+                    (new SellerLedgerService($this->db))->accrueOrder($id, $actorId);
+                }
                 break;
 
             case 'expired':

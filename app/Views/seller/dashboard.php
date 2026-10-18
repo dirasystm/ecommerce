@@ -1,5 +1,5 @@
 <?php
-/** @var array<string,mixed> $seller @var array<string,mixed>|null $payout @var array<string,int> $productCounts @var array<string,int> $orderCounts @var list<array{0:string,1:bool,2:?string}> $checklist */
+/** @var array<string,mixed> $seller @var array<string,mixed>|null $payout @var array<string,int> $productCounts @var array<string,int> $orderCounts @var array<string,string> $balances @var list<array{0:string,1:bool,2:?string}> $checklist */
 $done = count(array_filter($checklist, fn ($c) => $c[1]));
 ?>
 <div class="wm-admin-head">
@@ -28,9 +28,10 @@ $done = count(array_filter($checklist, fn ($c) => $c[1]));
     </div>
     <div class="col-md-4">
         <div class="wm-panel h-100"><div class="wm-panel-body">
-            <div class="small text-muted">Payouts go to</div>
-            <div class="fs-6 fw-semibold"><?= $payout ? e($payout['masked']) : 'Not set' ?></div>
-            <div class="small text-muted">To change payout details, contact Waimart Seller Support.</div>
+            <div class="small text-muted">Available to withdraw</div>
+            <div class="fs-5 fw-semibold"><?= e(money($balances['available'])) ?></div>
+            <div class="small text-muted"><?= e(money($balances['pending'])) ?> pending · paid to <?= $payout ? e($payout['masked']) : 'no payout details yet' ?></div>
+            <div class="small"><a href="<?= e(url('/seller/finance')) ?>">Earnings &amp; payouts</a></div>
         </div></div>
     </div>
 </div>

@@ -35,6 +35,9 @@ final class SettingsService
         'return_window_days' => ['Return window (days)', 'required|int|gte:0|lte:90', null, 'Orders'],
 
         'product_moderation' => ['Require approval before seller products go live', 'bool', 'If off, products from approved sellers are published as soon as the seller submits them.', 'Marketplace'],
+        'payout_min_amount' => ['Minimum seller payout (KSh)', 'required|decimal', 'Sellers can request a payout once their available balance reaches this amount.', 'Marketplace'],
+        'payout_hold_days' => ['Earnings holding period (days)', 'required|int|gte:0|lte:90', 'Days after delivery or collection before a seller\'s earnings become available, leaving time for returns.', 'Marketplace'],
+        'payout_requires_fulfilment' => ['Release earnings only after delivery or collection', 'bool', 'If off, earnings become available after the holding period from payment, even before delivery.', 'Marketplace'],
     ];
 
     /** @param array<string,mixed> $in */

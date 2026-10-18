@@ -20,10 +20,10 @@ if ($stats['locked']) {
     isset($opts['quiet']) || print("Another expiry run is in progress; exiting.\n");
     exit(0);
 }
-if (!isset($opts['quiet']) || $stats['orders_expired'] || $stats['reservations_released'] || $stats['errors']) {
+if (!isset($opts['quiet']) || $stats['orders_expired'] || $stats['reservations_released'] || $stats['errors'] || $stats['earnings_released']) {
     printf(
-        "[%s] expired orders: %d, reservations released: %d, errors: %d, guest carts purged: %d\n",
-        date('Y-m-d H:i:s'), $stats['orders_expired'], $stats['reservations_released'], $stats['errors'], $stats['carts_purged']
+        "[%s] expired orders: %d, reservations released: %d, errors: %d, guest carts purged: %d, seller earnings released: %d\n",
+        date('Y-m-d H:i:s'), $stats['orders_expired'], $stats['reservations_released'], $stats['errors'], $stats['carts_purged'], $stats['earnings_released']
     );
 }
 exit($stats['errors'] > 0 ? 1 : 0);

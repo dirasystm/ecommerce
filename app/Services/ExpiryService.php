@@ -32,11 +32,11 @@ final class ExpiryService
     }
 
     /**
-     * @return array{locked:bool,orders_expired:int,reservations_released:int,errors:int,carts_purged:int}
+     * @return array{locked:bool,orders_expired:int,reservations_released:int,errors:int,carts_purged:int,earnings_released:int}
      */
     public function run(int $limit = 200): array
     {
-        $stats = ['locked' => false, 'orders_expired' => 0, 'reservations_released' => 0, 'errors' => 0, 'carts_purged' => 0];
+        $stats = ['locked' => false, 'orders_expired' => 0, 'reservations_released' => 0, 'errors' => 0, 'carts_purged' => 0, 'earnings_released' => 0];
         if ((int) $this->db->value('SELECT GET_LOCK(?, 0)', [self::LOCK_NAME]) !== 1) {
             $stats['locked'] = true;          // another worker is running; exit quietly
             return $stats;
@@ -71,6 +71,8 @@ final class ExpiryService
                 }
             }
             $stats['carts_purged'] = $this->housekeeping();
+            // Seller earnings that now meet the payout policy become available (same scheduled task, under the same lock).
+            $stats['earnings_released'] = (new SellerLedgerService($this->db))->releaseEligible();
         } finally {
             $this->db->value('SELECT RELEASE_LOCK(?)', [self::LOCK_NAME]);
         }

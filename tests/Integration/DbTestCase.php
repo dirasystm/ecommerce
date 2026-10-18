@@ -21,6 +21,8 @@ abstract class DbTestCase extends TestCase
     private const KEEP = ['schema_migrations', 'counties', 'roles', 'permissions', 'role_permissions', 'settings'];
     /** Tables cleaned only partially: the WHERE keeps reference rows seeded by migrations. */
     private const KEEP_ROWS = ['sellers' => ' WHERE is_platform = 0'];
+    /** Tables whose triggers refuse UPDATE/DELETE; emptied with TRUNCATE between tests. */
+    private const APPEND_ONLY = ['seller_ledger_entries', 'seller_payout_history'];
 
     protected function setUp(): void
     {
@@ -35,7 +37,9 @@ abstract class DbTestCase extends TestCase
         $pdo = $this->db->pdo();
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
         foreach ($this->db->all("SELECT table_name AS t FROM information_schema.tables WHERE table_schema = DATABASE()") as $r) {
-            if (!in_array($r['t'], self::KEEP, true)) {
+            if (in_array($r['t'], self::APPEND_ONLY, true)) {
+                $pdo->exec('TRUNCATE TABLE `' . $r['t'] . '`');   // DELETE is refused by the append-only triggers (016)
+            } elseif (!in_array($r['t'], self::KEEP, true)) {
                 $pdo->exec('DELETE FROM `' . $r['t'] . '`' . (self::KEEP_ROWS[$r['t']] ?? ''));
             }
         }

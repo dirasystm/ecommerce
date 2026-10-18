@@ -63,9 +63,10 @@ if (!$exists) {
     echo "MySQL user `$appUser` password reset (config.local.php had none).\n";
 }
 foreach (['localhost', '127.0.0.1'] as $host) {
-    // Least privilege: data + schema changes on our two databases only.
+    // Least privilege: data + schema changes on our two databases only. TRIGGER: migration 016 installs the
+    // append-only guards on the seller ledger, and backups taken as this user must include them.
     foreach ([$dbName, $testName] as $db) {
-        $pdo->exec("GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, INDEX, REFERENCES, LOCK TABLES
+        $pdo->exec("GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, INDEX, REFERENCES, LOCK TABLES, TRIGGER
                     ON `$db`.* TO '$appUser'@'$host'");
     }
 }

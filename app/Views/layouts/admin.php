@@ -32,6 +32,8 @@ $nav = [
         ['/admin/sellers/applications', 'inbox', 'Seller applications', 'sellers.view'],
         ['/admin/sellers', 'shop-window', 'Sellers', 'sellers.view'],
         ['/admin/moderation/products', 'clipboard-check', 'Product approvals', 'products.moderate'],
+        ['/admin/payouts', 'wallet2', 'Seller payouts', 'payouts.view'],
+        ['/admin/commissions', 'percent', 'Commission', 'commissions.manage'],
     ]],
     ['Fulfilment', [
         ['/admin/delivery-zones', 'truck', 'Delivery zones', 'delivery.manage'],

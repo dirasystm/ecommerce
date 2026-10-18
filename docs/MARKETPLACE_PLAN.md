@@ -1,6 +1,6 @@
 # Waimart Multi-Vendor Upgrade — Phase 1: Inspection, Impact Analysis and Plan
 
-**Date:** 18 October 2026 · **Status:** Phases 1–7 complete (see the "Phase N results" sections at the end); awaiting approval to start Phase 8
+**Date:** 18 October 2026 · **Status:** Phases 1–8 complete (see the "Phase N results" sections at the end); awaiting approval to start Phase 9
 
 This document is for the client and for whoever builds or reviews the upgrade. It records the current system as inspected, what a multi-vendor marketplace changes, the target design, and the phased plan. No code or data has been changed in Phase 1.
 
@@ -535,3 +535,99 @@ Both use the same exactly-once consumption, now scoped to one part (`consumeForS
 - `SellerFulfilmentHttpTest` (4): seller works through an order and sees no phone, email, surname or address; other sellers and unconfirmed orders 404; staff member can prepare but not accept or decline; suspended store read-only; admin steps need the right permission; sellers can't reach admin endpoints.
 - **Full suite: 349 tests, 2,416 assertions, all passing.**
 - **Browser:** 0 serious/critical accessibility issues on the seller dashboard, orders list and order page, the admin order page with part actions, Seller orders and the collection desk. Responsive checks passed; screenshots reviewed; fixtures removed.
+
+---
+
+## Phase 8 results (18 October 2026): commission, seller ledger and payouts
+
+**The ledger** (`SellerLedgerService`, table `seller_ledger_entries`). It holds signed amounts in four balances: pending, available, in payout requests ("reserved"), and paid out. Every balance is a sum of rows; nothing is stored separately.
+
+| Event | What is posted |
+|---|---|
+| Money received: M-Pesa verified at confirmation, or COD cash recorded | +sale and −commission (and −seller-funded discount, if any), **pending** |
+| A part is declined or cancelled after payment | Reversing entries for the sale and the commission, each pointing at the original |
+| Earnings become payable | −net pending / +net available |
+| Payout requested | −available / +reserved |
+| Payout rejected or cancelled | −reserved / +available |
+| Payout paid | −reserved / +paid |
+
+- **Exactly once:** every posting has a unique key (e.g. `sale:so:42`), so a retry, double click or two workers at once can never post twice.
+- **Append-only, enforced by the database:** migration 016 adds triggers that refuse any UPDATE or DELETE on `seller_ledger_entries` and `seller_payout_history`, whatever issues it. Corrections are new rows.
+- **Out of scope for the ledger:** the Official Store and pre-marketplace orders, which are Waimart's own sales.
+
+**When earnings become payable.** The scheduled worker (`bin/expire-reservations.php`) now also releases earnings. A part is released when all of these hold:
+- it is delivered or collected;
+- the holding period has passed since then;
+- it has no open dispute, and the order has no open return.
+
+Three new **Settings → Marketplace** fields control this:
+- minimum payout (KSh 500);
+- holding period (7 days);
+- whether delivery is required before release (on).
+
+**Payouts** (`PayoutService`). Payment is manual; there is no automatic disbursement.
+- **Lifecycle:** requested (seller) → approved (staff) → paid. A seller may cancel a request before approval; staff may reject a request or an approved payout with a reason, which is emailed to the seller.
+- **Request checks:**
+  - Only the store **owner** may request a payout.
+  - The store must be active, with payout details on file.
+  - Only **one open request** per seller (also a unique key).
+  - The amount must be at least the minimum and no more than the available balance.
+  - The seller row is locked while the request is checked.
+- **Recording payment:** staff record it only after paying. It needs the method, a reference that has never been used for another payout, and an amount **exactly equal** to the request (also a database CHECK). A payout can never be paid twice.
+- **Payout details:** the list and the seller only ever see the masked number. Staff with `payouts.manage` can open the full details of an *approved* payout, and every view is written to the audit log.
+
+**Commission rules** (Admin → Marketplace → Commission, needs `commissions.manage`).
+- Rates can be set for the default, one category or one seller.
+- Changing a rate retires the old rule, which is kept as history; past orders keep the rate stored with them.
+- Ticking "confirmed rate" when saving the default clears the *provisional* warning.
+- The Official Store's 0% rule cannot be removed or changed.
+- The page includes a commission report per seller for a date range (with CSV), built from money actually received.
+
+**New pages:**
+- **Seller Centre → Earnings & payouts:** the four balances, the ledger, the request form, the list of payout requests (with the payment reference once paid) and an all-time summary. The dashboard shows the available balance.
+- **Admin → Seller payouts** (`payouts.view`): tabs by status, totals owed to sellers, and CSV. Each payout's page has approve / record payment / reject actions (`payouts.manage`).
+- **Admin → seller → Ledger & balances.**
+
+**Database privilege change.** Creating triggers needs the `TRIGGER` privilege.
+- Granted to the `waimart` app user on `waimart` and `waimart_test`. The user already had CREATE/ALTER/DROP, so this does not materially widen access. Backups taken as this user now include the triggers.
+- `bin/install.php` grants it on new installs.
+- While granting, MariaDB reported **corrupt indexes on its own privilege tables** `mysql.db` and `mysql.proxies_priv`, probably after an earlier unclean shutdown. The rows were intact. They were dumped first, then rebuilt with `REPAIR TABLE`; all rows were kept and every privilege table now checks OK.
+
+**Migration 016 on the dev database.** Backed up first (`storage/backups/waimart-20261018-164443.sql`), then applied.
+
+**Rollback re-drilled through 010–016.** On a copy, the pre-upgrade backup was migrated forward and rolled back. Schema and data of all 47 tables were identical to the original, and no triggers were left.
+
+**Found and fixed during testing:**
+- The commission page offered "Remove" on the Official Store's 0% rule, which would have started charging commission on Waimart's own stock. It is now blocked in the service and hidden in the page.
+- On phones, the commission report's date filter overflowed the screen. It now wraps.
+
+**Tests:**
+- **`SellerLedgerPayoutTest` (9):**
+  - M-Pesa accrual exactly once (2,000 → 1,800 pending), with no Official Store rows;
+  - COD accrues only when the cash is recorded;
+  - a declined part is reversed, idempotently;
+  - release waits for delivery, the holding period, open returns and open disputes, and happens once;
+  - full payout lifecycle: limits, reject, approve, exact amount, method, reference, never paid twice, reference reuse refused;
+  - cancel isolation; suspended store; missing payout details;
+  - payout details decrypted only on request, with an audit entry;
+  - ledger and history UPDATE/DELETE refused by the database;
+  - commission rule history, precedence, validation, the Official Store guard and the report.
+
+  Every money test also checks that the four balances add up to net earnings and that none is ever negative.
+- **`PayoutConcurrencyTest` (3), real parallel processes:**
+  - 8 simultaneous requests of 1,000 against 1,800: exactly one succeeds, and the others are refused cleanly.
+  - 4 simultaneous "mark paid" calls on one payout: paid once.
+  - 4 release workers at once: each part released once.
+
+  A deliberate mutation (removing the seller-row lock) makes the first race fail, confirming that it tests the lock.
+- **`SellerFinanceHttpTest` (5):**
+  - owner views, requests and cancels; the full payout number never appears;
+  - managers and store staff can view but not request or cancel (403);
+  - another seller sees nothing and gets 404;
+  - suspended store: no requests;
+  - admin desk permissions: support has no access, manager can view only, finance can act; commission rules are super-admin only;
+  - CSV export without payout numbers;
+  - commission rate set and removed over HTTP.
+- **Route sweep:** every commission, payout and ledger route needs its permission, and seller payout POSTs need the owner role and a rate limit (11 routes).
+- **Full suite: 367 tests, 2,700 assertions, all passing.**
+- **Browser** (run against the test database, so no permanent ledger rows were created in dev): 0 serious/critical accessibility issues on the payout list, payout page (with and without full details), commission page, seller ledger, seller page, settings, seller finance page and seller dashboard. Responsive checks passed on phone, tablet and desktop after the fix above; screenshots reviewed.

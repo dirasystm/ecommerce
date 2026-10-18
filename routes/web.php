@@ -131,6 +131,10 @@ $router->group(['prefix' => '/seller', 'middleware' => ['seller']], function ($r
     $r->post('/orders/{id:\d+}/status', [Seller\OrderController::class, 'transition'], ['throttle:120,60']);
     $r->get('/notifications', [Seller\ProfileController::class, 'notifications']);
     $r->post('/notifications', [Seller\ProfileController::class, 'saveNotifications']);
+    // Payout requests: owner only (also enforced in the service against the server-side membership).
+    $r->get('/finance', [Seller\FinanceController::class, 'index']);
+    $r->post('/finance/payouts', [Seller\FinanceController::class, 'request'], ['seller_role:owner', 'throttle:10,3600']);
+    $r->post('/finance/payouts/{id:\d+}/cancel', [Seller\FinanceController::class, 'cancel'], ['seller_role:owner', 'throttle:30,3600']);
 });
 
 // ------------------------------------------------------------------ staff / admin
@@ -258,6 +262,20 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
         $r->post('/sellers/{id:\d+}/suspend', [Admin\SellerController::class, 'suspend']);
         $r->post('/sellers/{id:\d+}/reactivate', [Admin\SellerController::class, 'reactivate']);
         $r->post('/sellers/{id:\d+}/verify', [Admin\SellerController::class, 'verify']);
+    });
+
+    $r->get('/commissions', [Admin\FinanceController::class, 'commissions'], ['can:commissions.manage']);
+    $r->post('/commissions', [Admin\FinanceController::class, 'saveCommission'], ['can:commissions.manage']);
+    $r->post('/commissions/{id:\d+}/retire', [Admin\FinanceController::class, 'retireCommission'], ['can:commissions.manage']);
+    $r->group(['middleware' => ['can:payouts.view']], function ($r) {
+        $r->get('/payouts', [Admin\FinanceController::class, 'payouts']);
+        $r->get('/payouts/{id:\d+}', [Admin\FinanceController::class, 'payout']);
+        $r->get('/sellers/{id:\d+}/ledger', [Admin\FinanceController::class, 'ledger']);
+    });
+    $r->group(['middleware' => ['can:payouts.manage']], function ($r) {
+        $r->post('/payouts/{id:\d+}/approve', [Admin\FinanceController::class, 'approvePayout']);
+        $r->post('/payouts/{id:\d+}/reject', [Admin\FinanceController::class, 'rejectPayout']);
+        $r->post('/payouts/{id:\d+}/paid', [Admin\FinanceController::class, 'paidPayout'], ['throttle:60,3600']);
     });
 
     $r->get('/returns', [Admin\CustomerServiceController::class, 'returns'], ['can:returns.manage']);

@@ -25,7 +25,8 @@ $canManage = Auth::can('sellers.manage') && !$platform;
             <div class="wm-panel-body">
                 <dl class="row small mb-0">
                     <dt class="col-sm-4">Store address</dt><dd class="col-sm-8"><a href="<?= e(url('/store/' . $s['slug'])) ?>" target="_blank" rel="noopener">/store/<?= e($s['slug']) ?></a><?= $s['status'] !== 'active' ? ' <span class="text-muted">(hidden while suspended)</span>' : '' ?>
-                        · <a href="<?= e(url('/admin/products', ['seller' => $s['id']])) ?>">Products</a></dd>
+                        · <a href="<?= e(url('/admin/products', ['seller' => $s['id']])) ?>">Products</a><?php if (Auth::can('payouts.view')): ?>
+                        · <a href="<?= e(url('/admin/sellers/' . $s['id'] . '/ledger')) ?>">Ledger &amp; balances</a><?php endif; ?></dd>
                     <dt class="col-sm-4">Business</dt><dd class="col-sm-8"><?= e((string) $s['legal_name']) ?: '—' ?> (<?= $s['business_type'] === 'registered_business' ? 'registered business' : 'individual' ?>)</dd>
                     <dt class="col-sm-4">Location</dt><dd class="col-sm-8"><?= e(trim(($s['town'] ?? '') . ', ' . ($s['county_name'] ?? ''), ', ')) ?: '—' ?></dd>
                     <dt class="col-sm-4">Public contacts</dt><dd class="col-sm-8"><?= e((string) $s['public_email']) ?: '—' ?> · <?= $s['public_phone'] ? e(Validator::displayPhone((string) $s['public_phone'])) : '—' ?> <span class="text-muted">(<?= (int) $s['show_contacts'] ? 'shown on store page' : 'not shown' ?>)</span></dd>

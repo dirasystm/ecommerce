@@ -55,6 +55,8 @@ final class CodService
                 'collected_by' => $staffId, 'note' => $note !== null && $note !== '' ? mb_substr($note, 0, 500) : null,
             ]);
             $this->db->exec("UPDATE orders SET payment_status = 'cod_collected' WHERE id = ?", [$orderId]);
+            // Cash received: marketplace sellers' earnings accrue now.
+            (new SellerLedgerService($this->db))->accrueOrder($orderId, $staffId);
             AuditLogger::log('cod.collected', 'order', $orderId, ['payment_status' => $o['payment_status']],
                 ['payment_status' => 'cod_collected', 'expected' => $expected, 'collected' => $collected, 'note' => $note], $staffId);
             return (array) $this->db->one('SELECT * FROM orders WHERE id = ?', [$orderId]);

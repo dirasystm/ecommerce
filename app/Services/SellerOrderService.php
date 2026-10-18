@@ -139,6 +139,9 @@ final class SellerOrderService
             }
             $params[] = $so['id'];
             $this->db->exec('UPDATE seller_orders SET ' . implode(', ', $sets) . ' WHERE id = ?', $params);
+            if ($to === 'cancelled') {
+                (new SellerLedgerService($this->db))->reversePart((int) $so['id'], $note ?? 'Order cancelled', $actor['id'] ?? null);
+            }
             $this->db->insert('seller_order_history', [
                 'seller_order_id' => $so['id'], 'from_status' => $so['status'], 'to_status' => $to,
                 'actor_type' => $actor['type'], 'actor_user_id' => $actor['id'] ?? null, 'note' => 'Order ' . str_replace('_', ' ', $parentStatus),

@@ -97,7 +97,9 @@ C:\xampp\mysql\bin\mysql.exe -u root waimart < database\rollback\rollback_market
 
 Then restore the pre-upgrade source code from `C:\xampp\backups\waimart\source-20261018-033226-pre-marketplace\`, or check out the `main` branch in Git.
 
-The script removes only the marketplace tables, columns and reference data. If any third-party seller has products or orders, it stops at its first statement and changes nothing; use the backup in that case. It is re-tested on a copy whenever a marketplace migration is added: after migrations 010–015 and the rollback, the schema and data of all 47 tables were identical to the pre-upgrade backup.
+The script removes only the marketplace tables, columns and reference data. If any third-party seller has products or orders, it stops at its first statement and changes nothing; use the backup in that case. It is re-tested on a copy whenever a marketplace migration is added: after migrations 010–016 and the rollback, the schema and data of all 47 tables were identical to the pre-upgrade backup.
+
+Migration 016 adds triggers that make the seller ledger and payout history append-only. Backups include them, but only if the database user has the `TRIGGER` privilege, which `bin/install.php` grants. Restoring as `root` always works.
 
 ### Test your backups
 
