@@ -1,6 +1,6 @@
 # Waimart Multi-Vendor Upgrade — Phase 1: Inspection, Impact Analysis and Plan
 
-**Date:** 18 October 2026 · **Status:** Phases 1–8 complete (see the "Phase N results" sections at the end); awaiting approval to start Phase 9
+**Date:** 18 October 2026 · **Status:** Phases 1–9 complete (see the "Phase N results" sections at the end); awaiting approval to start Phase 10
 
 This document is for the client and for whoever builds or reviews the upgrade. It records the current system as inspected, what a multi-vendor marketplace changes, the target design, and the phased plan. No code or data has been changed in Phase 1.
 
@@ -631,3 +631,113 @@ Three new **Settings → Marketplace** fields control this:
 - **Route sweep:** every commission, payout and ledger route needs its permission, and seller payout POSTs need the owner role and a rate limit (11 routes).
 - **Full suite: 367 tests, 2,700 assertions, all passing.**
 - **Browser** (run against the test database, so no permanent ledger rows were created in dev): 0 serious/critical accessibility issues on the payout list, payout page (with and without full details), commission page, seller ledger, seller page, settings, seller finance page and seller dashboard. Responsive checks passed on phone, tablet and desktop after the fix above; screenshots reviewed.
+
+---
+
+## Phase 9 results (18 October 2026): returns, disputes, reports, notifications and audit
+
+**Returns per seller part** (`ReturnService`, migration 017).
+- Returns are now per seller part, not per order. If a customer picks items from several sellers, the request becomes **one return per seller**, each reviewed, inspected and refunded on its own.
+- One open return per part, enforced by the database (`uq_rr_open_so`). Returns recorded before the upgrade keep the old one-per-order rule.
+- Each part's return window starts when **that part** was delivered or collected, so an item can be returned while another seller's part is still on its way.
+- The order shows "return requested" only once everything has been handed over. It goes back to delivered/collected when no return on it is still open, and becomes "returned" only when everything supplied has come back. Items from declined parts don't count.
+- **Refund cap:** the value of the returned units, and never more than the customer actually paid for that part (after its share of any discount) less refunds already owed or paid on it. This closes a gap where a discounted item could be refunded at full price.
+- The seller is told when a return is requested, rejected and completed; the admin return pages show the seller and part.
+
+**Refunds and the seller ledger** (`SellerLedgerService::refundPart`).
+- A refund on a marketplace part deducts the matching **share** of the seller's sale and gives back the same share of Waimart's commission. The share is the refund divided by what the customer paid for the part.
+  - Example: 1,000 refunded on a 2,000 part → −1,000 sale, +100 commission back (at 10%), so −900 for the seller.
+  - Because the share is of what the customer paid, a discount Waimart funded is never charged to the seller.
+- **Where the deduction lands:** while the part's earnings are pending, it is in pending (and netted when released). Once they are payable, it comes out of **available**.
+- **Refund after payout:** if the seller was already paid, available goes **negative**. That is money the seller owes Waimart.
+  - It is recovered automatically from later earnings.
+  - Payout requests are impossible until it is covered.
+  - The seller's Earnings page explains this, and the admin report shows "Owed by sellers".
+- **Cancelled refund:** the deduction is reversed by correcting entries.
+- Official Store and pre-upgrade orders never touch the seller ledger.
+- `summary()` now counts every adjustment type, so a seller's net figure always equals the sum of their ledger rows.
+
+**Disputes ("cases")** (`DisputeService`).
+- **Who opens one:**
+  - The customer (owner or verified guest, the same access as returns) opens a case about one seller's items with **Report a problem** on the order page. This is possible while the part is in progress, or within the return window after delivery or collection.
+  - Staff can also open one.
+  - Official Store items go to customer care instead.
+- **The thread:**
+  - Customer, seller (owner or manager) and Waimart staff write in one thread.
+  - Staff can set "waiting for seller" or "waiting for customer"; that party's reply puts the case back with Waimart.
+  - Staff can add **internal notes**, which are never shown or sent to the customer or seller.
+- **Privacy:** the seller sees the customer's first name only, never phone, email, surname or address. Customers and sellers see staff as "Waimart".
+- **Effect on earnings:** an open case holds the seller's earnings for that part.
+- **Resolutions:** full refund, partial refund, return required, seller favoured, no action, or other.
+  - Refund resolutions create a refund owed (linked to the case) and the ledger deduction above, capped at what is still refundable for the part.
+  - A refund resolution is refused if nothing was paid (COD not yet collected).
+- **Withdrawal:** the customer can withdraw a case they opened.
+- **New pages:**
+  - customer: case page and Report a problem form;
+  - Seller Centre → **Returns & cases**, plus a dashboard alert when a case is waiting for the seller;
+  - Admin → Marketplace → **Seller cases** (`disputes.manage`).
+
+**Reports** (`MarketplaceReportService`).
+- **Admin → Marketplace → Marketplace report** (`reports.view`):
+  - per seller for a period: orders, completed, declined (with rate), sales received, commission net of refunds, refunds and reversals, seller net, balance now; with CSV;
+  - totals owed to sellers, payable now, owed by sellers, and paid out.
+- **Reconciliation:** eight independent checks recompute totals from orders, refunds and payouts and compare them with the ledger:
+  - sales = value of paid parts;
+  - commission = commission on paid parts;
+  - withdrawn parts net 0;
+  - nothing left pending on released parts;
+  - cancelled refunds net 0;
+  - "in payout requests" = open payouts;
+  - "paid out" = paid payouts;
+  - moves between balances net 0.
+
+  The page shows "All checks pass" or the exact difference. A test proves that a stray posting is caught.
+- **Seller Centre → Sales report:** orders, sales received, commission, net earnings, returns, cases and best sellers for a date range.
+
+**Notifications** (`SellerNotifier`).
+- One place now sends every seller message, replacing four copies.
+- **Operational messages** (new orders, returns, cases, product decisions) follow each owner's or manager's Seller Centre preferences (email and/or SMS).
+- **Important messages** (account decisions, suspensions, payouts) are always emailed, as the preferences page promises.
+- **Phase 6 bug found and fixed:** new-order emails ignored the seller's "email me" setting.
+
+**Audit coverage.**
+- Seller decisions on orders (accept, decline, prepare, pack) are now in the audit log as well as the order history; before, only staff steps were.
+- New audited actions: case opened, status changed, resolved and withdrawn.
+- Already audited: returns, refunds, payouts, commission changes, store profile and product edits.
+
+**Migration 017.**
+- Applied to the dev database after a backup (`storage/backups/waimart-20261018-172840.sql`).
+- The rollback script now undoes it, and the rollback was **re-drilled through 010–017**: schema and data of all 47 tables were identical to the pre-upgrade backup.
+
+**Found and fixed during this phase:**
+- Seller new-order emails ignored notification preferences (Phase 6).
+- Return refunds weren't capped at the discounted price paid.
+- Items from declined parts would have stopped an order ever counting as fully returned.
+- The ledger summary left out correction entries.
+
+**Tests:**
+- **`MarketplaceAfterSalesTest` (9):**
+  - a two-seller return splits in two and is handled independently (reject one, refund the other; the ledger moves only for the right seller);
+  - one open return per part, also in the database;
+  - refund capped at the discounted price, with the full sale reversed and commission returned;
+  - refund after payout: seller owes 900, payouts blocked, recovered from the next sale;
+  - cancelled refund gives the deduction back, idempotently;
+  - Official Store refunds stay out of the ledger;
+  - full dispute lifecycle: isolation (another seller gets 404), first name only, internal notes never shown or sent, earnings held then released, refund cap, closed cases take no messages;
+  - dispute rules: Official Store refused, unpaid orders can't get a refund resolution, withdrawal only through the right order, window enforced;
+  - notification preferences versus important messages;
+  - report net = ledger sum for each seller; reconciliation catches a stray entry.
+
+  Every scenario ends with all reconciliation checks passing.
+- **`MarketplaceAfterSalesHttpTest` (3):**
+  - customer → seller → admin → customer flow over HTTP, with the seller never seeing contacts or address and internal notes hidden from both sides;
+  - isolation: another customer, another of the customer's own orders, another seller (all 404); store staff can read but not reply (403); staff without `disputes.manage` get 403;
+  - seller and admin reports with "All checks pass" and CSV.
+- **Route sweep:** the dispute desk needs `disputes.manage`, seller replies need owner or manager, customer case posts are rate-limited, and reports need `reports.view`.
+- **Full suite: 380 tests, 2,863 assertions, all passing**, including every pre-existing returns test.
+- **Browser** (against the test database): 0 serious/critical accessibility issues on 15 pages across admin, seller and customer. Responsive checks passed at phone, tablet and desktop; screenshots reviewed.
+  - Not covered by the browser check: the "Report a problem" form page (the seeded order already had an open case). It is covered by the HTTP test.
+
+**Known limitations (to note for go-live):**
+- Refunds are still paid manually, as before. Recovering money a seller owes relies on future earnings; there is no separate collection process.
+- A case is about a whole seller part. Item-level detail goes in the messages.

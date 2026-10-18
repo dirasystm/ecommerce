@@ -256,8 +256,6 @@ final class PayoutService
     private function notifySeller(int $payoutId, string $template, string $subject, string $body): void
     {
         $sellerId = (int) $this->db->value('SELECT seller_id FROM seller_payouts WHERE id = ?', [$payoutId]);
-        foreach ($this->db->all("SELECT u.id, u.email, u.first_name FROM seller_users su JOIN users u ON u.id = su.user_id WHERE su.seller_id = ? AND su.role = 'owner'", [$sellerId]) as $u) {
-            (new NotificationService())->email((string) $u['email'], $subject, "Hello {$u['first_name']},\n\n$body\n\n— Waimart Seller Support", $template, ['user_id' => (int) $u['id']]);
-        }
+        (new SellerNotifier($this->db))->send($sellerId, $template, $subject, $body, true, ['owner']);   // money: always sent
     }
 }

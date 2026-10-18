@@ -114,6 +114,18 @@ $expires = $order['reservation_expires_at'];
                 <?php endforeach; ?>
             <?php endif; ?>
 
+            <?php $disputes = new \Waimart\Services\DisputeService(); $cases = $disputes->list(null, 'all', (int) $order['id']); ?>
+            <?php if ($disputes->disputableParts($order)): ?>
+                <a class="btn btn-sm btn-outline-secondary mt-3" href="<?= e(url('/order/' . $order['order_number'] . '/problem')) ?>"><i class="bi bi-chat-left-text" aria-hidden="true"></i> Report a problem with a seller</a>
+            <?php endif; ?>
+            <?php if ($cases): ?>
+                <h3 class="fs-6 fw-bold mt-4">Cases</h3>
+                <?php foreach ($cases as $c): ?>
+                    <p class="small mb-1"><a href="<?= e(url('/order/' . $order['order_number'] . '/cases/' . $c['id'])) ?>"><?= e($c['dispute_number']) ?></a> ·
+                        <?= e($c['seller_name']) ?> · <?= e(\Waimart\Services\DisputeService::STATUS_LABELS[$c['status']]) ?></p>
+                <?php endforeach; ?>
+            <?php endif; ?>
+
             <?php if (\Waimart\Services\OrderWorkflow::customerCanCancel($order)): ?>
                 <details class="mt-3">
                     <summary class="small text-danger">Cancel this order</summary>

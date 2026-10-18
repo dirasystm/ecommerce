@@ -20,6 +20,7 @@ final class DashboardController extends SellerController
             'title' => 'Seller Centre',
             'payout' => $payout,
             'balances' => (new \Waimart\Services\SellerLedgerService($db))->balances($this->sellerId()),
+            'awaitingReply' => (int) $db->value("SELECT COUNT(*) FROM seller_disputes d JOIN seller_orders so ON so.id = d.seller_order_id WHERE so.seller_id = ? AND d.status = 'awaiting_seller'", [$this->sellerId()]),
             'orderCounts' => (new \Waimart\Services\SellerOrderService($db))->sellerCounts($this->sellerId()),
             'productCounts' => (new \Waimart\Services\SellerProductService($db))->counts($this->sellerId()),
             // Store setup checklist: real state only, no placeholder figures.

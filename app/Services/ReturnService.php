@@ -37,37 +37,49 @@ final class ReturnService
         $this->db = $db ?? App::db();
     }
 
-    /** Returnable items with the quantity still returnable. @return list<array<string,mixed>> */
+    /**
+     * Returnable items with the quantity still returnable. Eligibility is per seller part: the part has been
+     * delivered or collected, it is within the return window counted from then, and it has no open return.
+     * (Waimart delivers every part, so returns also come back through Waimart, one return per part.)
+     * @return list<array<string,mixed>>
+     */
     public function returnableItems(array $order): array
     {
-        if (!$this->eligible($order)) {
-            return [];
+        if ($this->db->value("SELECT 1 FROM return_requests WHERE order_id = ? AND seller_order_id IS NULL AND status IN ('requested','approved','received')", [$order['id']])) {
+            return [];   // an open return recorded before the marketplace upgrade covers the whole order
         }
-        $rows = $this->db->all('SELECT * FROM order_items WHERE order_id = ? ORDER BY id', [$order['id']]);
+        $window = Settings::int('return_window_days', 7) * 86400;
+        $rows = $this->db->all(
+            "SELECT oi.*, so.sub_number, s.name AS seller_name, s.is_platform,
+                    COALESCE(so.delivered_at, so.collected_at, o.completed_at) AS handed_at
+               FROM order_items oi JOIN seller_orders so ON so.id = oi.seller_order_id JOIN sellers s ON s.id = so.seller_id
+               JOIN orders o ON o.id = oi.order_id
+              WHERE oi.order_id = ? AND so.status IN ('delivered','collected')
+                AND NOT EXISTS (SELECT 1 FROM return_requests r WHERE r.seller_order_id = so.id AND r.status IN ('requested','approved','received'))
+              ORDER BY so.id, oi.id",
+            [$order['id']]
+        );
         $out = [];
         foreach ($rows as $r) {
             $left = (int) $r['fulfilled_qty'] - (int) $r['returned_qty'];
-            if ($left > 0) {
+            if ($left > 0 && $r['handed_at'] !== null && time() <= strtotime((string) $r['handed_at']) + $window) {
                 $out[] = $r + ['returnable' => $left];
             }
         }
         return $out;
     }
 
-    /** Within the return window and handed over, with no open return. */
+    /** Something on the order can still be returned online. */
     public function eligible(array $order): bool
     {
-        if (!in_array($order['status'], ['delivered', 'collected'], true) || $order['completed_at'] === null) {
-            return false;
-        }
-        $deadline = strtotime((string) $order['completed_at']) + Settings::int('return_window_days', 7) * 86400;
-        return time() <= $deadline
-            && !$this->db->value("SELECT 1 FROM return_requests WHERE order_id = ? AND status IN ('requested','approved','received')", [$order['id']]);
+        return $this->returnableItems($order) !== [];
     }
 
     /**
+     * Items from several sellers become one return per seller part, so each is handled (and refunded, and charged
+     * to its seller) on its own.
      * @param array<int|string,mixed> $quantities order_item_id => qty
-     * @return array<string,mixed> the return request
+     * @return list<array<string,mixed>> the return requests created
      */
     public function request(int $orderId, array $quantities, string $reason, ?string $details, ?int $userId): array
     {
@@ -77,13 +89,13 @@ final class ReturnService
         if ($reason === 'other' && trim((string) $details) === '') {
             throw new ValidationException(['details' => 'Please tell us more about the problem.']);
         }
-        $ret = $this->db->transaction(function () use ($orderId, $quantities, $reason, $details, $userId) {
+        $rets = $this->db->transaction(function () use ($orderId, $quantities, $reason, $details, $userId) {
             $order = $this->db->one('SELECT * FROM orders WHERE id = ? FOR UPDATE', [$orderId]) ?? throw ValidationException::withMessage('Order not found.');
-            if (!$this->eligible($order)) {
+            $returnable = array_column($this->returnableItems($order), null, 'id');
+            if (!$returnable) {
                 throw ValidationException::withMessage('This order can no longer be returned online (the return window may have passed). Please contact customer care.');
             }
-            $returnable = array_column($this->returnableItems($order), null, 'id');
-            $lines = [];
+            $byPart = [];
             foreach ($quantities as $itemId => $qty) {
                 $qty = (int) $qty;
                 if ($qty <= 0) {
@@ -92,23 +104,36 @@ final class ReturnService
                 if (!isset($returnable[(int) $itemId]) || $qty > (int) $returnable[(int) $itemId]['returnable']) {
                     throw new ValidationException(['items' => 'Choose quantities up to what you received.']);
                 }
-                $lines[(int) $itemId] = $qty;
+                $byPart[(int) $returnable[(int) $itemId]['seller_order_id']][(int) $itemId] = $qty;
             }
-            if (!$lines) {
+            if (!$byPart) {
                 throw new ValidationException(['items' => 'Choose at least one item to return.']);
             }
-            $returnId = $this->db->insert('return_requests', [
-                'return_number' => $this->newNumber(), 'order_id' => $orderId, 'user_id' => $userId,
-                'reason' => $reason, 'details' => trim((string) $details) !== '' ? mb_substr(trim((string) $details), 0, 1000) : null,
-            ]);
-            foreach ($lines as $itemId => $qty) {
-                $this->db->insert('return_items', ['return_id' => $returnId, 'order_item_id' => $itemId, 'quantity' => $qty, 'note' => null]);
+            $out = [];
+            foreach ($byPart as $soId => $lines) {
+                $returnId = $this->db->insert('return_requests', [
+                    'return_number' => $this->newNumber(), 'order_id' => $orderId, 'seller_order_id' => $soId, 'user_id' => $userId,
+                    'reason' => $reason, 'details' => trim((string) $details) !== '' ? mb_substr(trim((string) $details), 0, 1000) : null,
+                ]);
+                foreach ($lines as $itemId => $qty) {
+                    $this->db->insert('return_items', ['return_id' => $returnId, 'order_item_id' => $itemId, 'quantity' => $qty, 'note' => null]);
+                }
+                $out[] = (array) $this->db->one('SELECT * FROM return_requests WHERE id = ?', [$returnId]);
             }
-            (new OrderWorkflow($this->db))->transition($orderId, 'return_requested', ['type' => 'customer', 'id' => $userId], 'Return requested: ' . self::REASONS[$reason]);
-            return (array) $this->db->one('SELECT * FROM return_requests WHERE id = ?', [$returnId]);
+            // The order shows "return requested" only once everything was handed over (otherwise its parts drive it).
+            if (in_array($order['status'], ['delivered', 'collected'], true)) {
+                (new OrderWorkflow($this->db))->transition($orderId, 'return_requested', ['type' => 'customer', 'id' => $userId], 'Return requested: ' . self::REASONS[$reason]);
+            }
+            return $out;
         });
-        $this->notify((int) $ret['order_id'], 'return_requested', "We have received your return request {$ret['return_number']}. Our team will review it and let you know the next steps.");
-        return $ret;
+        $numbers = implode(', ', array_column($rets, 'return_number'));
+        $this->notify($orderId, 'return_requested', "We have received your return request $numbers. Our team will review it and let you know the next steps.");
+        foreach ($rets as $r) {
+            $this->notifySeller($r, 'seller_return_requested', "Return {$r['return_number']} requested",
+                'A customer has asked to return items from order ' . $this->subNumber($r) . ' (reason: ' . self::REASONS[$reason] . ").\n"
+                . 'Waimart will collect and inspect the items. Earnings for this order are held until the return is closed.');
+        }
+        return $rets;
     }
 
     public function approve(int $returnId, int $staffId, ?string $note): void
@@ -128,6 +153,8 @@ final class ReturnService
             return $r;
         });
         $this->notify((int) $r['order_id'], 'return_rejected', "Your return {$r['return_number']} could not be accepted: $note");
+        $this->notifySeller($r, 'seller_return_rejected', "Return {$r['return_number']} not accepted",
+            'Waimart did not accept the return on order ' . $this->subNumber($r) . '. Your earnings for it are no longer held by this return.');
     }
 
     public function receive(int $returnId, int $staffId): void
@@ -195,11 +222,20 @@ final class ReturnService
             $this->db->exec("UPDATE return_requests SET status = 'completed', completed_at = NOW(), refund_amount = ?, completion_note = ? WHERE id = ?",
                 [$amount, $note !== null && $note !== '' ? mb_substr($note, 0, 500) : null, $returnId]);
             if (!Money::isZero($amount)) {
-                $this->db->insert('refunds', ['order_id' => $r['order_id'], 'return_id' => $returnId, 'amount' => $amount,
-                    'reason' => 'Return ' . $r['return_number'], 'created_by' => $staffId]);
+                $refundId = $this->db->insert('refunds', ['order_id' => $r['order_id'], 'seller_order_id' => $r['seller_order_id'], 'return_id' => $returnId,
+                    'amount' => $amount, 'reason' => 'Return ' . $r['return_number'], 'created_by' => $staffId]);
                 $this->db->exec("UPDATE orders SET payment_status = 'refund_due' WHERE id = ?", [$r['order_id']]);
+                if ($r['seller_order_id'] !== null) {
+                    (new SellerLedgerService($this->db))->refundPart((int) $r['seller_order_id'], $refundId, $amount, $staffId);
+                }
             }
-            $allBack = !(bool) $this->db->value('SELECT 1 FROM order_items WHERE order_id = ? AND returned_qty < quantity', [$r['order_id']]);
+            // Everything that was supplied (declined/cancelled parts never were) has come back, and no other return is open.
+            $allBack = !(bool) $this->db->value(
+                "SELECT 1 FROM order_items oi JOIN seller_orders so ON so.id = oi.seller_order_id
+                  WHERE oi.order_id = ? AND so.status NOT IN ('cancelled','rejected') AND oi.returned_qty < oi.quantity",
+                [$r['order_id']]
+            ) && !$this->db->value("SELECT 1 FROM return_requests WHERE order_id = ? AND status IN ('requested','approved','received')", [$r['order_id']])
+              && $this->db->value('SELECT status FROM orders WHERE id = ?', [$r['order_id']]) === 'return_requested';
             if ($allBack) {
                 (new OrderWorkflow($this->db))->transition((int) $r['order_id'], 'returned', ['type' => 'staff', 'id' => $staffId], 'Return ' . $r['return_number'] . ' completed');
             } else {
@@ -211,15 +247,26 @@ final class ReturnService
         $msg = "Your return {$r['return_number']} has been completed. "
             . (Money::isZero($amount) ? 'No refund is due' . ($note ? ": $note" : '.') : 'A refund of ' . Money::format($amount) . ' has been approved and our team will send it to you.');
         $this->notify((int) $r['order_id'], 'return_completed', $msg);
+        $this->notifySeller($r, 'seller_return_completed', "Return {$r['return_number']} closed",
+            'The return on order ' . $this->subNumber($r) . ' has been closed. '
+            . (Money::isZero($amount) ? 'No refund was given, so your earnings are unchanged.' : 'The customer is refunded ' . Money::format($amount) . '; the matching share of your sale (less Waimart\'s commission on it) is deducted in your ledger.'));
     }
 
-    /** Value of the units on this return at the price paid. */
+    /**
+     * The most that may be refunded for a return: the value of its units at the price paid, and never more than
+     * the customer actually paid for that seller part (after any discount) less what is already refunded on it.
+     */
     public function maxRefund(int $returnId): string
     {
-        return (string) $this->db->value(
+        $value = Money::normalize((string) $this->db->value(
             'SELECT COALESCE(SUM(ri.quantity * oi.unit_price), 0) FROM return_items ri JOIN order_items oi ON oi.id = ri.order_item_id WHERE ri.return_id = ?',
             [$returnId]
-        );
+        ));
+        $soId = $this->db->value('SELECT seller_order_id FROM return_requests WHERE id = ?', [$returnId]);
+        if (!$soId) {
+            return $value;   // returns recorded before the marketplace upgrade
+        }
+        return Money::min($value, (new RefundService($this->db))->refundableForPart((int) $soId));
     }
 
     /** @param array<string,mixed> $extra @return array<string,mixed> */
@@ -243,10 +290,31 @@ final class ReturnService
         });
     }
 
+    /** Back to delivered/collected once no return on the order is still open (another part may still have one). */
     private function restoreOrderStatus(int $orderId, int $staffId, string $note): void
     {
-        $method = (string) $this->db->value('SELECT fulfilment_method FROM orders WHERE id = ?', [$orderId]);
-        (new OrderWorkflow($this->db))->transition($orderId, $method === 'pickup' ? 'collected' : 'delivered', ['type' => 'staff', 'id' => $staffId], $note);
+        $o = $this->db->one('SELECT status, fulfilment_method FROM orders WHERE id = ?', [$orderId]);
+        if (($o['status'] ?? '') !== 'return_requested'
+            || $this->db->value("SELECT 1 FROM return_requests WHERE order_id = ? AND status IN ('requested','approved','received')", [$orderId])) {
+            return;
+        }
+        (new OrderWorkflow($this->db))->transition($orderId, $o['fulfilment_method'] === 'pickup' ? 'collected' : 'delivered', ['type' => 'staff', 'id' => $staffId], $note);
+    }
+
+    /** @param array<string,mixed> $r a return request */
+    private function subNumber(array $r): string
+    {
+        return (string) ($this->db->value('SELECT sub_number FROM seller_orders WHERE id = ?', [$r['seller_order_id']]) ?: '');
+    }
+
+    /** Tells a marketplace seller about a return on their part (the Official Store is Waimart itself). */
+    private function notifySeller(array $r, string $template, string $subject, string $body): void
+    {
+        if ($r['seller_order_id'] === null) {
+            return;
+        }
+        $sellerId = (int) $this->db->value('SELECT seller_id FROM seller_orders WHERE id = ?', [$r['seller_order_id']]);
+        (new SellerNotifier($this->db))->send($sellerId, $template, $subject, $body, false, ['owner', 'manager'], (int) $r['order_id']);
     }
 
     private function newNumber(): string

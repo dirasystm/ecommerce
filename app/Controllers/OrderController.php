@@ -135,9 +135,11 @@ final class OrderController extends Controller
     public function requestReturn(Request $req): Response
     {
         $order = $this->visibleOrder((string) $req->param('number'));
-        $ret = (new \Waimart\Services\ReturnService())->request((int) $order['id'], (array) ($req->post['qty'] ?? []),
+        $rets = (new \Waimart\Services\ReturnService())->request((int) $order['id'], (array) ($req->post['qty'] ?? []),
             (string) $req->input('reason', ''), (string) $req->input('details', ''), Auth::id());
-        Session::flash('success', "Return request {$ret['return_number']} received. We will review it and contact you.");
+        Session::flash('success', count($rets) === 1
+            ? "Return request {$rets[0]['return_number']} received. We will review it and contact you."
+            : 'Return requests ' . implode(', ', array_column($rets, 'return_number')) . ' received (one per seller). We will review them and contact you.');
         return Response::redirect(OrderAccess::isOwner($order) ? '/account/orders/' . $order['order_number'] : '/track/' . $order['order_number']);
     }
 

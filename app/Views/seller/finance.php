@@ -13,6 +13,10 @@ $statusLabels = ['requested' => ['badge-soft-warning', 'Requested'], 'approved' 
                  'rejected' => ['badge-soft-danger', 'Rejected'], 'cancelled' => ['badge-soft-muted', 'Cancelled']];
 ?>
 <div class="wm-admin-head"><h1>Earnings &amp; payouts</h1></div>
+<?php if (Money::cmp($balances['available'], '0') < 0): ?>
+    <div class="alert alert-warning small">A customer was refunded after these earnings had already been paid to you, so you owe Waimart <strong><?= e(Money::format(bcmul($balances['available'], '-1', 2))) ?></strong>.
+        It is taken from your next earnings automatically; payouts resume once your available balance is above zero again.</div>
+<?php endif; ?>
 
 <div class="row g-3 mb-3">
     <?php foreach ([['pending', 'Pending', 'Paid by customers, waiting for delivery and the ' . (int) Settings::int('payout_hold_days', 7) . '-day holding period.'],

@@ -27,8 +27,10 @@ final class CustomerServiceController extends AdminController
         $status = (string) ($req->query['status'] ?? 'open');
         $where = $status === 'open' ? "r.status IN ('requested','approved','received')" : (in_array($status, ['completed', 'rejected'], true) ? 'r.status = ?' : '1 = 1');
         $rows = App::db()->all(
-            "SELECT r.*, o.order_number, o.customer_name, (SELECT SUM(quantity) FROM return_items ri WHERE ri.return_id = r.id) AS units
-               FROM return_requests r JOIN orders o ON o.id = r.order_id WHERE $where ORDER BY r.requested_at DESC LIMIT 200",
+            "SELECT r.*, o.order_number, o.customer_name, so.sub_number, s.name AS seller_name, (SELECT SUM(quantity) FROM return_items ri WHERE ri.return_id = r.id) AS units
+               FROM return_requests r JOIN orders o ON o.id = r.order_id
+               LEFT JOIN seller_orders so ON so.id = r.seller_order_id LEFT JOIN sellers s ON s.id = so.seller_id
+              WHERE $where ORDER BY r.requested_at DESC LIMIT 200",
             in_array($status, ['completed', 'rejected'], true) ? [$status] : []
         );
         return $this->view('cs/returns', ['title' => 'Returns', 'rows' => $rows, 'status' => $status, 'reasons' => ReturnService::REASONS]);
@@ -38,7 +40,8 @@ final class CustomerServiceController extends AdminController
     {
         $db = App::db();
         $id = $this->intParam($req, 'id');
-        $r = $db->one('SELECT r.*, o.order_number, o.id AS order_id, o.customer_name, o.customer_phone, o.payment_method FROM return_requests r JOIN orders o ON o.id = r.order_id WHERE r.id = ?', [$id])
+        $r = $db->one('SELECT r.*, o.order_number, o.id AS order_id, o.customer_name, o.customer_phone, o.payment_method, so.sub_number, s.name AS seller_name, s.is_platform, so.earnings_status
+               FROM return_requests r JOIN orders o ON o.id = r.order_id LEFT JOIN seller_orders so ON so.id = r.seller_order_id LEFT JOIN sellers s ON s.id = so.seller_id WHERE r.id = ?', [$id])
             ?? throw HttpException::notFound();
         $items = $db->all(
             'SELECT ri.*, oi.product_name, oi.variant_name, oi.sku, oi.unit_price, u.first_name AS inspector

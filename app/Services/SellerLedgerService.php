@@ -57,12 +57,13 @@ final class SellerLedgerService
     public function summary(int $sellerId): array
     {
         $by = array_column($this->db->all(
-            "SELECT entry_type, SUM(amount) AS total FROM seller_ledger_entries WHERE seller_id = ? AND entry_type IN ('sale','commission','cancellation','commission_reversal','refund') GROUP BY entry_type",
+            "SELECT entry_type, SUM(amount) AS total FROM seller_ledger_entries WHERE seller_id = ? AND entry_type IN ('sale','commission','cancellation','commission_reversal','refund','correction') GROUP BY entry_type",
             [$sellerId]
         ), 'total', 'entry_type');
         $sale = (string) ($by['sale'] ?? '0');
         $commission = Money::normalize(bcmul((string) ($by['commission'] ?? '0'), '-1', 2));
-        $reversed = Money::add((string) ($by['cancellation'] ?? '0'), (string) ($by['commission_reversal'] ?? '0'), (string) ($by['refund'] ?? '0'));
+        // Everything that is not a sale, commission or a move between balances: reversals, refunds and adjustments.
+        $reversed = Money::add((string) ($by['cancellation'] ?? '0'), (string) ($by['commission_reversal'] ?? '0'), (string) ($by['refund'] ?? '0'), (string) ($by['correction'] ?? '0'));
         return [
             'gross_sales' => Money::normalize($sale),
             'commission' => $commission,
@@ -125,6 +126,67 @@ final class SellerLedgerService
                 ['seller_order_id' => $sellerOrderId, 'reverses_entry_id' => $com['id'], 'actor_user_id' => $actorUserId, 'note' => 'Commission reversed']);
         }
         $this->db->exec("UPDATE seller_orders SET earnings_status = 'reversed' WHERE id = ?", [$sellerOrderId]);
+    }
+
+    /**
+     * A customer refund on a part the seller has earnings for (return or dispute): the seller gives back the matching
+     * share of the sale and Waimart gives back the same share of its commission. The share is the refund's fraction
+     * of what the customer paid for the part, so a platform-funded discount is never charged to the seller.
+     *
+     * Bucket: while the part's earnings are still pending the adjustment stays pending (and is netted when released);
+     * once they are payable it comes out of AVAILABLE — which may go below zero if the seller was already paid out.
+     * A negative available balance is money the seller owes; it is recovered from later earnings, and payouts are
+     * impossible until it is covered. Idempotent per refund.
+     * @return bool whether anything was posted
+     */
+    public function refundPart(int $sellerOrderId, int $refundId, string $amount, ?int $actorUserId = null): bool
+    {
+        $so = $this->db->one(
+            'SELECT so.*, s.is_platform FROM seller_orders so JOIN sellers s ON s.id = so.seller_id WHERE so.id = ? FOR UPDATE',
+            [$sellerOrderId]
+        );
+        if ($so === null || (int) $so['is_platform'] === 1 || (int) $so['is_legacy'] === 1 || !in_array($so['earnings_status'], ['pending', 'available'], true)) {
+            return false;   // Waimart's own sales, pre-marketplace orders, or nothing earned (never paid / already reversed)
+        }
+        $paid = Money::sub((string) $so['items_subtotal'], (string) $so['discount_share']);
+        if (Money::cmp($paid, '0') <= 0) {
+            return false;
+        }
+        $f = bcdiv($amount, $paid, 10);
+        if (bccomp($f, '1', 10) > 0) {
+            $f = '1';
+        }
+        // Cap the cumulative adjustments at what was accrued for the part (rounding can never over-charge).
+        $done = array_column($this->db->all(
+            "SELECT entry_type, SUM(amount) AS t FROM seller_ledger_entries WHERE seller_order_id = ? AND entry_type IN ('refund','commission_reversal') AND posting_key LIKE 'refund:%' GROUP BY entry_type",
+            [$sellerOrderId]
+        ), 't', 'entry_type');
+        $saleLeft = Money::add((string) $so['items_subtotal'], (string) ($done['refund'] ?? '0'));
+        $comLeft = Money::sub((string) $so['commission_total'], (string) ($done['commission_reversal'] ?? '0'));
+        $sale = Money::round(bcmul((string) $so['items_subtotal'], $f, 10));
+        $com = Money::round(bcmul((string) $so['commission_total'], $f, 10));
+        $sale = Money::cmp($sale, $saleLeft) > 0 ? $saleLeft : $sale;
+        $com = Money::cmp($com, $comLeft) > 0 ? $comLeft : $com;
+
+        $bucket = $so['earnings_status'] === 'pending' ? 'pending' : 'available';
+        $ctx = ['seller_order_id' => $sellerOrderId, 'refund_id' => $refundId, 'actor_user_id' => $actorUserId];
+        $a = $this->post((int) $so['seller_id'], 'refund', $bucket, Money::normalize(bcmul($sale, '-1', 2)), "refund:$refundId:sale", $ctx + ['note' => 'Customer refund on ' . $so['sub_number']]);
+        $b = $this->post((int) $so['seller_id'], 'commission_reversal', $bucket, $com, "refund:$refundId:commission", $ctx + ['note' => 'Commission returned on refund']);
+        return $a || $b;
+    }
+
+    /** A refund obligation was cancelled (never paid): its ledger adjustment is reversed. Idempotent. */
+    public function cancelRefund(int $refundId, ?int $actorUserId = null): void
+    {
+        $rows = $this->db->all("SELECT * FROM seller_ledger_entries WHERE posting_key IN (?, ?)", ["refund:$refundId:sale", "refund:$refundId:commission"]);
+        foreach ($rows as $e) {
+            $so = $this->db->one('SELECT earnings_status FROM seller_orders WHERE id = ? FOR UPDATE', [$e['seller_order_id']]);
+            $bucket = ($so['earnings_status'] ?? '') === 'pending' ? 'pending' : 'available';
+            $this->post((int) $e['seller_id'], 'correction', $bucket, Money::normalize(bcmul((string) $e['amount'], '-1', 2)), $e['posting_key'] . ':cancel', [
+                'seller_order_id' => $e['seller_order_id'], 'refund_id' => $refundId, 'reverses_entry_id' => $e['id'], 'actor_user_id' => $actorUserId,
+                'note' => 'Refund cancelled',
+            ]);
+        }
     }
 
     /**

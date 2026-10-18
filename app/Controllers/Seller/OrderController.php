@@ -36,6 +36,8 @@ final class OrderController extends SellerController
         return $this->view('orders/show', [
             'title' => 'Order ' . $so['sub_number'], 'so' => $so,
             'next' => (new SellerOrderWorkflow())->allowedNext($so, true),
+            'returns' => \Waimart\Core\App::db()->all('SELECT return_number, status, refund_amount, requested_at FROM return_requests WHERE seller_order_id = ? ORDER BY id', [$so['id']]),
+            'cases' => \Waimart\Core\App::db()->all('SELECT id, dispute_number, status FROM seller_disputes WHERE seller_order_id = ? ORDER BY id', [$so['id']]),
         ]);
     }
 

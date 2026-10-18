@@ -12,7 +12,7 @@
     <form class="wm-card wm-page" method="post" action="<?= e(url('/order/' . $order['order_number'] . '/return')) ?>" style="max-width:820px" novalidate>
         <?= csrf_field() ?>
         <h1>Return items from <?= e($order['order_number']) ?></h1>
-        <p class="small text-muted">You can request a return within <?= $windowDays ?> days of delivery or collection. Our team reviews every request; refunds are made after the items are received and inspected.
+        <p class="small text-muted">You can request a return within <?= $windowDays ?> days of delivery or collection. Our team reviews every request; refunds are made after the items are received and inspected. Items from different sellers become separate returns.
             <a href="<?= e(url('/returns-policy')) ?>">Returns policy</a></p>
         <?= field_error('items') ?>
         <div class="table-responsive">
@@ -21,7 +21,8 @@
                 <tbody>
                 <?php foreach ($items as $it): ?>
                     <tr>
-                        <td><?= e($it['product_name']) ?><?= $it['variant_name'] !== 'Default' ? '<div class="small text-muted">' . e($it['variant_name']) . '</div>' : '' ?></td>
+                        <td><?= e($it['product_name']) ?><?= $it['variant_name'] !== 'Default' ? '<div class="small text-muted">' . e($it['variant_name']) . '</div>' : '' ?>
+                            <div class="small text-muted">Sold by <?= e($it['seller_name']) ?></div></td>
                         <td class="text-end"><?= (int) $it['returnable'] ?></td>
                         <td><label class="visually-hidden" for="q<?= $it['id'] ?>">Quantity to return of <?= e($it['product_name']) ?></label>
                             <input class="form-control form-control-sm" type="number" min="0" max="<?= (int) $it['returnable'] ?>" id="q<?= $it['id'] ?>" name="qty[<?= (int) $it['id'] ?>]" value="<?= e((string) ((is_array($oq = fv('qty', [])) ? ($oq[(string) $it['id']] ?? '0') : '0'))) ?>"></td>

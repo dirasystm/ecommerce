@@ -72,7 +72,7 @@ final class ReturnsRefundsReviewsTest extends DbTestCase
         $it = $this->items((int) $o['id']);
 
         $svc = new ReturnService($this->db);
-        $ret = $svc->request((int) $o['id'], [$it[$a]['id'] => 1, $it[$b]['id'] => 1], 'defective', 'Kettle does not heat', null);
+        [$ret] = $svc->request((int) $o['id'], [$it[$a]['id'] => 1, $it[$b]['id'] => 1], 'defective', 'Kettle does not heat', null);
         $this->assertSame('return_requested', $this->db->value('SELECT status FROM orders WHERE id = ?', [$o['id']]));
         $this->assertSame([8, 9], [$this->levels($a)['on_hand'], $this->levels($b)['on_hand']], 'no automatic restock on request');
 
@@ -102,7 +102,7 @@ final class ReturnsRefundsReviewsTest extends DbTestCase
         $this->assertSame([1, 1], [(int) $this->items((int) $o['id'])[$a]['returned_qty'], (int) $this->items((int) $o['id'])[$b]['returned_qty']]);
 
         // The remaining unit can be returned later; once everything is back the order is "returned".
-        $ret2 = $svc->request((int) $o['id'], [$it[$a]['id'] => 1], 'changed_mind', null, null);
+        [$ret2] = $svc->request((int) $o['id'], [$it[$a]['id'] => 1], 'changed_mind', null, null);
         $svc->approve((int) $ret2['id'], $this->staff, null);
         $svc->receive((int) $ret2['id'], $this->staff);
         $ri2 = (int) $this->db->value('SELECT id FROM return_items WHERE return_id = ?', [$ret2['id']]);
@@ -146,7 +146,7 @@ final class ReturnsRefundsReviewsTest extends DbTestCase
         $stock = $this->levels($v);
 
         $svc = new ReturnService($this->db);
-        $ret = $svc->request((int) $o['id'], [(int) $this->db->value('SELECT id FROM order_items WHERE order_id = ?', [$o['id']]) => 1], 'changed_mind', null, null);
+        [$ret] = $svc->request((int) $o['id'], [(int) $this->db->value('SELECT id FROM order_items WHERE order_id = ?', [$o['id']]) => 1], 'changed_mind', null, null);
         $this->refused(fn () => $svc->reject((int) $ret['id'], $this->staff, ''), 'Explain');
         $svc->reject((int) $ret['id'], $this->staff, 'Opened hygiene product');
         $this->assertSame('collected', $this->db->value('SELECT status FROM orders WHERE id = ?', [$o['id']]));
@@ -158,7 +158,7 @@ final class ReturnsRefundsReviewsTest extends DbTestCase
         $v = $this->makeVariant(5, '1000.00')['variant_id'];
         $o = $this->delivered([[$v, 1]]);
         $svc = new ReturnService($this->db);
-        $ret = $svc->request((int) $o['id'], [(int) $this->db->value('SELECT id FROM order_items WHERE order_id = ?', [$o['id']]) => 1], 'defective', null, null);
+        [$ret] = $svc->request((int) $o['id'], [(int) $this->db->value('SELECT id FROM order_items WHERE order_id = ?', [$o['id']]) => 1], 'defective', null, null);
         $svc->approve((int) $ret['id'], $this->staff, null);
         $svc->receive((int) $ret['id'], $this->staff);
         $svc->inspect((int) $ret['id'], (int) $this->db->value('SELECT id FROM return_items WHERE return_id = ?', [$ret['id']]), 'write_off', null, $this->staff);

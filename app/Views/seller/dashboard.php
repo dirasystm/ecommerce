@@ -1,5 +1,5 @@
 <?php
-/** @var array<string,mixed> $seller @var array<string,mixed>|null $payout @var array<string,int> $productCounts @var array<string,int> $orderCounts @var array<string,string> $balances @var list<array{0:string,1:bool,2:?string}> $checklist */
+/** @var array<string,mixed> $seller @var array<string,mixed>|null $payout @var array<string,int> $productCounts @var array<string,int> $orderCounts @var array<string,string> $balances @var int $awaitingReply @var list<array{0:string,1:bool,2:?string}> $checklist */
 $done = count(array_filter($checklist, fn ($c) => $c[1]));
 ?>
 <div class="wm-admin-head">
@@ -36,6 +36,9 @@ $done = count(array_filter($checklist, fn ($c) => $c[1]));
     </div>
 </div>
 
+<?php if ($awaitingReply > 0): ?>
+    <div class="alert alert-warning small"><a href="<?= e(url('/seller/disputes')) ?>"><?= $awaitingReply ?> case<?= $awaitingReply === 1 ? '' : 's' ?> waiting for your reply</a> — earnings for those orders are held until the case is closed.</div>
+<?php endif; ?>
 <section class="wm-panel mb-3">
     <div class="wm-panel-head">Orders</div>
     <div class="wm-panel-body row g-3 text-center">

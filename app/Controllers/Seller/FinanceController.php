@@ -30,6 +30,13 @@ final class FinanceController extends SellerController
         ]);
     }
 
+    public function report(Request $req): Response
+    {
+        [$from, $to] = \Waimart\Services\ReportService::range($req->query['from'] ?? null, $req->query['to'] ?? null);
+        return $this->view('report', ['title' => 'Sales report', 'r' => (new \Waimart\Services\MarketplaceReportService())->sellerReport($this->sellerId(), $from, $to),
+            'from' => substr($from, 0, 10), 'to' => substr($to, 0, 10)]);
+    }
+
     public function request(Request $req): Response
     {
         SellerContext::requireRole('owner');

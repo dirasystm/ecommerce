@@ -224,8 +224,8 @@ final class SellerOrderWorkflow
             'seller_order_id' => $id, 'from_status' => $so['status'], 'to_status' => $to, 'actor_type' => $actor['type'],
             'actor_user_id' => $actorId, 'note' => $note !== null && $note !== '' ? mb_substr($note, 0, 500) : ($opts['reason'] ?? null),
         ]);
-        if ($actor['type'] === 'staff') {
-            AuditLogger::log('seller_order.status_changed', 'seller_order', $id, ['status' => $so['status']], ['status' => $to, 'reason' => $opts['reason'] ?? null], $actorId);
+        if (in_array($actor['type'], ['staff', 'seller'], true)) {   // people's decisions are audited; automatic steps are in the history
+            AuditLogger::log('seller_order.status_changed', 'seller_order', $id, ['status' => $so['status']], ['status' => $to, 'reason' => $opts['reason'] ?? null, 'by' => $actor['type']], $actorId);
         }
     }
 

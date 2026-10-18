@@ -13,6 +13,7 @@ use Waimart\Core\Response;
 use Waimart\Core\Settings;
 use Waimart\Services\AuditLogger;
 use Waimart\Services\CommissionService;
+use Waimart\Services\MarketplaceReportService;
 use Waimart\Services\PayoutService;
 use Waimart\Services\ReportService;
 use Waimart\Services\SellerLedgerService;
@@ -114,6 +115,27 @@ final class FinanceController extends AdminController
         $id = $this->intParam($req, 'id');
         (new PayoutService())->markPaid($id, $this->actor(), (string) $req->input('paid_method', ''), (string) $req->input('paid_reference', ''), (string) $req->input('paid_amount', ''));
         return $this->success('Payout recorded as paid.', "/admin/payouts/$id");
+    }
+
+    // ------------------------------------------------------------------ marketplace report (reports.view)
+
+    public function marketplaceReport(Request $req): Response
+    {
+        [$from, $to] = ReportService::range($req->query['from'] ?? null, $req->query['to'] ?? null);
+        $svc = new MarketplaceReportService();
+        $rows = $svc->sellerPerformance($from, $to);
+        if (($req->query['format'] ?? '') === 'csv') {
+            AuditLogger::log('report.exported', 'report', 'marketplace', null, ['from' => $from, 'to' => $to], $this->actor());
+            return Csv::response('waimart-marketplace-' . substr($from, 0, 10) . '-to-' . substr($to, 0, 10) . '.csv',
+                ['Seller', 'Status', 'Orders', 'Completed', 'Declined', 'Cancelled', 'Sales received', 'Commission (net)', 'Refunds and reversals', 'Seller net',
+                 'Pending now', 'Available now', 'In payout requests now', 'Paid out (all time)'],
+                array_map(fn ($r) => [$r['seller_name'], $r['seller_status'], $r['parts'], $r['completed'], $r['declined'], $r['cancelled'], $r['sales'], $r['commission'],
+                    $r['refunds_reversals'], $r['net'], $r['balances']['pending'], $r['balances']['available'], $r['balances']['reserved'], $r['balances']['paid']], $rows));
+        }
+        return $this->view('finance/marketplace', [
+            'title' => 'Marketplace report', 'rows' => $rows, 'liability' => $svc->liability(), 'checks' => $svc->reconcile(),
+            'from' => substr($from, 0, 10), 'to' => substr($to, 0, 10),
+        ]);
     }
 
     public function ledger(Request $req): Response

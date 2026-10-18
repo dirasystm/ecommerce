@@ -3,7 +3,7 @@ use Waimart\Services\OrderPresenter;
 use Waimart\Services\SellerContext;
 use Waimart\Services\SellerProductService;
 
-/** @var array<string,mixed> $so @var list<string> $next @var array<string,mixed> $seller */
+/** @var array<string,mixed> $so @var list<string> $next @var array<string,mixed> $seller @var list<array<string,mixed>> $returns @var list<array<string,mixed>> $cases */
 $canCommit = in_array(SellerContext::role(), ['owner', 'manager'], true);
 $active = $seller['status'] === 'active';
 ?>
@@ -84,6 +84,19 @@ $active = $seller['status'] === 'active';
                 <?php if ($so['reject_reason'] || $so['cancel_reason']): ?><p class="mt-2 mb-0 text-danger"><?= e((string) ($so['reject_reason'] ?: $so['cancel_reason'])) ?></p><?php endif; ?>
             </div>
         </section>
+        <?php if ($returns || $cases): ?>
+            <section class="wm-panel mb-3">
+                <div class="wm-panel-head">Returns &amp; cases</div>
+                <ul class="list-unstyled small wm-panel-body mb-0">
+                    <?php foreach ($returns as $rt): ?>
+                        <li class="mb-1">Return <?= e($rt['return_number']) ?> · <?= e(ucfirst($rt['status'])) ?><?= $rt['refund_amount'] !== null ? ' · refund ' . e(money($rt['refund_amount'])) : '' ?></li>
+                    <?php endforeach; ?>
+                    <?php foreach ($cases as $c): ?>
+                        <li class="mb-1"><a href="<?= e(url('/seller/disputes/' . $c['id'])) ?>">Case <?= e($c['dispute_number']) ?></a> · <?= e(\Waimart\Services\DisputeService::STATUS_LABELS[$c['status']]) ?></li>
+                    <?php endforeach; ?>
+                </ul>
+            </section>
+        <?php endif; ?>
         <section class="wm-panel">
             <div class="wm-panel-head">History</div>
             <ol class="list-unstyled small wm-panel-body mb-0">

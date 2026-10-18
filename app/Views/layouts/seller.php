@@ -13,7 +13,9 @@ $nav = [
         ['/seller', 'speedometer2', 'Dashboard'],
         ['/seller/orders', 'receipt', 'Orders'],
         ['/seller/products', 'box-seam', 'Products'],
+        ['/seller/disputes', 'chat-left-text', 'Returns & cases'],
         ['/seller/finance', 'wallet2', 'Earnings & payouts'],
+        ['/seller/reports', 'graph-up', 'Sales report'],
         ['/seller/profile', 'shop', 'Store profile'],
     ]],
     ['My account', [

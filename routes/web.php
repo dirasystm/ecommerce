@@ -81,6 +81,12 @@ $router->post('/order/{number:WM-[A-Z0-9]{8}}/cancel', [OrderController::class, 
 $router->post('/order/{number:WM-[A-Z0-9]{8}}/payment', [OrderController::class, 'submitPayment'], ['throttle:10,300']);
 $router->get('/order/{number:WM-[A-Z0-9]{8}}/return', [OrderController::class, 'returnForm']);
 $router->post('/order/{number:WM-[A-Z0-9]{8}}/return', [OrderController::class, 'requestReturn'], ['throttle:10,3600']);
+// Seller disputes ("report a problem"): same access as returns (owner or verified guest); cases load only through their order.
+$router->get('/order/{number:WM-[A-Z0-9]{8}}/problem', [\Waimart\Controllers\DisputeController::class, 'form']);
+$router->post('/order/{number:WM-[A-Z0-9]{8}}/problem', [\Waimart\Controllers\DisputeController::class, 'open'], ['throttle:10,3600']);
+$router->get('/order/{number:WM-[A-Z0-9]{8}}/cases/{id:\d+}', [\Waimart\Controllers\DisputeController::class, 'show']);
+$router->post('/order/{number:WM-[A-Z0-9]{8}}/cases/{id:\d+}/message', [\Waimart\Controllers\DisputeController::class, 'message'], ['throttle:30,3600']);
+$router->post('/order/{number:WM-[A-Z0-9]{8}}/cases/{id:\d+}/withdraw', [\Waimart\Controllers\DisputeController::class, 'withdraw'], ['throttle:10,3600']);
 $router->get('/track-order', [OrderController::class, 'lookupForm'], [], 'track-order');
 $router->post('/track-order', [OrderController::class, 'lookup'], ['throttle:20,300']);
 
@@ -132,6 +138,10 @@ $router->group(['prefix' => '/seller', 'middleware' => ['seller']], function ($r
     $r->get('/notifications', [Seller\ProfileController::class, 'notifications']);
     $r->post('/notifications', [Seller\ProfileController::class, 'saveNotifications']);
     // Payout requests: owner only (also enforced in the service against the server-side membership).
+    $r->get('/disputes', [Seller\DisputeController::class, 'index']);
+    $r->get('/disputes/{id:\d+}', [Seller\DisputeController::class, 'show']);
+    $r->post('/disputes/{id:\d+}/message', [Seller\DisputeController::class, 'message'], ['seller_role:owner,manager', 'throttle:60,3600']);
+    $r->get('/reports', [Seller\FinanceController::class, 'report']);
     $r->get('/finance', [Seller\FinanceController::class, 'index']);
     $r->post('/finance/payouts', [Seller\FinanceController::class, 'request'], ['seller_role:owner', 'throttle:10,3600']);
     $r->post('/finance/payouts/{id:\d+}/cancel', [Seller\FinanceController::class, 'cancel'], ['seller_role:owner', 'throttle:30,3600']);
@@ -263,6 +273,15 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
         $r->post('/sellers/{id:\d+}/reactivate', [Admin\SellerController::class, 'reactivate']);
         $r->post('/sellers/{id:\d+}/verify', [Admin\SellerController::class, 'verify']);
     });
+
+    $r->group(['middleware' => ['can:disputes.manage']], function ($r) {
+        $r->get('/disputes', [Admin\DisputeController::class, 'index']);
+        $r->get('/disputes/{id:\d+}', [Admin\DisputeController::class, 'show']);
+        $r->post('/disputes/{id:\d+}/message', [Admin\DisputeController::class, 'message']);
+        $r->post('/disputes/{id:\d+}/status', [Admin\DisputeController::class, 'status']);
+        $r->post('/disputes/{id:\d+}/resolve', [Admin\DisputeController::class, 'resolve']);
+    });
+    $r->get('/reports/marketplace', [Admin\FinanceController::class, 'marketplaceReport'], ['can:reports.view']);
 
     $r->get('/commissions', [Admin\FinanceController::class, 'commissions'], ['can:commissions.manage']);
     $r->post('/commissions', [Admin\FinanceController::class, 'saveCommission'], ['can:commissions.manage']);

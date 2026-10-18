@@ -404,9 +404,6 @@ final class SellerProductService
     /** @param array<string,mixed> $p */
     private function notifySeller(array $p, string $template, string $subject, string $body): void
     {
-        foreach ($this->db->all("SELECT u.id, u.email, u.first_name FROM seller_users su JOIN users u ON u.id = su.user_id
-                                  WHERE su.seller_id = ? AND su.role IN ('owner','manager')", [$p['seller_id']]) as $u) {
-            (new NotificationService())->email((string) $u['email'], $subject, "Hello {$u['first_name']},\n\n$body\n\n— Waimart Seller Support", $template, ['user_id' => (int) $u['id']]);
-        }
+        (new SellerNotifier($this->db))->send((int) $p['seller_id'], $template, $subject, $body);
     }
 }

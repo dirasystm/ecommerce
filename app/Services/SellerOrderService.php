@@ -175,18 +175,15 @@ final class SellerOrderService
     public function notifyConfirmed(int $orderId): void
     {
         $rows = $this->db->all(
-            "SELECT so.id, so.sub_number, so.items_subtotal, s.name AS store, u.id AS user_id, u.email, u.first_name
+            "SELECT so.seller_id, so.sub_number, so.items_subtotal, s.name AS store
                FROM seller_orders so JOIN sellers s ON s.id = so.seller_id AND s.is_platform = 0
-               JOIN seller_users su ON su.seller_id = s.id AND su.role IN ('owner','manager')
-               JOIN users u ON u.id = su.user_id AND u.status = 'active'
               WHERE so.order_id = ? AND so.status NOT IN ('cancelled','rejected')",
             [$orderId]
         );
         foreach ($rows as $r) {
-            (new NotificationService())->email((string) $r['email'], "New order {$r['sub_number']} for {$r['store']}",
-                "Hello {$r['first_name']},\n\nOrder {$r['sub_number']} (" . Money::format((string) $r['items_subtotal']) . ") has been confirmed and is ready for you to prepare.\n\n"
-                . 'Open it in the Seller Centre: ' . config('app.url') . "/seller\n\n— Waimart Seller Support",
-                'seller_order_confirmed', ['user_id' => (int) $r['user_id']]);
+            (new SellerNotifier($this->db))->send((int) $r['seller_id'], 'seller_order_confirmed', "New order {$r['sub_number']} for {$r['store']}",
+                "Order {$r['sub_number']} (" . Money::format((string) $r['items_subtotal']) . ") has been confirmed and is ready for you to prepare.\n\n"
+                . 'Open it in the Seller Centre: ' . config('app.url') . '/seller', false, ['owner', 'manager'], $orderId);
         }
     }
 

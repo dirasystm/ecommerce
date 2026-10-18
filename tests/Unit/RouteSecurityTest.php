@@ -120,6 +120,30 @@ final class RouteSecurityTest extends TestCase
         $this->assertSame(11, $seen, 'all commission, payout, ledger and seller payout routes are covered');
     }
 
+    public function testDisputeRoutesAreScopedAndLimited(): void
+    {
+        $seen = 0;
+        foreach ($this->routes() as $r) {
+            $p = $r['pattern'];
+            if (str_starts_with($p, '/admin/disputes')) {
+                $seen++;
+                $this->assertContains('can:disputes.manage', $r['middleware'], "{$r['method']} $p must require disputes.manage");
+            }
+            if ($r['method'] === 'POST' && str_starts_with($p, '/seller/disputes')) {
+                $seen++;
+                $this->assertContains('seller_role:owner,manager', $r['middleware'], "POST $p: only owners and managers reply for the store");
+            }
+            if ($r['method'] === 'POST' && str_starts_with($p, '/order/') && (str_contains($p, '/problem') || str_contains($p, '/cases/'))) {
+                $seen++;
+                $this->assertNotEmpty(array_filter($r['middleware'], fn ($m) => str_starts_with($m, 'throttle:')), "POST $p must be rate-limited");
+            }
+            if (str_starts_with($p, '/admin/reports')) {
+                $this->assertContains('can:reports.view', $r['middleware'], "{$r['method']} $p must require reports.view");
+            }
+        }
+        $this->assertSame(9, $seen, 'admin desk (5), seller reply (1), customer open/message/withdraw (3)');
+    }
+
     public function testNoRouteOptsOutOfCsrf(): void
     {
         foreach ($this->routes() as $r) {

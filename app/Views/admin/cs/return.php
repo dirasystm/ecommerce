@@ -15,6 +15,7 @@ $form = fn (string $action, string $label, string $class, string $confirm, strin
     <div>
         <h1><?= e($r['return_number']) ?> <span class="badge fs-6 align-middle badge-soft-warning"><?= e($r['status']) ?></span></h1>
         <div class="small text-muted">Order <a href="<?= e(url('/admin/orders/' . $r['order_id'])) ?>"><?= e($r['order_number']) ?></a> · <?= e($r['customer_name']) ?> · <?= e(Validator::displayPhone((string) $r['customer_phone'])) ?></div>
+<?php if ($r['sub_number']): ?><div class="small text-muted">Seller: <strong><?= e($r['seller_name']) ?></strong> (part <?= e($r['sub_number']) ?>)<?php if (!(int) $r['is_platform'] && in_array($r['earnings_status'], ['pending', 'available'], true)): ?> — a refund here is deducted from this seller's earnings in proportion (Waimart returns its commission share)<?php endif; ?></div><?php endif; ?>
     </div>
     <a class="btn btn-outline-secondary" href="<?= e(url('/admin/returns')) ?>">All returns</a>
 </div>

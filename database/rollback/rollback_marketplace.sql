@@ -1,4 +1,4 @@
--- EMERGENCY ROLLBACK of the marketplace migrations (010 onwards; currently 010–016). Run only after taking a backup:
+-- EMERGENCY ROLLBACK of the marketplace migrations (010 onwards; currently 010–017). Run only after taking a backup:
 --   php bin/backup.php
 --   C:\xampp\mysql\bin\mysql.exe -u root waimart < database\rollback\rollback_013_to_010.sql
 -- Removes the marketplace tables/columns and their reference data, returning the schema to migration 009.
@@ -14,6 +14,14 @@ SET @third_party_order_items := (SELECT COUNT(*) FROM order_items WHERE seller_i
 CREATE TEMPORARY TABLE rollback_guard (ok TINYINT, CONSTRAINT ck_rollback_guard CHECK (ok = 1));
 INSERT INTO rollback_guard VALUES (IF(@third_party_products = 0 AND @third_party_order_items = 0, 1, 0));
 DROP TEMPORARY TABLE rollback_guard;
+
+-- 017 (returns per seller part, refunds linked to disputes): restore the original one-open-return-per-order key.
+-- Must run before 013/012, which drop the tables and columns these depend on.
+ALTER TABLE refunds DROP FOREIGN KEY fk_ref_dispute, DROP KEY ix_ref_dispute, DROP COLUMN dispute_id;
+ALTER TABLE return_requests DROP INDEX uq_rr_open_so, DROP INDEX uq_rr_open_order, DROP COLUMN open_so_key, DROP COLUMN open_order_key;
+ALTER TABLE return_requests
+    ADD COLUMN open_order_key BIGINT UNSIGNED AS (IF(status IN ('requested','approved','received'), order_id, NULL)) PERSISTENT,
+    ADD UNIQUE KEY uq_rr_open_order (open_order_key);
 
 -- 016 (append-only triggers) needs nothing of its own: the triggers are dropped with their tables under 013 below.
 
@@ -64,4 +72,4 @@ DELETE FROM permissions WHERE slug IN ('sellers.view','sellers.manage','products
 DELETE FROM settings WHERE setting_key IN ('marketplace_delivery_handler','marketplace_delivery_fee_policy','marketplace_cod_policy',
     'marketplace_commission_provisional','product_moderation','payout_min_amount','payout_hold_days','payout_requires_fulfilment',
     'seller_terms_version','seller_required_documents');
-DELETE FROM schema_migrations WHERE filename IN ('016_ledger_immutability.sql', '015_backfill_seller_orders.sql', '014_seller_stock_actor.sql', '010_marketplace_sellers.sql','011_product_ownership.sql','012_seller_orders.sql','013_marketplace_finance.sql');
+DELETE FROM schema_migrations WHERE filename IN ('017_marketplace_returns_disputes.sql', '016_ledger_immutability.sql', '015_backfill_seller_orders.sql', '014_seller_stock_actor.sql', '010_marketplace_sellers.sql','011_product_ownership.sql','012_seller_orders.sql','013_marketplace_finance.sql');

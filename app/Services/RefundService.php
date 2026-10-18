@@ -21,6 +21,17 @@ final class RefundService
         $this->db = $db ?? App::db();
     }
 
+    /** What the customer paid for one seller part (after its discount share) less refunds already owed or paid on it. */
+    public function refundableForPart(int $sellerOrderId): string
+    {
+        $so = $this->db->one('SELECT items_subtotal, discount_share FROM seller_orders WHERE id = ?', [$sellerOrderId]);
+        if ($so === null) {
+            return '0.00';
+        }
+        $refunded = (string) $this->db->value("SELECT COALESCE(SUM(amount), 0) FROM refunds WHERE seller_order_id = ? AND status <> 'cancelled'", [$sellerOrderId]);
+        return Money::max('0.00', Money::sub(Money::sub((string) $so['items_subtotal'], (string) $so['discount_share']), $refunded));
+    }
+
     public function markPaid(int $refundId, int $staffId, string $method, string $reference, ?string $note): void
     {
         if (!isset(self::METHODS[$method])) {
@@ -49,6 +60,7 @@ final class RefundService
         $this->db->transaction(function () use ($refundId, $staffId, $note) {
             $r = $this->lockDue($refundId);
             $this->db->exec("UPDATE refunds SET status = 'cancelled', note = ? WHERE id = ? AND status = 'due'", [mb_substr($note, 0, 500), $refundId]);
+            (new SellerLedgerService($this->db))->cancelRefund($refundId, $staffId);   // the seller's deduction is given back
             $this->settleOrder((int) $r['order_id']);
             AuditLogger::log('refund.cancelled', 'refund', $refundId, ['status' => 'due'], ['status' => 'cancelled', 'note' => $note], $staffId);
         });
