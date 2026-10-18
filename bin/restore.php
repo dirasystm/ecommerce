@@ -11,8 +11,8 @@ declare(strict_types=1);
  *   --database      target database (default: the configured main database)
  *   --force         required when the target already has tables; they are dumped to
  *                   storage/backups/pre-restore-<db>-<stamp>.sql first, then replaced
- *   --with-uploads  also copy <backup>-files/uploads back into public/uploads (existing files with
- *                   the same name are overwritten; nothing is deleted)
+ *   --with-uploads  also copy <backup>-files/uploads back into public/uploads and <backup>-files/private
+ *                   (seller documents) into storage/private (same-name files are overwritten; nothing is deleted)
  *
  * config.local.php is never overwritten automatically: if the server was rebuilt, copy it back by hand
  * from <backup>-files/ (it holds the app key that decrypts pickup collection codes).
@@ -58,7 +58,8 @@ try {
 
     if (isset($opts['with-uploads'])) {
         $n = Backup::copyTree(substr($file, 0, -4) . '-files/uploads', App::root() . '/public/uploads');
-        echo "Uploads restored: $n file(s).\n";
+        $p = Backup::copyTree(substr($file, 0, -4) . '-files/private', App::root() . '/storage/private');
+        echo "Uploads restored: $n file(s); private documents restored: $p file(s).\n";
     }
     echo "Next: php bin/migrate.php (applies any migrations newer than the backup).\n";
 } catch (Throwable $e) {

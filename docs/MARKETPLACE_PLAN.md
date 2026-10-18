@@ -1,6 +1,6 @@
 # Waimart Multi-Vendor Upgrade — Phase 1: Inspection, Impact Analysis and Plan
 
-**Date:** 18 October 2026 · **Status:** Phases 1–2 complete (see "Phase 2 results" at the end); awaiting approval to start Phase 3
+**Date:** 18 October 2026 · **Status:** Phases 1–3 complete (see the "Phase N results" sections at the end); awaiting approval to start Phase 4
 
 This document is for the client and for whoever builds or reviews the upgrade. It records the current system as inspected, what a multi-vendor marketplace changes, the target design, and the phased plan. No code or data has been changed in Phase 1.
 
@@ -266,3 +266,71 @@ Further defaults, stated so you can object:
 - **Live site after migration:** the browser checkout E2E placed WM-C8N854UW, attributed to the Official Store. The accessibility check passed.
 
 **Not yet visible to users:** nothing in the storefront or admin has changed. Seller-facing features start in Phase 3.
+
+---
+
+## Phase 3 results (18 October 2026): seller accounts, applications, approval, Seller Centre
+
+**For applicants (storefront):**
+- **Entry points:** a "Sell on Waimart" link in the top bar, mobile menu and footer leads to `/sell`. That page explains the process and lists the documents the admin requires; `/sell/terms` summarises the seller terms.
+- **Step 1, details (`/sell/apply`, sign-in required):**
+  - store name — may not contain "Waimart";
+  - store address, a slug that is normalised, unique and not reserved (`admin`, `waimart*`, …);
+  - business type, with registered name for businesses and an optional registration number;
+  - description, categories, county/town, private business address, and contact person.
+  - The details are saved as a **draft**.
+- **Step 2 (`/sell/application`):**
+  - **documents:** PDF/JPEG/PNG up to 5 MB, checked by content (MIME sniff, PDF header, image decode, script markers), stored under random names in `storage/private/seller-docs` outside the web root, and downloaded only as attachments;
+  - **payout details:** M-Pesa or bank, **encrypted** (AES-256-GCM) and shown only masked;
+  - **terms:** acceptance recorded with version and time;
+  - then submission.
+- **Statuses** shown to the applicant: draft, submitted, under review, approved or rejected. A rejection shows the reason. If resubmission is allowed, the applicant reopens the same application, which keeps its history. If not, no new application is possible.
+- **Emails:** sent on submission, approval and rejection. A copy goes to the store email, if set, for new applications.
+
+**For staff (admin, new "Marketplace" menu):**
+- **Seller applications:** a status queue. Each application shows its details and documents; every download is recorded in the audit log. Actions: mark under review, approve (staff may correct the store name or address), or reject (reason plus "allow resubmission").
+  - Staff **cannot review their own application**.
+  - Approval creates the store, makes the applicant its **owner** (never staff), carries over the encrypted payout details, and links the documents.
+- **Sellers:** list and detail pages. Actions: suspend (reason sent to the seller), reactivate, verified badge. The Official Store is protected from these actions.
+- **Settings:** a "Seller onboarding documents" section sets, for each document type, whether it is required for everyone, for businesses only, for individuals only, optional, or not requested. Changes are audited.
+- **Permissions:**
+  - `sellers.view` (manager, finance, support) lets staff look;
+  - `sellers.manage` (manager) lets them decide.
+  - The route sweep test enforces this on every route.
+
+**For sellers (Seller Centre `/seller`, same look as the admin):**
+- **Pages:**
+  - dashboard with store status and a real setup checklist;
+  - store profile: description, logo, location, public contacts plus a "show on store page" choice. Name and address can only be changed by staff;
+  - notification preferences;
+  - password, through the existing account page.
+- **Access control:**
+  - The `seller` middleware gives access to signed-in **members of a seller**. The seller is resolved only from server-side membership (`SellerContext`), never from the request.
+  - A **suspended** store is read-only: pages load, but any change returns 403.
+  - The `seller_role` check limits profile edits to owners and managers.
+  - Sellers are not staff, so `/admin` returns 403.
+  - Sign-in, sign-out and password reset reuse the existing secure, rate-limited flows.
+
+**Changed existing code:**
+- **Core:** `Kernel` (two middlewares), `Auth::reset`, `Response::back` (payout fields are never kept in the session).
+- **Admin and services:** `SettingsService`, `SettingsController` and its view; `ImageService` (`stores` folder for logos).
+- **Storefront views:** the header, footer and admin layout. The admin sidebar now highlights only the most specific link.
+- **Backup and restore:** both now include `storage/private` (seller documents).
+- **Browser scripts:** a configurable login path.
+
+**Tests:**
+- `SellerOnboardingTest` (13): lifecycle, validation, store-address rules, resubmission rules, staff self-review, approval re-checks, upload attacks (PHP disguised as PDF, PHP inside a PDF, wrong type, more than 5 MB, path traversal), applicant isolation, suspension, `SellerContext`, and document policy.
+- `SellerOnboardingHttpTest` (8): end to end over HTTP with tampered `user_id`, `status`, `seller_id` and `is_staff` fields ignored; cross-applicant document access returns 404; staff permission levels; suspended store read-only; seller roles; no way to edit another store through form fields; admin document settings.
+- `RouteSecurityTest`: 3 new sweeps.
+- Private paths: Apache returns 403.
+- **Full suite: 297 tests, 1,959 assertions, all passing.**
+- **Browser:**
+  - WCAG 2.1 AA, 0 serious/critical issues on 12 new pages (public, applicant, seller and admin);
+  - responsive checks: no overflow or console errors at phone, tablet and desktop widths;
+  - screenshots reviewed.
+  - The temporary browser-test accounts and data were removed afterwards.
+
+**Deferred to the phase that needs them:**
+- Hiding a suspended seller's products from the storefront arrives with seller products in Phase 4; today only the Official Store has products.
+- The public `/store/{slug}` pages arrive in Phase 5.
+- Inviting extra team members (manager/staff) to a store isn't built yet; the schema and roles support it.

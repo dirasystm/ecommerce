@@ -96,6 +96,29 @@ final class Kernel
             case 'can':
                 Auth::authorize((string) $arg);
                 return null;
+            case 'seller':
+                // Seller Centre: signed in + member of a seller. Suspended stores are read-only (GET);
+                // closed stores are locked out. Staff permissions play no part here, in either direction.
+                if (!Auth::check()) {
+                    Session::set('intended', $req->path);
+                    Session::flash('info', 'Please sign in to the Seller Centre.');
+                    return Response::redirect('/login');
+                }
+                $seller = \Waimart\Services\SellerContext::current();
+                if ($seller === null) {
+                    Session::flash('info', 'You do not have a seller account yet. Apply to sell on Waimart below.');
+                    return Response::redirect('/sell');
+                }
+                if ($seller['status'] === 'closed') {
+                    throw HttpException::forbidden('This store has been closed.');
+                }
+                if ($seller['status'] !== 'active' && $req->method !== 'GET') {
+                    \Waimart\Services\SellerContext::requireActive();
+                }
+                return null;
+            case 'seller_role':
+                \Waimart\Services\SellerContext::requireRole(...explode(',', (string) $arg));
+                return null;
             case 'throttle':
                 // throttle:max,seconds — keyed by IP + path
                 [$max, $secs] = array_map('intval', explode(',', (string) $arg));

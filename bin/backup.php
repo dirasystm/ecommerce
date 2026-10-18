@@ -5,7 +5,8 @@ declare(strict_types=1);
 /**
  * Backup of everything needed to recover the shop, written to storage/backups:
  *   <db>-<stamp>.sql          consistent dump of the main database
- *   <db>-<stamp>-files/       uploads/ (product images, banners) and config.local.php
+ *   <db>-<stamp>-files/       uploads/ (product images, banners, store logos), private/ (seller verification
+ *                             documents) and config.local.php
  *                             (DB password + app key; the key decrypts pickup collection codes)
  * Usage: php bin/backup.php [--keep=14] [--db-only]
  */
@@ -32,12 +33,13 @@ echo "Database: $base.sql (" . number_format(filesize("$base.sql")) . " bytes)\n
 
 if (!isset($opts['db-only'])) {
     $n = Backup::copyTree(App::root() . '/public/uploads', "$base-files/uploads");
+    $p = Backup::copyTree(App::root() . '/storage/private', "$base-files/private");
     $local = App::root() . '/config/config.local.php';
     if (is_file($local)) {
         copy($local, "$base-files/config.local.php");
     }
-    echo "Files:    $base-files/ ($n uploaded file(s)" . (is_file($local) ? ' + config.local.php' : '') . ")\n";
-    echo "Keep this folder private: config.local.php contains the database password and the app key.\n";
+    echo "Files:    $base-files/ ($n uploaded file(s), $p private document file(s)" . (is_file($local) ? ' + config.local.php' : '') . ")\n";
+    echo "Keep this folder private: it holds seller documents, and config.local.php contains the database password and app key.\n";
 }
 
 // Retention: keep the newest $keep backups (dump and its files folder together).

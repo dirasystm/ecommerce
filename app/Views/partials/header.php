@@ -32,6 +32,7 @@ $searchForm = function (string $id) use ($q): string {
             <span><i class="bi bi-arrow-repeat" aria-hidden="true"></i>Easy returns</span>
         </div>
         <div class="wm-topbar-links d-none d-lg-flex gap-3">
+            <a href="<?= e(url('/sell')) ?>"><i class="bi bi-shop-window" aria-hidden="true"></i> Sell on Waimart</a>
             <a href="<?= e(url('/track-order')) ?>"><i class="bi bi-truck" aria-hidden="true"></i> Track order</a>
             <a href="<?= e(url('/help')) ?>"><i class="bi bi-question-circle" aria-hidden="true"></i> Help</a>
         </div>
@@ -63,6 +64,9 @@ $searchForm = function (string $id) use ($q): string {
                         <li><a class="dropdown-item" href="<?= e(url('/account')) ?>"><i class="bi bi-person"></i>My Account</a></li>
                         <li><a class="dropdown-item" href="<?= e(url('/account/orders')) ?>"><i class="bi bi-box-seam"></i>Orders</a></li>
                         <li><a class="dropdown-item" href="<?= e(url('/account/wishlist')) ?>"><i class="bi bi-heart"></i>Wishlist</a></li>
+                        <?php if (\Waimart\Services\SellerContext::current() !== null): ?>
+                            <li><a class="dropdown-item" href="<?= e(url('/seller')) ?>"><i class="bi bi-shop-window"></i>Seller Centre</a></li>
+                        <?php endif; ?>
                         <?php if ((int) $user['is_staff'] === 1): ?>
                             <li><a class="dropdown-item" href="<?= e(url('/admin')) ?>"><i class="bi bi-speedometer2"></i>Admin dashboard</a></li>
                         <?php endif; ?>
@@ -143,6 +147,7 @@ $searchForm = function (string $id) use ($q): string {
             <a class="d-block py-1" href="<?= e(url('/help')) ?>">Help Center</a>
             <a class="d-block py-1" href="<?= e(url('/track-order')) ?>">Track an order</a>
             <a class="d-block py-1" href="<?= e(url('/delivery-pickup')) ?>">Delivery &amp; pickup</a>
+            <a class="d-block py-1" href="<?= e(url('/sell')) ?>">Sell on Waimart</a>
         </div>
     </div>
 </div>

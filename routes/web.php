@@ -83,6 +83,33 @@ $router->post('/order/{number:WM-[A-Z0-9]{8}}/return', [OrderController::class, 
 $router->get('/track-order', [OrderController::class, 'lookupForm'], [], 'track-order');
 $router->post('/track-order', [OrderController::class, 'lookup'], ['throttle:20,300']);
 
+// ------------------------------------------------------------------ sell on Waimart (applicants)
+use Waimart\Controllers\SellController;
+
+$router->get('/sell', [SellController::class, 'landing'], [], 'sell');
+$router->get('/sell/terms', [SellController::class, 'terms']);
+$router->group(['prefix' => '/sell', 'middleware' => ['auth']], function ($r) {
+    $r->get('/apply', [SellController::class, 'form']);
+    $r->post('/apply', [SellController::class, 'save'], ['throttle:30,3600']);
+    $r->get('/application', [SellController::class, 'status']);
+    $r->post('/application/documents', [SellController::class, 'upload'], ['throttle:30,3600']);
+    $r->get('/application/documents/{id:\d+}', [SellController::class, 'download'], ['throttle:60,60']);
+    $r->post('/application/documents/{id:\d+}/delete', [SellController::class, 'deleteDocument']);
+    $r->post('/application/submit', [SellController::class, 'submit'], ['throttle:10,3600']);
+    $r->post('/application/reopen', [SellController::class, 'reopen'], ['throttle:10,3600']);
+});
+
+// ------------------------------------------------------------------ Seller Centre (approved sellers)
+use Waimart\Controllers\Seller;
+
+$router->group(['prefix' => '/seller', 'middleware' => ['seller']], function ($r) {
+    $r->get('/', [Seller\DashboardController::class, 'index'], [], 'seller');
+    $r->get('/profile', [Seller\ProfileController::class, 'edit']);
+    $r->post('/profile', [Seller\ProfileController::class, 'update'], ['seller_role:owner,manager']);
+    $r->get('/notifications', [Seller\ProfileController::class, 'notifications']);
+    $r->post('/notifications', [Seller\ProfileController::class, 'saveNotifications']);
+});
+
 // ------------------------------------------------------------------ staff / admin
 use Waimart\Controllers\Admin;
 
@@ -185,6 +212,22 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
         $r->post('/flash-sales/{id:\d+}', [Admin\ContentController::class, 'saveSale']);
         $r->post('/flash-sales/{id:\d+}/items', [Admin\ContentController::class, 'addItem']);
         $r->post('/flash-sales/{id:\d+}/items/{vid:\d+}/delete', [Admin\ContentController::class, 'removeItem']);
+    });
+
+    $r->group(['middleware' => ['can:sellers.view']], function ($r) {
+        $r->get('/sellers/applications', [Admin\SellerController::class, 'applications']);
+        $r->get('/sellers/applications/{id:\d+}', [Admin\SellerController::class, 'application']);
+        $r->get('/sellers/documents/{id:\d+}', [Admin\SellerController::class, 'document'], ['throttle:120,60']);
+        $r->get('/sellers', [Admin\SellerController::class, 'index']);
+        $r->get('/sellers/{id:\d+}', [Admin\SellerController::class, 'show']);
+    });
+    $r->group(['middleware' => ['can:sellers.manage']], function ($r) {
+        $r->post('/sellers/applications/{id:\d+}/review', [Admin\SellerController::class, 'startReview']);
+        $r->post('/sellers/applications/{id:\d+}/approve', [Admin\SellerController::class, 'approve']);
+        $r->post('/sellers/applications/{id:\d+}/reject', [Admin\SellerController::class, 'reject']);
+        $r->post('/sellers/{id:\d+}/suspend', [Admin\SellerController::class, 'suspend']);
+        $r->post('/sellers/{id:\d+}/reactivate', [Admin\SellerController::class, 'reactivate']);
+        $r->post('/sellers/{id:\d+}/verify', [Admin\SellerController::class, 'verify']);
     });
 
     $r->get('/returns', [Admin\CustomerServiceController::class, 'returns'], ['can:returns.manage']);

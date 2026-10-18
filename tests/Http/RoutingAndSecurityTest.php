@@ -47,7 +47,7 @@ final class RoutingAndSecurityTest extends HttpTestCase
             ['/config/config.local.php'], ['/config/config.php'], ['/app/helpers.php'], ['/bootstrap.php'],
             ['/composer.json'], ['/storage/logs/'], ['/database/migrations/001_foundation.sql'], ['/vendor/autoload.php'],
             ['/.git/config'], ['/docs/ARCHITECTURE.md'], ['/bin/install.php'], ['/tests/bootstrap.php'],
-            ['/README.md'], ['/storage/backups/'], ['/bin/restore.php'],
+            ['/README.md'], ['/storage/backups/'], ['/bin/restore.php'], ['/storage/private/seller-docs/.gitkeep'], ['/storage/private/'],
         ];
     }
 

@@ -49,9 +49,17 @@ final class SettingsService
         // 'min'/'max' on numeric strings are lengths here (Till 5–8 digits, Paybill 5–7 digits).
         Validator::validate($in, $rules, $labels);
 
+        // Seller onboarding documents (structured setting, edited as one choice per document type).
+        $docPolicy = isset($in['doc_mode']) && is_array($in['doc_mode']) ? SellerDocumentPolicy::encode($in['doc_mode']) : null;
+
         $before = [];
         $after = [];
-        App::db()->transaction(function () use ($in, &$before, &$after) {
+        App::db()->transaction(function () use ($in, &$before, &$after, $docPolicy) {
+            if ($docPolicy !== null && Settings::get('seller_required_documents') !== $docPolicy) {
+                $before['seller_required_documents'] = Settings::get('seller_required_documents');
+                $after['seller_required_documents'] = $docPolicy;
+                Settings::set('seller_required_documents', $docPolicy);
+            }
             foreach (self::FIELDS as $key => [, $rule]) {
                 $value = $rule === 'bool' ? (!empty($in[$key]) ? '1' : '0') : trim((string) ($in[$key] ?? ''));
                 if ($key === 'mpesa_phone_number' && $value !== '') {

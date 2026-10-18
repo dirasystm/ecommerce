@@ -18,10 +18,10 @@ const browser = await puppeteer.launch({ executablePath: EDGE, headless: true, a
 const page = await browser.newPage();
 await page.setViewport({ width: 1280, height: 900 });
 if (process.env.WAIMART_LOGIN_EMAIL) {
-    await page.goto(BASE + '/admin/login', { waitUntil: 'networkidle0' });
+    await page.goto(BASE + (process.env.WAIMART_LOGIN_PATH || '/admin/login'), { waitUntil: 'networkidle0' });
     await page.type('#email', process.env.WAIMART_LOGIN_EMAIL);
     await page.type('#password', process.env.WAIMART_LOGIN_PASSWORD || '');
-    await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), page.click('button[type="submit"]')]);
+    await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), page.$eval('#password', (el) => el.form.requestSubmit())]);
 }
 let blocking = 0;
 for (const p of paths) {

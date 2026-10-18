@@ -48,6 +48,7 @@ try {
                     <h3>About Waimart</h3>
                     <ul>
                         <li><a href="<?= e(url('/about')) ?>">About us</a></li>
+                        <li><a href="<?= e(url('/sell')) ?>">Sell on Waimart</a></li>
                         <li><a href="<?= e(url('/terms')) ?>">Terms &amp; conditions</a></li>
                         <li><a href="<?= e(url('/privacy')) ?>">Privacy policy</a></li>
                     </ul>

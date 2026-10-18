@@ -84,6 +84,7 @@ final class Auth
     {
         self::$user = false;
         self::$permissions = null;
+        \Waimart\Services\SellerContext::reset();
     }
 
     /** @return list<string> */

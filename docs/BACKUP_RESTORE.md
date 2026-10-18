@@ -5,7 +5,8 @@
 | What | Where | Why |
 |---|---|---|
 | The database | MariaDB `waimart` | Orders, customers, payments, stock and its full movement ledger, audit log, settings |
-| Uploaded images | `public/uploads/` | Product and banner images. These are files, so they are **not** in the database dump. |
+| Uploaded images | `public/uploads/` | Product and banner images and store logos. These are files, so they are **not** in the database dump. |
+| Seller documents | `storage/private/` | Verification documents uploaded by seller applicants. Private files, never web-accessible, and **not** in the database dump. |
 | Local config | `config/config.local.php` | Database password and the **app key**, which signs and encrypts pickup collection codes and other tokens. Without the same key, open pickup orders need new codes and outstanding emailed links stop working. |
 
 `bin/backup.php` saves all three.
@@ -24,6 +25,7 @@ Each run writes to `storage/backups/` (never web-accessible):
 waimart-20261018-020000.sql          consistent dump (--single-transaction: no locking, shop stays open)
 waimart-20261018-020000-files/
     uploads/                          copy of public/uploads
+    private/                          copy of storage/private (seller documents)
     config.local.php                  copy of the local secrets
 ```
 
@@ -60,7 +62,7 @@ php bin/migrate.php
 | `--file` | The `.sql` dump to load (required) |
 | `--database` | Target database (default: the configured main database) |
 | `--force` | Required if the target already has tables. **Before anything is replaced, the current data is dumped** to `storage/backups/pre-restore-<db>-<time>.sql`, so a restore can itself be undone. |
-| `--with-uploads` | Also copies `<backup>-files/uploads` back into `public/uploads`. Existing files with the same name are overwritten; nothing is deleted. |
+| `--with-uploads` | Also copies `<backup>-files/uploads` back into `public/uploads` and `<backup>-files/private` back into `storage/private`. Existing files with the same name are overwritten; nothing is deleted. |
 
 When it finishes, the script reports the number of tables, products and orders, and the last migration in the backup. `php bin/migrate.php` then applies any migrations newer than the backup (it does nothing if there are none).
 

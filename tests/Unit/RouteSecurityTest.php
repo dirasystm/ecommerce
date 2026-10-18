@@ -43,6 +43,40 @@ final class RouteSecurityTest extends TestCase
         }
     }
 
+    public function testEverySellerCentreRouteRequiresSellerMembershipAndNeverStaff(): void
+    {
+        $count = 0;
+        foreach ($this->routes() as $r) {
+            if ($r['pattern'] === '/seller' || str_starts_with($r['pattern'], '/seller/')) {
+                $count++;
+                $this->assertContains('seller', $r['middleware'], "{$r['method']} {$r['pattern']} must require a seller account");
+                // Seller pages must not depend on, or grant, staff permissions.
+                $this->assertEmpty(array_filter($r['middleware'], fn ($m) => $m === 'staff' || str_starts_with($m, 'can:')),
+                    "{$r['method']} {$r['pattern']} must not mix staff permissions into the Seller Centre");
+            }
+        }
+        $this->assertGreaterThan(0, $count);
+    }
+
+    public function testSellerApplicationRoutesRequireSignInExceptPublicPages(): void
+    {
+        $public = ['/sell', '/sell/terms'];
+        foreach ($this->routes() as $r) {
+            if (str_starts_with($r['pattern'], '/sell') && !str_starts_with($r['pattern'], '/seller') && !in_array($r['pattern'], $public, true)) {
+                $this->assertContains('auth', $r['middleware'], "{$r['method']} {$r['pattern']} must require sign-in");
+            }
+        }
+    }
+
+    public function testSellerDecisionsNeedManagePermission(): void
+    {
+        foreach ($this->routes() as $r) {
+            if ($r['method'] === 'POST' && str_starts_with($r['pattern'], '/admin/sellers')) {
+                $this->assertContains('can:sellers.manage', $r['middleware'], "POST {$r['pattern']} must require sellers.manage");
+            }
+        }
+    }
+
     public function testNoRouteOptsOutOfCsrf(): void
     {
         foreach ($this->routes() as $r) {
@@ -55,6 +89,7 @@ final class RouteSecurityTest extends TestCase
         $mustThrottle = [
             'POST /login', 'POST /register', 'POST /forgot-password', 'POST /reset-password', 'POST /admin/login',
             'POST /track-order', 'POST /checkout', 'POST /cart/add', 'GET /search',
+            'POST /sell/apply', 'POST /sell/application/documents', 'POST /sell/application/submit',
         ];
         $have = [];
         foreach ($this->routes() as $r) {
@@ -69,7 +104,7 @@ final class RouteSecurityTest extends TestCase
 
     public function testStateChangingRoutesArePostOnly(): void
     {
-        $verbs = '/(delete|cancel|verify|reject|toggle|pay|resend|revoke|status|default|logout|add|remove|update)(\/|$)/';
+        $verbs = '/(delete|cancel|verify|reject|toggle|pay|resend|revoke|status|default|logout|add|remove|update|approve|suspend|reactivate|submit|reopen|review)(\/|$)/';
         foreach ($this->routes() as $r) {
             if ($r['method'] === 'GET') {
                 $this->assertDoesNotMatchRegularExpression($verbs, $r['pattern'], "GET {$r['pattern']} looks state-changing");

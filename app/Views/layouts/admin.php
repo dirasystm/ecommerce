@@ -27,6 +27,10 @@ $nav = [
         ['/admin/cod', 'cash-coin', 'Cash on delivery', 'cod.collect'],
         ['/admin/refunds', 'arrow-return-left', 'Refunds', 'refunds.manage'],
     ]],
+    ['Marketplace', [
+        ['/admin/sellers/applications', 'inbox', 'Seller applications', 'sellers.view'],
+        ['/admin/sellers', 'shop-window', 'Sellers', 'sellers.view'],
+    ]],
     ['Fulfilment', [
         ['/admin/delivery-zones', 'truck', 'Delivery zones', 'delivery.manage'],
         ['/admin/pickup-points', 'shop', 'Pickup points', 'pickup_points.manage'],
@@ -47,8 +51,21 @@ $nav = [
         ['/admin/settings', 'gear', 'Settings', 'settings.manage'],
     ]],
 ];
-$active = function (string $href) use ($path): bool {
-    return $href === '/admin' ? $path === '/admin' : str_starts_with($path, $href);
+// Highlight only the most specific matching link (e.g. /admin/sellers/applications, not also /admin/sellers).
+$allHrefs = array_merge(...array_map(fn ($g) => array_column($g[1], 0), $nav));
+$active = function (string $href) use ($path, $allHrefs): bool {
+    if ($href === '/admin') {
+        return $path === '/admin';
+    }
+    if (!str_starts_with($path, $href)) {
+        return false;
+    }
+    foreach ($allHrefs as $other) {
+        if (strlen($other) > strlen($href) && str_starts_with($path, $other)) {
+            return false;
+        }
+    }
+    return true;
 };
 $renderNav = function () use ($nav, $active): string {
     ob_start();

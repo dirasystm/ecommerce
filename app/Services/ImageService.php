@@ -31,11 +31,11 @@ final class ImageService
 
     /**
      * @param array{name?:string,tmp_name?:string,error?:int,size?:int} $file
-     * @param 'products'|'banners' $folder
+     * @param 'products'|'banners'|'stores' $folder
      */
     public function storeImage(array $file, string $folder, int $maxEdge): string
     {
-        if (!in_array($folder, ['products', 'banners'], true)) {
+        if (!in_array($folder, ['products', 'banners', 'stores'], true)) {
             throw new \InvalidArgumentException('Unknown upload folder.');
         }
         $tmp = (string) ($file['tmp_name'] ?? '');
@@ -94,7 +94,7 @@ final class ImageService
     /** Deletes a previously stored upload (only inside public/uploads/products). */
     public function delete(string $relPath): void
     {
-        if (!preg_match('#^uploads/(products|banners)/[\w/-]+\.(webp|svg)$#', $relPath) || str_contains($relPath, '..')) {
+        if (!preg_match('#^uploads/(products|banners|stores)/[\w/-]+\.(webp|svg)$#', $relPath) || str_contains($relPath, '..')) {
             return;
         }
         $abs = App::root() . '/public/' . $relPath;

@@ -42,7 +42,8 @@ final class Response
     {
         $old = array_filter(
             $req->post,
-            fn ($k) => !in_array($k, ['password', 'password_confirmation', 'current_password', '_csrf'], true),
+            // Secrets and payout account details are never kept in the session for re-display.
+            fn ($k) => !in_array($k, ['password', 'password_confirmation', 'current_password', '_csrf', 'payout_phone', 'account_number'], true),
             ARRAY_FILTER_USE_KEY
         );
         Session::flash('_old_input', $old);
