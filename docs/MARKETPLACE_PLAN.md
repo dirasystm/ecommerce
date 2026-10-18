@@ -1,6 +1,6 @@
 # Waimart Multi-Vendor Upgrade — Phase 1: Inspection, Impact Analysis and Plan
 
-**Date:** 18 October 2026 · **Status:** Phases 1–9 complete (see the "Phase N results" sections at the end); awaiting approval to start Phase 10
+**Date:** 18 October 2026 · **Status:** Phases 1–9 complete; Phase 10 part 1 done, the rest folded into the Basemall rebrand's final verification (see the "Phase N results" sections at the end)
 
 This document is for the client and for whoever builds or reviews the upgrade. It records the current system as inspected, what a multi-vendor marketplace changes, the target design, and the phased plan. No code or data has been changed in Phase 1.
 
@@ -741,3 +741,51 @@ Three new **Settings → Marketplace** fields control this:
 **Known limitations (to note for go-live):**
 - Refunds are still paid manually, as before. Recovering money a seller owes relies on future earnings; there is no separate collection process.
 - A case is about a whole seller part. Item-level detail goes in the messages.
+
+---
+
+## Phase 10 results, part 1 (18 October 2026): verification and money fixes
+
+Phase 10 was paused here at the owner's request, to start the Basemall rebrand. The remaining Phase 10 items are folded into the rebrand's final verification stage, so the platform is fully verified once, after both changes:
+- the full browser sweep of every marketplace page;
+- the ledger load test;
+- the docs.
+
+**Bugs found and fixed:**
+1. **Over-refund in a race (real processes).** A return refund and a case refund decided at the same moment on the same seller part could both pass the "still refundable" check. The customer would be refunded 3,000 for a 2,000 purchase; it failed in round 3 of 5.
+   - Fix: every refund decision locks the seller part until it commits (`RefundService::refundableForPart($id, true)`).
+   - 20 contested rounds now pass.
+2. **Decline after a case refund.** Declining a part after a case refund refunded the customer the full price again, and reversed the seller's full sale a second time.
+   - Fix: the decline refunds only what is still refundable, and `reversePart` reverses only what is left, so the part nets to exactly zero.
+3. **Cancelled refund on a declined part credited the seller** for items never supplied. Found by the money simulation (seed 424242).
+   - Fix: the cancelled refund's deduction is given back (that refund nets to zero), and the same amount is reversed again as "not supplied" (the part stays at zero).
+4. **Rounding drift across several refunds.** Commission returned could end 0.01 short. Found by seed 30 of a 40-seed sweep.
+   - Fix: refund adjustments are cumulative targets (the share of all standing refunds, rounded once), so a part refunded in full lands exactly on its sale and commission.
+
+**New verification:**
+- **`RefundConcurrencyTest`:** 5 rounds per run of a return and a case racing on one part.
+- **`MarketplaceMoneySimulationTest`:** a randomized, seeded simulation. Each seed runs 24 orders across 3 sellers (one at 7.5%) and the Official Store, with random declines, M-Pesa and COD pickup, partial returns, case refunds before and after delivery, cancelled refunds, releases and payouts (some rejected, some left open, some paid). It then checks:
+  - every reconciliation check;
+  - no part or order refunded above what was paid;
+  - balances = ledger = summary;
+  - reserved = open payouts;
+  - pending, reserved and paid never negative;
+  - withdrawn parts at zero;
+  - no Official Store ledger rows;
+  - stock consistent.
+
+  Three fixed seeds run in the suite. For a deeper sweep, set `WAIMART_SIM_SEEDS="1-40"`; 40 seeds passed after the fixes.
+- **`IdorMatrixHttpTest`:** every Seller Centre route with an id (17, pinned) and every customer order and case route is taken from the live route table and filled with another party's real ids.
+  - All return 404 for another seller, another customer and a guest; the victim's data is unchanged.
+  - Sellers and customers cannot reach staff routes.
+- **`bin/check-integrity.php`:** a read-only operations tool with 18 data-integrity checks plus the 8 reconciliation checks:
+  - order and part totals;
+  - seller attribution;
+  - stock versus reservations;
+  - refund caps;
+  - one open return per part;
+  - the ledger triggers.
+
+  Exit code 1 on any failure. On the dev database all 26 checks pass.
+
+**Full suite: 389 tests, all passing.**

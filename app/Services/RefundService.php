@@ -21,10 +21,15 @@ final class RefundService
         $this->db = $db ?? App::db();
     }
 
-    /** What the customer paid for one seller part (after its discount share) less refunds already owed or paid on it. */
-    public function refundableForPart(int $sellerOrderId): string
+    /**
+     * What the customer paid for one seller part (after its discount share) less refunds already owed or paid on it.
+     * Callers about to create a refund pass $lock = true (inside their transaction): the part row stays locked until
+     * they commit, so two refund decisions on the same part (a return and a case, say) can never both use the same
+     * money — the second waits and then sees the first one's refund.
+     */
+    public function refundableForPart(int $sellerOrderId, bool $lock = false): string
     {
-        $so = $this->db->one('SELECT items_subtotal, discount_share FROM seller_orders WHERE id = ?', [$sellerOrderId]);
+        $so = $this->db->one('SELECT items_subtotal, discount_share FROM seller_orders WHERE id = ?' . ($lock ? ' FOR UPDATE' : ''), [$sellerOrderId]);
         if ($so === null) {
             return '0.00';
         }

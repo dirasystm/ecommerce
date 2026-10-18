@@ -212,7 +212,7 @@ final class ReturnService
             if ($this->db->value("SELECT 1 FROM return_items WHERE return_id = ? AND inspection = 'pending'", [$returnId])) {
                 throw ValidationException::withMessage('Inspect every item before completing the return.');
             }
-            $max = $this->maxRefund($returnId);
+            $max = $this->maxRefund($returnId, true);   // holds the seller part until commit (no concurrent over-refund)
             if (Money::cmp($amount, $max) > 0) {
                 throw new ValidationException(['refund_amount' => 'The refund cannot exceed ' . Money::format($max) . ' (the value of the returned items).']);
             }
@@ -256,7 +256,7 @@ final class ReturnService
      * The most that may be refunded for a return: the value of its units at the price paid, and never more than
      * the customer actually paid for that seller part (after any discount) less what is already refunded on it.
      */
-    public function maxRefund(int $returnId): string
+    public function maxRefund(int $returnId, bool $lock = false): string
     {
         $value = Money::normalize((string) $this->db->value(
             'SELECT COALESCE(SUM(ri.quantity * oi.unit_price), 0) FROM return_items ri JOIN order_items oi ON oi.id = ri.order_item_id WHERE ri.return_id = ?',
@@ -266,7 +266,7 @@ final class ReturnService
         if (!$soId) {
             return $value;   // returns recorded before the marketplace upgrade
         }
-        return Money::min($value, (new RefundService($this->db))->refundableForPart((int) $soId));
+        return Money::min($value, (new RefundService($this->db))->refundableForPart((int) $soId, $lock));
     }
 
     /** @param array<string,mixed> $extra @return array<string,mixed> */

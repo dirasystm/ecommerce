@@ -192,7 +192,7 @@ final class DisputeService
                 if (!in_array($order['payment_status'], ['verified', 'cod_collected', 'refund_due', 'refunded'], true)) {
                     throw ValidationException::withMessage('Nothing has been paid for this order yet, so there is nothing to refund.');
                 }
-                $left = (new RefundService($this->db))->refundableForPart((int) $d['seller_order_id']);
+                $left = (new RefundService($this->db))->refundableForPart((int) $d['seller_order_id'], true);   // locked until commit
                 if ($resolution === 'refund_full') {
                     $refund = $left;
                 } else {

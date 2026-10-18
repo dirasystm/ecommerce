@@ -235,7 +235,8 @@ final class SellerOrderWorkflow
         if (!in_array($order['payment_status'], ['verified', 'refund_due', 'cod_collected'], true)) {
             return;   // unpaid / COD not yet collected: the amount due simply drops (SellerOrderService::amountDue)
         }
-        $amount = Money::sub((string) $so['items_subtotal'], (string) $so['discount_share']);
+        // What was paid for the part less anything already refunded on it (e.g. a case resolved while in progress).
+        $amount = (new RefundService($this->db))->refundableForPart((int) $so['id'], true);
         if (Money::cmp($amount, '0') <= 0) {
             return;
         }

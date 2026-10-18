@@ -115,16 +115,23 @@ final class SellerLedgerService
         if ($so === null || $so['earnings_status'] !== 'pending') {
             return;   // never accrued (nothing received) or already reversed
         }
-        $sale = $this->db->one("SELECT id, amount FROM seller_ledger_entries WHERE posting_key = ?", ["sale:so:$sellerOrderId"]);
-        $com = $this->db->one("SELECT id, amount FROM seller_ledger_entries WHERE posting_key = ?", ["commission:so:$sellerOrderId"]);
-        if ($sale !== null) {
-            $this->post((int) $so['seller_id'], 'cancellation', 'pending', Money::normalize(bcmul((string) $sale['amount'], '-1', 2)), "cancel:so:$sellerOrderId:sale",
-                ['seller_order_id' => $sellerOrderId, 'reverses_entry_id' => $sale['id'], 'actor_user_id' => $actorUserId, 'note' => mb_substr('Not supplied: ' . $reason, 0, 500)]);
-        }
-        if ($com !== null) {
-            $this->post((int) $so['seller_id'], 'commission_reversal', 'pending', Money::normalize(bcmul((string) $com['amount'], '-1', 2)), "cancel:so:$sellerOrderId:commission",
-                ['seller_order_id' => $sellerOrderId, 'reverses_entry_id' => $com['id'], 'actor_user_id' => $actorUserId, 'note' => 'Commission reversed']);
-        }
+        // Reverse what is LEFT on the part, so it nets to exactly zero even if a refund (e.g. a case resolved while the
+        // part was in progress) already took part of it back. Commission side: commission entries, their reversals and
+        // cancelled-refund corrections of those; everything else is the sale side.
+        $sale = $this->db->one("SELECT id FROM seller_ledger_entries WHERE posting_key = ?", ["sale:so:$sellerOrderId"]);
+        $com = $this->db->one("SELECT id FROM seller_ledger_entries WHERE posting_key = ?", ["commission:so:$sellerOrderId"]);
+        $sides = (array) $this->db->one(
+            "SELECT COALESCE(SUM(amount), 0) AS total,
+                    COALESCE(SUM(CASE WHEN entry_type IN ('commission','commission_reversal') OR posting_key LIKE 'refund:%:commission:cancel' THEN amount END), 0) AS commission
+               FROM seller_ledger_entries WHERE seller_order_id = ? AND bucket = 'pending'",
+            [$sellerOrderId]
+        );
+        $comLeft = Money::normalize((string) $sides['commission']);
+        $saleLeft = Money::sub((string) $sides['total'], $comLeft);
+        $this->post((int) $so['seller_id'], 'cancellation', 'pending', Money::normalize(bcmul($saleLeft, '-1', 2)), "cancel:so:$sellerOrderId:sale",
+            ['seller_order_id' => $sellerOrderId, 'reverses_entry_id' => $sale['id'] ?? null, 'actor_user_id' => $actorUserId, 'note' => mb_substr('Not supplied: ' . $reason, 0, 500)]);
+        $this->post((int) $so['seller_id'], 'commission_reversal', 'pending', Money::normalize(bcmul($comLeft, '-1', 2)), "cancel:so:$sellerOrderId:commission",
+            ['seller_order_id' => $sellerOrderId, 'reverses_entry_id' => $com['id'] ?? null, 'actor_user_id' => $actorUserId, 'note' => 'Commission reversed']);
         $this->db->exec("UPDATE seller_orders SET earnings_status = 'reversed' WHERE id = ?", [$sellerOrderId]);
     }
 
@@ -152,21 +159,25 @@ final class SellerLedgerService
         if (Money::cmp($paid, '0') <= 0) {
             return false;
         }
-        $f = bcdiv($amount, $paid, 10);
+        // Cumulative, not per refund: the target is the share of ALL refunds still standing on the part (this one
+        // included), rounded once; this refund posts the difference from what earlier refunds already posted. So
+        // rounding never drifts, and a part refunded in full lands on exactly its sale and commission.
+        $standing = (string) $this->db->value("SELECT COALESCE(SUM(amount), 0) FROM refunds WHERE seller_order_id = ? AND status <> 'cancelled' AND id <= ?", [$sellerOrderId, $refundId]);
+        $f = bcdiv($standing, $paid, 10);
         if (bccomp($f, '1', 10) > 0) {
             $f = '1';
         }
-        // Cap the cumulative adjustments at what was accrued for the part (rounding can never over-charge).
-        $done = array_column($this->db->all(
-            "SELECT entry_type, SUM(amount) AS t FROM seller_ledger_entries WHERE seller_order_id = ? AND entry_type IN ('refund','commission_reversal') AND posting_key LIKE 'refund:%' GROUP BY entry_type",
-            [$sellerOrderId]
-        ), 't', 'entry_type');
-        $saleLeft = Money::add((string) $so['items_subtotal'], (string) ($done['refund'] ?? '0'));
-        $comLeft = Money::sub((string) $so['commission_total'], (string) ($done['commission_reversal'] ?? '0'));
-        $sale = Money::round(bcmul((string) $so['items_subtotal'], $f, 10));
-        $com = Money::round(bcmul((string) $so['commission_total'], $f, 10));
-        $sale = Money::cmp($sale, $saleLeft) > 0 ? $saleLeft : $sale;
-        $com = Money::cmp($com, $comLeft) > 0 ? $comLeft : $com;
+        $done = (array) $this->db->one(
+            "SELECT COALESCE(-SUM(CASE WHEN e.entry_type = 'refund' THEN e.amount END), 0) AS sale,
+                    COALESCE(SUM(CASE WHEN e.entry_type = 'commission_reversal' THEN e.amount END), 0) AS com
+               FROM seller_ledger_entries e JOIN refunds r ON r.id = e.refund_id
+              WHERE e.seller_order_id = ? AND r.status <> 'cancelled' AND r.id <> ? AND e.posting_key LIKE 'refund:%'",
+            [$sellerOrderId, $refundId]
+        );
+        $sale = Money::sub(Money::round(bcmul((string) $so['items_subtotal'], $f, 10)), (string) $done['sale']);
+        $com = Money::sub(Money::round(bcmul((string) $so['commission_total'], $f, 10)), (string) $done['com']);
+        $sale = Money::max('0.00', $sale);
+        $com = Money::max('0.00', $com);
 
         $bucket = $so['earnings_status'] === 'pending' ? 'pending' : 'available';
         $ctx = ['seller_order_id' => $sellerOrderId, 'refund_id' => $refundId, 'actor_user_id' => $actorUserId];
@@ -181,11 +192,20 @@ final class SellerLedgerService
         $rows = $this->db->all("SELECT * FROM seller_ledger_entries WHERE posting_key IN (?, ?)", ["refund:$refundId:sale", "refund:$refundId:commission"]);
         foreach ($rows as $e) {
             $so = $this->db->one('SELECT earnings_status FROM seller_orders WHERE id = ? FOR UPDATE', [$e['seller_order_id']]);
-            $bucket = ($so['earnings_status'] ?? '') === 'pending' ? 'pending' : 'available';
-            $this->post((int) $e['seller_id'], 'correction', $bucket, Money::normalize(bcmul((string) $e['amount'], '-1', 2)), $e['posting_key'] . ':cancel', [
-                'seller_order_id' => $e['seller_order_id'], 'refund_id' => $refundId, 'reverses_entry_id' => $e['id'], 'actor_user_id' => $actorUserId,
-                'note' => 'Refund cancelled',
-            ]);
+            $status = (string) ($so['earnings_status'] ?? '');
+            // A reversed part's entries all sit in pending (it was never released).
+            $bucket = in_array($status, ['pending', 'reversed'], true) ? 'pending' : 'available';
+            $back = Money::normalize(bcmul((string) $e['amount'], '-1', 2));
+            $side = str_ends_with((string) $e['posting_key'], ':commission') ? 'commission' : 'sale';
+            $ctx = ['seller_order_id' => $e['seller_order_id'], 'refund_id' => $refundId, 'actor_user_id' => $actorUserId];
+            $this->post((int) $e['seller_id'], 'correction', $bucket, $back, $e['posting_key'] . ':cancel', $ctx + ['reverses_entry_id' => $e['id'], 'note' => 'Refund cancelled']);
+            if ($status === 'reversed') {
+                // The part was not supplied after all: what the cancelled refund gave back is reversed with the part,
+                // so the part stays at exactly zero (the seller earns nothing on items never supplied).
+                $this->post((int) $e['seller_id'], $side === 'sale' ? 'cancellation' : 'commission_reversal', 'pending', Money::normalize(bcmul($back, '-1', 2)),
+                    "cancel:so:{$e['seller_order_id']}:refund:$refundId:$side",
+                    ['seller_order_id' => $e['seller_order_id'], 'actor_user_id' => $actorUserId, 'note' => 'Not supplied (refund cancelled)']);   // part of the withdrawal, not of the refund
+            }
         }
     }
 

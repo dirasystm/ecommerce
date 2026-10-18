@@ -312,6 +312,41 @@ final class MarketplaceAfterSalesTest extends DbTestCase
         $this->assertReconciled();
     }
 
+    public function testDecliningAPartAfterACaseRefundNeverRefundsTwiceOrOverCharges(): void
+    {
+        $x = $this->order();
+        (new SellerOrderWorkflow($this->db))->transition($x['pa'], 'accepted', ['type' => 'seller', 'id' => $this->ownerA, 'seller_id' => $this->a]);
+        $svc = new DisputeService($this->db);
+        $d = $svc->open($x['pa'], 'customer', null, 'not_received', 'It is taking very long, I need part of my money back.');
+        $svc->resolve((int) $d['id'], $this->staff, 'refund_partial', 'Goodwill refund for the delay', '500');
+        $this->assertSame('1350.00', $this->bal($this->a)['pending'], '1,800 − (500 − 50)');
+
+        // The seller then cannot supply it after all.
+        (new SellerOrderWorkflow($this->db))->transition($x['pa'], 'rejected', ['type' => 'seller', 'id' => $this->ownerA, 'seller_id' => $this->a], ['reason' => 'Out of stock after all']);
+        $refunds = array_column($this->db->all("SELECT amount FROM refunds WHERE seller_order_id = ? AND status <> 'cancelled' ORDER BY id", [$x['pa']]), 'amount');
+        $this->assertSame(['500.00', '1500.00'], $refunds, 'the decline refunds only what is left: 2,000 in total, never 2,500');
+        $this->assertSame('0.00', Money::normalize((string) $this->db->value('SELECT SUM(amount) FROM seller_ledger_entries WHERE seller_order_id = ?', [$x['pa']])),
+            'the part nets to exactly zero for the seller');
+        $this->assertSame('0.00', $this->bal($this->a)['pending']);
+        $this->assertReconciled();
+    }
+
+    public function testCancellingACaseRefundOnADeclinedPartKeepsThePartAtZero(): void
+    {
+        // Found by the money simulation (seed 424242): case refund → part declined → refund cancelled.
+        $x = $this->order();
+        (new SellerOrderWorkflow($this->db))->transition($x['pa'], 'accepted', ['type' => 'seller', 'id' => $this->ownerA, 'seller_id' => $this->a]);
+        $svc = new DisputeService($this->db);
+        $d = $svc->open($x['pa'], 'customer', null, 'not_received', 'It is taking very long, I need part of my money back.');
+        $svc->resolve((int) $d['id'], $this->staff, 'refund_partial', 'Goodwill refund for the delay', '240');
+        (new SellerOrderWorkflow($this->db))->transition($x['pa'], 'rejected', ['type' => 'seller', 'id' => $this->ownerA, 'seller_id' => $this->a], ['reason' => 'Out of stock']);
+        (new RefundService($this->db))->cancel((int) $this->db->value('SELECT id FROM refunds WHERE dispute_id = ?', [$d['id']]), $this->staff, 'Agreed with the customer');
+        $this->assertSame('0.00', Money::normalize((string) $this->db->value('SELECT SUM(amount) FROM seller_ledger_entries WHERE seller_order_id = ?', [$x['pa']])),
+            'no earnings on items never supplied, even after the refund is cancelled');
+        $this->assertSame('0.00', $this->bal($this->a)['pending']);
+        $this->assertReconciled();
+    }
+
     public function testDisputeRulesAndWithdrawal(): void
     {
         $x = $this->order();
