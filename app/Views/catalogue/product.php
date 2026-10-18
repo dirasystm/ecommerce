@@ -54,6 +54,9 @@ $qtyMax = max(1, min($selected['available'], $maxPerOrder));
                                     <div class="small mb-1">Brand: <a href="<?= e(url('/brand/' . $p['brand_slug'])) ?>"><?= e($p['brand_name']) ?></a></div>
                                 <?php endif; ?>
                                 <h1 class="wm-product-title"><?= e($p['name']) ?></h1>
+                                <div class="wm-soldby mb-1">Sold by <a href="<?= e(url('/store/' . $p['seller_slug'])) ?>"><?= e($p['seller_name']) ?></a>
+                                    <?php if ((int) $p['seller_is_platform'] === 1): ?><span class="badge badge-soft-success ms-1"><i class="bi bi-shield-check" aria-hidden="true"></i> Official</span>
+                                    <?php elseif ((int) $p['seller_is_verified'] === 1): ?><span class="badge badge-soft-success ms-1"><i class="bi bi-patch-check" aria-hidden="true"></i> Verified seller</span><?php endif; ?></div>
                             </div>
                             <?php if ($inWishlist !== null): ?>
                                 <form method="post" action="<?= e(url('/wishlist/' . $p['id'] . '/toggle')) ?>" data-wishlist>
@@ -189,6 +192,15 @@ $qtyMax = max(1, min($selected['available'], $maxPerOrder));
 
         <!-- Delivery & returns -->
         <aside class="col-lg-3">
+            <div class="wm-card p-3 mb-3">
+                <h2 class="fs-6 fw-bold text-uppercase mb-2">Seller</h2>
+                <p class="mb-1 fw-semibold"><?= e($p['seller_name']) ?></p>
+                <?php if (!empty($sellerRating) && $sellerRating['count'] > 0): ?>
+                    <div class="wm-rating small mb-1"><?= stars((float) $sellerRating['avg']) ?> <?= e(number_format($sellerRating['avg'], 1)) ?> (<?= (int) $sellerRating['count'] ?> reviews)</div>
+                <?php endif; ?>
+                <a class="small" href="<?= e(url('/store/' . $p['seller_slug'])) ?>">Visit store <i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+                <p class="small text-muted mt-2 mb-0">Paid to Waimart and delivered or collected through Waimart.</p>
+            </div>
             <div class="wm-card p-3 wm-delivery-box">
                 <h2 class="fs-6 fw-bold text-uppercase mb-3">Delivery &amp; returns</h2>
                 <div class="d-flex gap-2 mb-3">

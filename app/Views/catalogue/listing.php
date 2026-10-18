@@ -16,17 +16,30 @@ $allowRelevance ??= false;
 $flashEndsAt ??= null;
 $emptyMessage ??= 'No products match your filters.';
 $searchQuery ??= null;
+$store ??= null;          // seller store page: profile header above the listing
+$categoryLinks ??= [];   // store page: in-store category links instead of site categories
+$hiddenParams ??= [];    // extra query values that filters and sorting must keep (e.g. store category)
 
 $sorts = ($allowRelevance ? ['relevance' => 'Best match'] : []) + ProductListing::SORTS;
 $activeFilters = !empty($criteria['brands']) || $criteria['min'] !== null || $criteria['max'] !== null || $criteria['in_stock'] || $criteria['on_sale'];
 
-$filterForm = function (string $idPrefix) use ($result, $criteria, $subcategories, $currentSlug, $hideBrandFacet, $path, $searchQuery): string {
+$filterForm = function (string $idPrefix) use ($result, $criteria, $subcategories, $currentSlug, $hideBrandFacet, $path, $searchQuery, $categoryLinks, $hiddenParams): string {
     ob_start(); ?>
     <form method="get" action="<?= e(url($path)) ?>" class="wm-filters">
         <?php if ($searchQuery !== null): ?><input type="hidden" name="q" value="<?= e($searchQuery) ?>"><?php endif; ?>
         <?php if ($criteria['sort'] !== ''): ?><input type="hidden" name="sort" value="<?= e($criteria['sort']) ?>"><?php endif; ?>
+        <?php foreach ($hiddenParams as $hk => $hv): ?><input type="hidden" name="<?= e($hk) ?>" value="<?= e($hv) ?>"><?php endforeach; ?>
 
-        <?php if ($subcategories): ?>
+        <?php if ($categoryLinks): ?>
+            <fieldset class="wm-filter-group">
+                <legend>Category</legend>
+                <ul class="list-unstyled mb-0">
+                    <?php foreach ($categoryLinks as $cl): ?>
+                        <li><a href="<?= e($cl['url']) ?>" class="<?= $cl['active'] ? 'fw-bold text-body' : '' ?>" <?= $cl['active'] ? 'aria-current="page"' : '' ?>><?= e($cl['name']) ?></a></li>
+                    <?php endforeach; ?>
+                </ul>
+            </fieldset>
+        <?php elseif ($subcategories): ?>
             <fieldset class="wm-filter-group">
                 <legend>Category</legend>
                 <ul class="list-unstyled mb-0">
@@ -75,7 +88,7 @@ $filterForm = function (string $idPrefix) use ($result, $criteria, $subcategorie
 
         <div class="d-grid gap-2 p-3">
             <button class="btn btn-wm" type="submit">Apply filters</button>
-            <a class="btn btn-link btn-sm" href="<?= e(url($path, array_filter(['q' => $searchQuery, 'sort' => $criteria['sort'] ?: null]))) ?>">Clear all</a>
+            <a class="btn btn-link btn-sm" href="<?= e(url($path, array_filter(['q' => $searchQuery, 'sort' => $criteria['sort'] ?: null] + $hiddenParams))) ?>">Clear all</a>
         </div>
     </form>
     <?php return (string) ob_get_clean();
@@ -94,6 +107,8 @@ $filterForm = function (string $idPrefix) use ($result, $criteria, $subcategorie
             <?php endforeach; ?>
         </ol>
     </nav>
+
+    <?php if ($store): ?><?= View::partial('catalogue/_store-header', ['store' => $store, 'total' => $result['total'], 'searchQuery' => $searchQuery]) ?><?php endif; ?>
 
     <div class="row g-3">
         <aside class="col-lg-3 d-none d-lg-block" aria-label="Filters">
@@ -117,7 +132,7 @@ $filterForm = function (string $idPrefix) use ($result, $criteria, $subcategorie
                             <i class="bi bi-funnel" aria-hidden="true"></i> Filter<?= $activeFilters ? ' •' : '' ?>
                         </button>
                         <form method="get" action="<?= e(url($path)) ?>" class="d-flex align-items-center gap-2" data-autosubmit>
-                            <?php foreach (['q' => $searchQuery, 'min' => $criteria['min'], 'max' => $criteria['max'], 'in_stock' => $criteria['in_stock'] ? '1' : null, 'on_sale' => $criteria['on_sale'] ? '1' : null] as $k => $v): ?>
+                            <?php foreach ($hiddenParams + ['q' => $searchQuery, 'min' => $criteria['min'], 'max' => $criteria['max'], 'in_stock' => $criteria['in_stock'] ? '1' : null, 'on_sale' => $criteria['on_sale'] ? '1' : null] as $k => $v): ?>
                                 <?php if ($v !== null && $v !== ''): ?><input type="hidden" name="<?= $k ?>" value="<?= e($v) ?>"><?php endif; ?>
                             <?php endforeach; ?>
                             <?php foreach ($criteria['brands'] ?? [] as $b): ?><input type="hidden" name="brand[]" value="<?= e($b) ?>"><?php endforeach; ?>

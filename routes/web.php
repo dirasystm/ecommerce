@@ -17,6 +17,7 @@ $router->get('/category/{slug:[a-z0-9-]+}', [CatalogueController::class, 'catego
 $router->get('/brand/{slug:[a-z0-9-]+}', [CatalogueController::class, 'brand'], [], 'brand');
 $router->get('/search', [CatalogueController::class, 'search'], ['throttle:120,60'], 'search');
 $router->get('/flash-sales', [CatalogueController::class, 'flashSales'], [], 'flash-sales');
+$router->get('/store/{slug:[a-z0-9-]+}', [CatalogueController::class, 'store'], ['throttle:120,60'], 'store');
 $router->get('/product/{slug:[a-z0-9-]+}', [ProductController::class, 'show'], [], 'product');
 $router->get('/health', [HealthController::class, 'show'], ['throttle:30,60'], 'health');
 

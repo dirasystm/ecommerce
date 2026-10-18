@@ -61,7 +61,11 @@ $renderNav = function () use ($nav, $active, $seller): string {
         <img src="<?= e(asset('img/logo-wordmark.png')) ?>" alt="Waimart" width="110" height="22"><span>Seller Centre</span>
     </a>
     <div class="ms-auto d-flex align-items-center gap-3">
-        <a class="text-white small d-none d-sm-inline" href="<?= e(url('/')) ?>" target="_blank" rel="noopener">View Waimart <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+        <?php if ($seller && $seller['status'] === 'active'): ?>
+            <a class="text-white small d-none d-sm-inline" href="<?= e(url('/store/' . $seller['slug'])) ?>" target="_blank" rel="noopener">View my store <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+        <?php else: ?>
+            <a class="text-white small d-none d-sm-inline" href="<?= e(url('/')) ?>" target="_blank" rel="noopener">View Waimart <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+        <?php endif; ?>
         <span class="text-white small d-none d-md-inline"><i class="bi bi-person-circle" aria-hidden="true"></i> <?= e(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')) ?></span>
         <form action="<?= e(url('/logout')) ?>" method="post" class="m-0">
             <?= csrf_field() ?>

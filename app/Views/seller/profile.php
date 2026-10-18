@@ -19,7 +19,7 @@ $canEdit = in_array(SellerContext::role(), ['owner', 'manager'], true) && $selle
                 </div>
                 <div class="col-md-6">
                     <div class="form-label">Store address</div>
-                    <div class="fw-semibold">waimart/store/<?= e($seller['slug']) ?></div>
+                    <div class="fw-semibold"><a href="<?= e(url('/store/' . $seller['slug'])) ?>" target="_blank" rel="noopener">/store/<?= e($seller['slug']) ?></a></div>
                 </div>
                 <div class="col-12 form-text mt-0">To change your store name or address, contact Waimart Seller Support.</div>
 

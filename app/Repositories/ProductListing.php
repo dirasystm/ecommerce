@@ -30,7 +30,7 @@ final class ProductListing
     }
 
     /**
-     * @param array{category_ids?:list<int>,brand_id?:int,brands?:list<string>,q?:string,min?:?string,max?:?string,
+     * @param array{category_ids?:list<int>,seller_id?:int,brand_id?:int,brands?:list<string>,q?:string,min?:?string,max?:?string,
      *              in_stock?:bool,on_sale?:bool,flash_sale_id?:int,sort?:string} $c
      * @return array{items:list<array<string,mixed>>,total:int,page:int,pages:int,per_page:int,brands:list<array<string,mixed>>,sort:string}
      */
@@ -99,6 +99,10 @@ final class ProductListing
             $ids = array_values(array_map('intval', $c['category_ids']));
             $w[] = 'p.category_id IN (' . implode(',', array_fill(0, count($ids), '?')) . ')';
             array_push($p, ...$ids);
+        }
+        if (!empty($c['seller_id'])) {
+            $w[] = 'p.seller_id = ?';
+            $p[] = (int) $c['seller_id'];
         }
         if (!empty($c['brand_id'])) {
             $w[] = 'p.brand_id = ?';

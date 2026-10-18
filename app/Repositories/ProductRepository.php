@@ -21,7 +21,8 @@ final class ProductRepository
     public function findActiveBySlug(string $slug): ?array
     {
         $p = $this->db->one(
-            'SELECT p.*, b.name AS brand_name, b.slug AS brand_slug, c.name AS category_name, c.slug AS category_slug, c.parent_id AS category_parent_id
+            'SELECT p.*, b.name AS brand_name, b.slug AS brand_slug, c.name AS category_name, c.slug AS category_slug, c.parent_id AS category_parent_id,
+                    ps.name AS seller_name, ps.slug AS seller_slug, ps.is_platform AS seller_is_platform, ps.is_verified AS seller_is_verified
                FROM products p
                JOIN categories c ON c.id = p.category_id AND c.is_active = 1
                LEFT JOIN brands b ON b.id = p.brand_id AND b.is_active = 1
@@ -75,7 +76,7 @@ final class ProductRepository
             $available = max(0, (int) $r['available']);
             return [
                 'id' => (int) $r['id'],
-                'sku' => $r['sku'],
+                'sku' => \Waimart\Services\SellerProductService::displaySku((string) $r['sku']),   // customers see the seller's own code
                 'name' => $r['name'],
                 'is_default' => (int) $r['is_default'] === 1,
                 'available' => $available,

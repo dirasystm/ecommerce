@@ -1,6 +1,6 @@
 # Waimart Multi-Vendor Upgrade — Phase 1: Inspection, Impact Analysis and Plan
 
-**Date:** 18 October 2026 · **Status:** Phases 1–4 complete (see the "Phase N results" sections at the end); awaiting approval to start Phase 5
+**Date:** 18 October 2026 · **Status:** Phases 1–5 complete (see the "Phase N results" sections at the end); awaiting approval to start Phase 6
 
 This document is for the client and for whoever builds or reviews the upgrade. It records the current system as inspected, what a multi-vendor marketplace changes, the target design, and the phased plan. No code or data has been changed in Phase 1.
 
@@ -384,3 +384,35 @@ Further defaults, stated so you can object:
 **Defect found and fixed (from Phase 2):** the rollback instructions in `BACKUP_RESTORE.md` had been corrupted when they were added. A scripting escape turned the backslashes in Windows paths into control characters, so `C:\xampp` became a line break and `\rollback` a carriage return. The section has been rewritten, and every tracked text file was scanned for control characters; none remain.
 - **Rollback script:** renamed `rollback_014_to_010.sql` and now also reverses migration 014.
 - **Re-tested on a copy:** the pre-upgrade backup was migrated through 010–014 and rolled back. The schema and data of all 47 tables were identical.
+
+---
+
+## Phase 5 results (18 October 2026): public store pages and seller attribution
+
+**Store pages (`/store/{slug}`):**
+- **Profile header:**
+  - logo, or the store's initial if there is no logo;
+  - name and badge — "Official Waimart store" for the platform, "Verified seller" when staff gave the badge;
+  - rating from **approved reviews of verified purchases** of the store's products;
+  - town and county, "Selling on Waimart since …", and the number of products shown;
+  - description (escaped);
+  - public contact details **only if the seller ticked "show on my store page"**;
+  - a note that payment and delivery go through Waimart;
+  - a search box limited to the store.
+- **Products:** only the store's **live** products, using the same visibility rule as the rest of the shop. The usual price, availability, discount, brand and sort filters apply, plus **store categories with counts**. Category, search and sort stay inside the store. An unknown category id is ignored.
+- **Suspended or unknown stores:** 404. Suspended stores' products are already hidden everywhere (Phase 4).
+- **Never shown:** legal name, business address, registration number, application text, owner/team names and emails, payout details, documents and suspension reasons. `StoreRepository::findPublic` selects only public columns.
+- **Official Store:** has a page too (`/store/waimart-official`).
+
+**"Sold by" attribution:**
+- **Product page:** "Sold by {store}" linking to the store, with the Official or Verified badge, and a seller box with the store rating and "Visit store".
+- **Product cards** (listings, search, home rails): "Sold by {store}" for marketplace sellers. The Official Store is not repeated on every card.
+- **Cart:** each line shows "Sold by {store}" with a link.
+- **Seller-facing:** the Seller Centre header has "View my store", and the store address on the profile page is a link. Admin seller pages link to the public store and to the seller's products.
+
+**Found and fixed:** the product page showed customers the internal SKU (e.g. `S4-BT-1`, which includes the seller id). Customers now see the seller's own code (`BT-1`), and a test checks this.
+
+**Tests:**
+- `StorePagesHttpTest` (7): store shows only its own live products (draft, pending, unlisted and other sellers' products excluded); 404 for unknown and suspended stores; 10 kinds of private data checked absent, and contacts shown only on opt-in; escaping of a script in the description; rating counts approved reviews only (4.5 from 2, ignoring pending and rejected); category filter and search stay within the store; "Sold by" on product page, cards and cart, with the SKU prefix hidden.
+- **Full suite: 325 tests, 2,216 assertions, all passing.**
+- **Browser:** 0 serious/critical accessibility issues on store pages (seller, Official, in-store search), the seller product page and the seller profile. Responsive checks passed for store pages, product page and cart at phone, tablet and desktop widths. Screenshots reviewed; fixtures removed.

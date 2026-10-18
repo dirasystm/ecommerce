@@ -453,3 +453,24 @@ p a:not(.btn), li > a:not(.btn):not(.dropdown-item):not(.nav-link):not(.page-lin
 .wm-rating-input label { font-size: 1.75rem; line-height: 1; color: #c9c9c9; cursor: pointer; }
 .wm-rating-input input:checked ~ label, .wm-rating-input label:hover, .wm-rating-input label:hover ~ label { color: var(--wm-yellow); }
 .wm-rating-input input:focus-visible + label { outline: 3px solid var(--wm-orange); outline-offset: 2px; border-radius: 3px; }
+
+/* ---------------------------------------------------------------- marketplace: store pages and attribution */
+.wm-store-head { display: grid; grid-template-columns: 96px 1fr; gap: 1rem 1.25rem; padding: 1.25rem; align-items: start; }
+.wm-store-logo { width: 96px; height: 96px; border-radius: 12px; overflow: hidden; background: var(--wm-green-50); border: 1px solid rgba(0,0,0,.08);
+    display: flex; align-items: center; justify-content: center; }
+.wm-store-logo img { width: 100%; height: 100%; object-fit: contain; background: #fff; }
+.wm-store-logo span { font-size: 2.5rem; font-weight: 700; color: var(--wm-green); }
+.wm-store-info { min-width: 0; }
+.wm-store-desc { max-width: 70ch; white-space: normal; overflow-wrap: anywhere; }
+.wm-store-search { grid-column: 1 / -1; max-width: 420px; }
+@media (min-width: 992px) {
+    .wm-store-head { grid-template-columns: 96px 1fr 320px; }
+    .wm-store-search { grid-column: auto; }
+}
+@media (max-width: 575.98px) {
+    .wm-store-head { grid-template-columns: 64px 1fr; padding: 1rem; }
+    .wm-store-logo { width: 64px; height: 64px; }
+    .wm-store-logo span { font-size: 1.75rem; }
+}
+.wm-product-seller { font-size: .75rem; color: #5a6168; margin-top: .15rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wm-soldby { font-size: .875rem; }

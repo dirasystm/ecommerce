@@ -85,6 +85,50 @@ final class CatalogueController extends Controller
         ]);
     }
 
+    /** A seller's public store: profile + that seller's visible products, with in-store category and search filters. */
+    public function store(Request $req): Response
+    {
+        $stores = new \Waimart\Repositories\StoreRepository(App::db());
+        $store = $stores->findPublic((string) $req->param('slug'));
+        if ($store === null) {
+            throw HttpException::notFound('This store is not available.');
+        }
+        $categories = $stores->categories((int) $store['id']);
+        $criteria = $this->criteria($req) + ['seller_id' => (int) $store['id']];
+        $catParam = (string) ($req->query['category'] ?? '');
+        $current = null;
+        foreach ($categories as $c) {
+            if ($catParam === (string) $c['id']) {
+                $current = $c;
+                $criteria['category_ids'] = [$c['id']];
+            }
+        }
+        $q = mb_substr(trim((string) ($req->query['q'] ?? '')), 0, 100);
+        if ($q !== '') {
+            $criteria['q'] = $q;
+        }
+        $path = '/store/' . $store['slug'];
+        $categoryLinks = array_merge(
+            [['name' => 'All products', 'url' => url($path), 'active' => $current === null]],
+            array_map(fn ($c) => ['name' => $c['name'] . ' (' . $c['n'] . ')', 'url' => url($path, ['category' => $c['id']]), 'active' => $current === $c], $categories)
+        );
+        return $this->view('catalogue/listing', [
+            'title' => $store['name'],
+            'metaDescription' => 'Shop ' . $store['name'] . ' on Waimart. ' . mb_substr((string) $store['description'], 0, 120),
+            'heading' => $current ? $store['name'] . ': ' . $current['name'] : ($q !== '' ? 'Results for “' . $q . '”' : 'Products from ' . $store['name']),
+            'crumbs' => [['name' => 'Stores', 'url' => null], ['name' => $store['name'], 'url' => null]],
+            'result' => (new ProductListing(App::db()))->find($criteria, $this->page($req)),
+            'criteria' => $criteria,
+            'store' => $store,
+            'categoryLinks' => $categoryLinks,
+            'allowRelevance' => $q !== '',
+            'searchQuery' => $q !== '' ? $q : null,
+            'hiddenParams' => $current ? ['category' => (string) $current['id']] : [],
+            'emptyMessage' => 'This store has no products matching your filters right now.',
+            'path' => $path,
+        ]);
+    }
+
     public function flashSales(Request $req): Response
     {
         $flash = (new CatalogueRepository(App::db()))->activeFlashSale(1);

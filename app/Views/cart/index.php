@@ -27,6 +27,7 @@
                             <div class="wm-cart-info">
                                 <h2 class="fs-6 mb-1"><a class="text-body" href="<?= e(url('/product/' . $l['slug'])) ?>"><?= e($l['name']) ?></a></h2>
                                 <?php if ($l['variant_name']): ?><div class="small text-muted">Variation: <?= e($l['variant_name']) ?></div><?php endif; ?>
+                                <?php if ($l['seller_name']): ?><div class="small text-muted">Sold by <a href="<?= e(url('/store/' . $l['seller_slug'])) ?>"><?= e($l['seller_name']) ?></a></div><?php endif; ?>
                                 <?php if ($l['issue']): ?>
                                     <div class="small text-danger fw-semibold mt-1" role="alert"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> <?= e($l['issue']['message']) ?></div>
                                 <?php elseif ($l['available'] <= 5): ?>

@@ -151,7 +151,8 @@ final class CatalogueRepository
     /** Card columns for the default variant; images and option counts are added by hydrate(). */
     public const CARD_COLUMNS = 'p.id, p.name, p.slug, p.rating_avg, p.rating_count,
         v.id AS variant_id, v.price, v.compare_at_price, fs.sale_price, fs.sale_ends_at,
-        (i.on_hand - i.reserved) AS available, i.on_hand, i.low_stock_threshold';
+        (i.on_hand - i.reserved) AS available, i.on_hand, i.low_stock_threshold,
+        ps.name AS seller_name, ps.slug AS seller_slug, ps.is_platform AS seller_is_platform';
 
     /**
      * Adds the first image and active option count for just the rows being shown, then builds cards.
@@ -198,6 +199,10 @@ final class CatalogueRepository
             'low_stock' => $available > 0 && $available <= (int) $r['low_stock_threshold'],
             'has_options' => (int) ($r['variant_count'] ?? 1) > 1,
             'sale_ends_at' => $r['sale_ends_at'] ?? null,
+            // Attribution: which store sells it (cards show it for marketplace sellers).
+            'seller_name' => $r['seller_name'] ?? null,
+            'seller_slug' => $r['seller_slug'] ?? null,
+            'seller_is_platform' => (int) ($r['seller_is_platform'] ?? 1) === 1,
         ] + $pricing;
     }
 }

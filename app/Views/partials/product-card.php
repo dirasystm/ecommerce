@@ -16,6 +16,9 @@ $out = $p['available'] <= 0;
     <h3 class="wm-product-name">
         <a class="wm-product-link" href="<?= e(url('/product/' . $p['slug'])) ?>"><?= e($p['name']) ?></a>
     </h3>
+    <?php if (!($p['seller_is_platform'] ?? true) && !empty($p['seller_name'])): ?>
+        <div class="wm-product-seller">Sold by <?= e($p['seller_name']) ?></div>
+    <?php endif; ?>
     <div class="wm-price"><?= e(money($p['price'])) ?><?= $p['has_options'] ? '<span class="visually-hidden"> (from)</span>' : '' ?></div>
     <?php if ($p['was'] !== null): ?>
         <div class="wm-price-old"><span class="visually-hidden">Was </span><?= e(money($p['was'])) ?></div>

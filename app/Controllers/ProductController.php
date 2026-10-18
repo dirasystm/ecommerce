@@ -45,6 +45,7 @@ final class ProductController extends Controller
 
         return $this->view('catalogue/product', [
             'inWishlist' => $inWishlist,
+            'sellerRating' => (new \Waimart\Repositories\StoreRepository(App::db()))->rating((int) $product['seller_id']),
             'bodyClass' => 'wm-page-product',
             'reviews' => (new \Waimart\Services\ReviewService())->approvedFor((int) $product['id']),
             'title' => $product['name'],
