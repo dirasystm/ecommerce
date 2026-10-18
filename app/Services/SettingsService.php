@@ -37,6 +37,7 @@ final class SettingsService
     /** key => [label, rule, help, group, widget] — widget: text (default), textarea, checkbox (rule "bool"), number */
     public const FIELDS = [
         'store_description' => ['Store description', 'nullable|max:300', 'One or two sentences about the store. Used on the About page and as the default description for search engines.', 'general', 'textarea'],
+        'footer_note' => ['Footer note', 'nullable|max:200', 'A short line at the very bottom of every page, e.g. how prices are shown.', 'general', 'text'],
         'products_per_page' => ['Products per page', 'required|int|gte:12|lte:96', 'How many products category, search and store pages show at a time (12–96).', 'general', 'number'],
 
         'store_phone' => ['Customer care phone', 'nullable|max:40', 'Shown in the footer and on the Contact page.', 'contact', 'text'],

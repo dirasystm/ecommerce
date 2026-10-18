@@ -1,6 +1,6 @@
 # Basemall Rebrand and Database-Driven Management
 
-**Started:** 18 October 2026 · **Branch:** `feature/basemall-rebrand` (from `feature/multi-vendor`) · **Status:** Stages 1–2 complete (plus sign-in with phone or email); awaiting approval to start Stage 3
+**Started:** 18 October 2026 · **Branch:** `feature/basemall-rebrand` (from `feature/multi-vendor`) · **Status:** Stages 1–3 complete (plus sign-in with phone or email); awaiting approval to start Stage 4
 
 This is the plan and progress record for the owner's request "Rebrand the e-commerce platform to Basemall and implement full database-driven management". The marketplace work it builds on is recorded in `docs/MARKETPLACE_PLAN.md`.
 
@@ -246,3 +246,54 @@ Still hardcoded, and scheduled:
   - registration refuses a taken number.
 - **Full suite: 422 tests, 3,585 assertions, all passing.**
 - **Browser:** 0 serious/critical accessibility issues on all 11 settings pages, both sign-in pages, the register page, the maintenance page and the shop with the announcement bar. Responsive checks passed (the maintenance page's 503 status shows as an expected console message). Screenshots reviewed.
+
+## Stage 3 results (18 October 2026): content management (pages, menus, homepage)
+
+### Pages (Admin → Content & marketing → Pages)
+
+- The nine information pages (About, Contact, Help, Delivery & pickup, Pickup stations, How to pay, Returns policy, Terms, Privacy) are now stored in the database (`content_pages`), seeded with their original wording. The old PHP templates are gone.
+- Each page has a title, a meta description, a body, a draft/published status, optional publish and unpublish times, a sort order and "show in the Help menu".
+- **New pages** can be added; they live at `/pages/{slug}`. Built-in pages keep their own addresses (`/about`, `/help`…), cannot be deleted or renamed, and `/pages/about` redirects (301) to `/about`.
+- **Drafts:** visitors get 404; staff who manage content see a preview with a "not published" notice.
+- **Revisions:** every save keeps the previous version (last 30 per page), and any revision can be restored.
+- **Safe formatting, no HTML:** `## heading`, `### smaller`, `- list`, `1. list`, `**bold**`, `*italic*`, `[text](link)`, `> note`, and `?? question` for FAQ accordions.
+  - Everything typed is escaped first, so nothing typed can become markup. Links may only be a page on this site, `https://`, `mailto:` or `tel:`; any other link keeps only its text.
+  - `{store}`, `{return_days}`, `{phone}` and similar fill in live values from settings.
+  - `[[contact_details]]`, `[[pickup_stations]]` and `[[payment_instructions]]` insert live blocks. Payment instructions show only the M-Pesa methods that have a number configured, plus cash on delivery. (The dev database has no M-Pesa numbers yet, so How to pay says the details are shown at checkout.)
+
+### Menus (Admin → Content & marketing → Menus)
+
+- Top bar messages and links (with dropdowns), the Help menu, footer highlights, the three footer columns (the menu title is the column heading), the homepage side tiles, the "Why shop with us" strip and the phone bottom bar (at most 5 items) all come from menus.
+- Items have a label, a link, an icon, a description, an order, visibility and "open in a new tab". The same link rules as pages apply; `javascript:` and similar are refused with a message.
+- The footer note (prices in KSh…) is a setting under General, so only settings managers can change it.
+
+### Homepage (Admin → Content & marketing → Homepage)
+
+- The homepage is an ordered list of sections: slider and categories, popular categories, flash sale, top deals, shop by category, featured products, category rows and "why shop with us".
+- Sections can be moved, renamed, given an item count, hidden, or scheduled (show from / hide after).
+- **Category rows** (one chosen category) and **text blocks** (same formatting as pages) can be added as many times as needed.
+- Slides are still edited under Banners, and flash sales under Flash sales, as before.
+
+### Permissions and audit
+
+- All of it needs `content.manage` (super admins and managers today; Stage 5 adds a Content & Marketing role). Other roles get 403 on every page and action.
+- Every change is audited (`content.page_*`, `content.menu_*`, `content.section_*`).
+
+### Database
+
+- Migration 022 (`content_pages`, `content_page_revisions`, `menus`, `menu_items`, `home_sections`, the `footer_note` setting, and the seeded content) was applied to the dev database after a backup (`storage/backups/waimart-20261018-222159.sql`).
+- `rollback_basemall.sql` covers 018–022. **Re-drilled** on a copy of the pre-upgrade backup: identical schema, and identical settings keys and values.
+
+### Found and fixed
+
+- While building, a new service file was briefly written over the existing `ContentService.php` (banners and flash sales). It was restored from git unchanged, and the new code lives in `SiteContentService.php`.
+- The test database's cleanup emptied the new content tables between tests; the seeded content is now captured once and restored before every test, so no test can leak edits.
+- An older payment test saved the whole settings form and blanked the new footer note; it now snapshots and restores settings.
+
+### Tests
+
+- **`ContentRendererTest` (4):** formatting; 9 attack forms (script, img onerror, `javascript:`, `data:`, `//host`, quote breakouts, tags in headings, FAQ and bold) never become markup; FAQ accordions; live values and blocks, including only configured payment methods.
+- **`SiteContentServiceTest` (8):** pages, slugs and system-page protection, scheduling, revisions and restore, menus and link validation, the bottom-bar limit, homepage sections and their schedule, audit.
+- **`ContentHttpTest` (4):** three non-content roles get 403 on 7 pages and on saving; editing a page goes live; draft preview, 404 for visitors, publishing; menus and footer follow the admin, bad links refused, managers cannot change the footer note; homepage sections hide and text blocks appear.
+- **Full suite: 439 tests, 3,830 assertions, all passing.**
+- **Browser:** 0 serious/critical accessibility issues on the 10 public content pages and 9 content admin pages; responsive checks passed; screenshots reviewed.

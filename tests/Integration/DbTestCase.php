@@ -23,6 +23,13 @@ abstract class DbTestCase extends TestCase
     private const KEEP_ROWS = ['sellers' => ' WHERE is_platform = 0'];
     /** Tables whose triggers refuse UPDATE/DELETE; emptied with TRUNCATE between tests. */
     private const APPEND_ONLY = ['seller_ledger_entries', 'seller_payout_history'];
+    /**
+     * Content seeded by migration 022 (pages, menus, homepage). Captured once from the freshly migrated test database
+     * and put back before every test, so each test starts from the shipped content and no test can leak edits.
+     */
+    private const CONTENT_SEEDED = ['content_pages', 'menus', 'menu_items', 'home_sections'];
+    /** @var array<string,list<array<string,mixed>>>|null */
+    private static ?array $contentSeed = null;
 
     protected function setUp(): void
     {
@@ -35,6 +42,11 @@ abstract class DbTestCase extends TestCase
     private function truncateMutableTables(): void
     {
         $pdo = $this->db->pdo();
+        if (self::$contentSeed === null) {
+            foreach (self::CONTENT_SEEDED as $t) {
+                self::$contentSeed[$t] = $this->db->all("SELECT * FROM `$t` ORDER BY " . ($t === 'menu_items' ? 'parent_id IS NOT NULL, id' : 'id'));
+            }
+        }
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
         foreach ($this->db->all("SELECT table_name AS t FROM information_schema.tables WHERE table_schema = DATABASE()") as $r) {
             if (in_array($r['t'], self::APPEND_ONLY, true)) {
@@ -47,8 +59,14 @@ abstract class DbTestCase extends TestCase
         $pdo->exec("UPDATE sellers SET status = 'active', suspended_at = NULL, suspension_reason = NULL WHERE is_platform = 1");
         $pdo->exec("INSERT INTO commission_rules (scope, seller_id, rate, note) VALUES
             ('default', NULL, 10.00, 'Provisional default'), ('seller', 1, 0.00, 'Waimart Official Store')");
+        foreach (self::$contentSeed as $t => $rows) {
+            foreach ($rows as $row) {
+                $this->db->insert($t, $row);
+            }
+        }
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
         \Waimart\Services\Sellers::flush();
+        \Waimart\Services\SiteContentService::flushCache();
     }
 
     /** Creates a category, product and variant with the given stock; returns ids. */

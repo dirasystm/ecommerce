@@ -4,56 +4,55 @@ declare(strict_types=1);
 
 namespace Waimart\Controllers;
 
+use Waimart\Core\Auth;
 use Waimart\Core\HttpException;
 use Waimart\Core\Request;
 use Waimart\Core\Response;
-use Waimart\Core\Settings;
+use Waimart\Services\ContentRenderer;
+use Waimart\Services\SiteContentService;
 
 /**
- * Static content pages. Only whitelisted slugs map to templates.
+ * Information and legal pages from the database (Admin → Content → Pages). Built-in pages keep their addresses
+ * (/help, /terms …); pages added by staff live under /pages/{slug}. Drafts and scheduled pages are visible only to
+ * staff with content.manage (preview).
  */
 final class PageController extends Controller
 {
-    /** slug => [title, meta description] */
-    public const PAGES = [
-        'help'            => ['Help Center', 'Answers to common questions about ordering, payment, delivery, pickup and returns.'],
-        'how-to-pay'      => ['How to pay', 'Pay for your {store} order with M-Pesa Till, Paybill, Send Money or cash on delivery.'],
-        'delivery-pickup' => ['Delivery & pickup', 'Home and office delivery or collection from a {store} pickup station.'],
-        'returns-policy'  => ['Returns & refunds', 'How to request a return and how refunds work at {store}.'],
-        'contact'         => ['Contact us', 'Get in touch with {store} customer care.'],
-        'about'           => ['About {store}', '{store} — Everything You Need. One Marketplace.'],
-        'terms'           => ['Terms & conditions', 'Terms and conditions of sale on {store}.'],
-        'privacy'         => ['Privacy policy', 'How {store} collects, uses and protects your personal data.'],
-    ];
-
     public function show(Request $req): Response
     {
-        $slug = (string) $req->param('page');
-        if (!isset(self::PAGES[$slug])) {
+        return $this->render((string) $req->param('page'));
+    }
+
+    /** /pages/{slug}: pages created in the admin (built-in pages answer only at their own address). */
+    public function custom(Request $req): Response
+    {
+        $slug = (string) $req->param('slug');
+        if (in_array($slug, SiteContentService::SYSTEM_PAGES, true)) {
+            return Response::redirect('/' . $slug, 301);
+        }
+        return $this->render($slug);
+    }
+
+    private function render(string $slug): Response
+    {
+        $svc = new SiteContentService();
+        $page = $svc->livePage($slug);
+        $preview = false;
+        if ($page === null && Auth::can('content.manage')) {
+            $page = \Waimart\Core\App::db()->one('SELECT * FROM content_pages WHERE slug = ?', [$slug]);
+            $preview = $page !== null;
+        }
+        if ($page === null) {
             throw HttpException::notFound();
         }
-        [$title, $desc] = array_map('brand_text', self::PAGES[$slug]);
-        return $this->view('pages/' . $slug, [
+        $title = ContentRenderer::plain((string) $page['title']);
+        return $this->view('pages/show', [
             'title' => $title,
-            'metaDescription' => $desc,
+            'metaDescription' => $page['meta_description'] !== null ? ContentRenderer::plain((string) $page['meta_description']) : null,
             'slug' => $slug,
-            'settings' => [
-                'till' => Settings::get('mpesa_till_number', ''),
-                'till_name' => Settings::get('mpesa_till_name', ''),
-                'paybill' => Settings::get('mpesa_paybill_number', ''),
-                'paybill_hint' => Settings::get('mpesa_paybill_account_hint', ''),
-                'phone' => Settings::get('mpesa_phone_number', ''),
-                'phone_name' => Settings::get('mpesa_phone_name', ''),
-                'store_phone' => Settings::get('store_phone', ''),
-                'store_email' => Settings::get('store_email', ''),
-                'whatsapp' => Settings::get('whatsapp_number', ''),
-                'address' => Settings::get('business_address', ''),
-                'postal' => Settings::get('postal_address', ''),
-                'hours' => Settings::get('business_hours', ''),
-                'return_days' => Settings::int('return_window_days', 7),
-                'hold_days' => Settings::int('collection_hold_days', 7),
-                'reservation_minutes' => Settings::reservationMinutes(),
-            ],
+            'body' => (new ContentRenderer())->render((string) $page['body']),
+            'nav' => $svc->navPages(),
+            'preview' => $preview,
         ]);
     }
 }

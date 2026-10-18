@@ -99,7 +99,7 @@ p a:not(.btn), li > a:not(.btn):not(.dropdown-item):not(.nav-link):not(.page-lin
 .wm-announcement a { color: var(--wm-text); text-decoration: underline; }
 .wm-staff-notice { background: #fff3cd; color: #4d3800; font-size: .8125rem; text-align: center; padding: 4px 12px; border-bottom: 1px solid #e0c36a; }
 .wm-topbar { background: var(--wm-green); color: #fff; font-size: .8125rem; }
-.wm-topbar a { color: #fff; }
+.wm-topbar a, .wm-topbar .wm-topbar-dropdown { color: #fff; font-size: inherit; text-decoration: none; }
 .wm-topbar .wm-topbar-inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 34px; }
 .wm-topbar .wm-promo { display: flex; gap: 20px; overflow: hidden; white-space: nowrap; }
 .wm-topbar .wm-promo i { color: var(--wm-yellow); margin-right: 4px; }
@@ -483,3 +483,6 @@ p a:not(.btn), li > a:not(.btn):not(.dropdown-item):not(.nav-link):not(.page-lin
 
 /* The hidden attribute must win over Bootstrap display utilities (d-flex etc. use !important). */
 [hidden] { display: none !important; }
+
+/* Accordions (Help Center FAQ): brand colours instead of Bootstrap's default blue. */
+.accordion { --bs-accordion-active-bg: var(--wm-green-50); --bs-accordion-active-color: var(--wm-green-700); --bs-accordion-btn-focus-box-shadow: 0 0 0 .2rem rgba(var(--wm-orange-rgb), .35); }

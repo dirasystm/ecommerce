@@ -12,7 +12,6 @@ use Waimart\Controllers\ProductController;
 
 $router->get('/', [HomeController::class, 'index'], [], 'home');
 $router->get('/categories', [HomeController::class, 'categories'], [], 'categories');
-$router->get('/pickup-stations', [HomeController::class, 'pickupStations'], [], 'pickup-stations');
 $router->get('/category/{slug:[a-z0-9-]+}', [CatalogueController::class, 'category'], [], 'category');
 $router->get('/brand/{slug:[a-z0-9-]+}', [CatalogueController::class, 'brand'], [], 'brand');
 $router->get('/search', [CatalogueController::class, 'search'], ['throttle:120,60'], 'search');
@@ -252,6 +251,28 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     $r->get('/customers', [Admin\StaffController::class, 'customers'], ['can:customers.view']);
     $r->get('/customers/{id:\d+}', [Admin\StaffController::class, 'customer'], ['can:customers.view']);
     $r->group(['middleware' => ['can:content.manage']], function ($r) {
+        // Pages, menus and homepage sections (Stage 3).
+        $r->get('/content/pages', [Admin\ContentPagesController::class, 'index']);
+        $r->get('/content/pages/new', [Admin\ContentPagesController::class, 'create']);
+        $r->post('/content/pages/new', [Admin\ContentPagesController::class, 'save']);
+        $r->get('/content/pages/{id:\d+}', [Admin\ContentPagesController::class, 'edit']);
+        $r->post('/content/pages/{id:\d+}', [Admin\ContentPagesController::class, 'save']);
+        $r->post('/content/pages/{id:\d+}/delete', [Admin\ContentPagesController::class, 'delete']);
+        $r->post('/content/pages/{id:\d+}/revisions/{rid:\d+}/restore', [Admin\ContentPagesController::class, 'restore']);
+        $r->get('/content/menus', [Admin\MenuController::class, 'index']);
+        $r->get('/content/menus/{menu:[a-z0-9_]+}', [Admin\MenuController::class, 'show']);
+        $r->post('/content/menus/{menu:[a-z0-9_]+}/title', [Admin\MenuController::class, 'saveTitle']);
+        $r->post('/content/menus/{menu:[a-z0-9_]+}/items', [Admin\MenuController::class, 'saveItem']);
+        $r->post('/content/menus/{menu:[a-z0-9_]+}/items/{item:\d+}', [Admin\MenuController::class, 'saveItem']);
+        $r->post('/content/menus/{menu:[a-z0-9_]+}/items/{item:\d+}/delete', [Admin\MenuController::class, 'deleteItem']);
+        $r->post('/content/menus/{menu:[a-z0-9_]+}/items/{item:\d+}/move', [Admin\MenuController::class, 'move']);
+        $r->get('/content/homepage', [Admin\HomepageController::class, 'index']);
+        $r->get('/content/homepage/new', [Admin\HomepageController::class, 'create']);
+        $r->post('/content/homepage/new', [Admin\HomepageController::class, 'save']);
+        $r->get('/content/homepage/{id:\d+}', [Admin\HomepageController::class, 'edit']);
+        $r->post('/content/homepage/{id:\d+}', [Admin\HomepageController::class, 'save']);
+        $r->post('/content/homepage/{id:\d+}/move', [Admin\HomepageController::class, 'move']);
+        $r->post('/content/homepage/{id:\d+}/delete', [Admin\HomepageController::class, 'delete']);
         $r->get('/banners', [Admin\ContentController::class, 'banners']);
         $r->get('/banners/new', [Admin\ContentController::class, 'bannerForm']);
         $r->post('/banners/new', [Admin\ContentController::class, 'saveBanner']);
@@ -324,6 +345,7 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     $r->post('/inventory/{vid:\d+}/count', [Admin\InventoryController::class, 'count'], ['can:inventory.adjust']);
 });
 
-// Static content pages (whitelisted slugs only)
-$pageSlugs = implode('|', array_map('preg_quote', array_keys(PageController::PAGES)));
+// Content pages (Admin → Content → Pages): built-in pages at fixed addresses, others under /pages/{slug}.
+$pageSlugs = implode('|', array_map('preg_quote', \Waimart\Services\SiteContentService::SYSTEM_PAGES));
 $router->get('/{page:' . $pageSlugs . '}', [PageController::class, 'show'], [], 'page');
+$router->get('/pages/{slug:[a-z0-9]+(?:-[a-z0-9]+)*}', [PageController::class, 'custom']);

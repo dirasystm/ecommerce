@@ -250,6 +250,19 @@ final class PaymentFlowTest extends DbTestCase
 
     public function testSettingsValidationAuditAndPaymentOptions(): void
     {
+        // This test saves the full settings form; put every setting back afterwards so later tests see the shipped values.
+        $snapshot = array_column($this->db->all('SELECT setting_key, setting_value FROM settings'), 'setting_value', 'setting_key');
+        try {
+            $this->settingsFormScenario();
+        } finally {
+            foreach ($snapshot as $k => $v) {
+                Settings::set($k, (string) $v);
+            }
+        }
+    }
+
+    private function settingsFormScenario(): void
+    {
         Settings::set('mpesa_till_number', '');
         $svc = new SettingsService();
         $valid = ['store_name' => (string) Settings::get('store_name'), 'max_payment_submissions' => '3', 'reservation_minutes' => '45', 'reservation_minutes_cod' => '240',

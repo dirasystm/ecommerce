@@ -5,6 +5,7 @@ use Waimart\Core\View;
 $categories = View::shared('categories', []);
 $cartCount = (int) View::shared('cart_count', 0);
 $user = Auth::user();
+$menus = new \Waimart\Services\SiteContentService();
 $q = '';
 $req = View::shared('request');
 if ($req instanceof \Waimart\Core\Request) {
@@ -38,15 +39,26 @@ $announceLink = (string) \Waimart\Core\Settings::get('announcement_link', '');
 <?php endif; ?>
 <div class="wm-topbar">
     <div class="container-wm wm-topbar-inner">
+        <?php // Admin → Content → Menus: "Top bar messages" and "Top bar links". ?>
         <div class="wm-promo">
-            <span><i class="bi bi-phone" aria-hidden="true"></i>Pay with M-Pesa or Cash on Delivery</span>
-            <a href="<?= e(url('/pickup-stations')) ?>"><i class="bi bi-shop" aria-hidden="true"></i>Free pickup at <?= e(brand_name()) ?> stations</a>
-            <span><i class="bi bi-arrow-repeat" aria-hidden="true"></i>Easy returns</span>
+            <?php foreach ($menus->menu('topbar_messages') as $m): ?>
+                <?php if ($m['href'] !== ''): ?><a href="<?= e($m['href']) ?>"<?= $m['new_tab'] ? ' target="_blank" rel="noopener"' : '' ?>><?php else: ?><span><?php endif; ?><?php if ($m['icon']): ?><i class="bi bi-<?= e($m['icon']) ?>" aria-hidden="true"></i><?php endif; ?><?= e($m['label']) ?><?= $m['href'] !== '' ? '</a>' : '</span>' ?>
+            <?php endforeach; ?>
         </div>
         <div class="wm-topbar-links d-none d-lg-flex gap-3">
-            <a href="<?= e(url('/sell')) ?>"><i class="bi bi-shop-window" aria-hidden="true"></i> Sell on <?= e(brand_name()) ?></a>
-            <a href="<?= e(url('/track-order')) ?>"><i class="bi bi-truck" aria-hidden="true"></i> Track order</a>
-            <a href="<?= e(url('/help')) ?>"><i class="bi bi-question-circle" aria-hidden="true"></i> Help</a>
+            <?php foreach ($menus->menu('topbar_links') as $i => $m): ?>
+                <?php if ($m['children']): ?>
+                    <div class="dropdown">
+                        <button class="btn btn-link p-0 dropdown-toggle wm-topbar-dropdown" type="button" data-bs-toggle="dropdown" aria-expanded="false"><?php if ($m['icon']): ?><i class="bi bi-<?= e($m['icon']) ?>" aria-hidden="true"></i> <?php endif; ?><?= e($m['label']) ?></button>
+                        <ul class="dropdown-menu">
+                            <?php if ($m['href'] !== ''): ?><li><a class="dropdown-item" href="<?= e($m['href']) ?>"><?= e($m['label']) ?></a></li><?php endif; ?>
+                            <?php foreach ($m['children'] as $c): ?><li><a class="dropdown-item" href="<?= e($c['href']) ?>"<?= $c['new_tab'] ? ' target="_blank" rel="noopener"' : '' ?>><?= e($c['label']) ?></a></li><?php endforeach; ?>
+                        </ul>
+                    </div>
+                <?php else: ?>
+                    <a href="<?= e($m['href']) ?>"<?= $m['new_tab'] ? ' target="_blank" rel="noopener"' : '' ?>><?php if ($m['icon']): ?><i class="bi bi-<?= e($m['icon']) ?>" aria-hidden="true"></i> <?php endif; ?><?= e($m['label']) ?></a>
+                <?php endif; ?>
+            <?php endforeach; ?>
         </div>
     </div>
 </div>
@@ -103,11 +115,10 @@ $announceLink = (string) \Waimart\Core\Settings::get('announcement_link', '');
                     <i class="bi bi-question-circle" aria-hidden="true"></i><span class="wm-action-label">Help</span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">
-                    <li><a class="dropdown-item" href="<?= e(url('/help')) ?>"><i class="bi bi-life-preserver"></i>Help Center</a></li>
-                    <li><a class="dropdown-item" href="<?= e(url('/how-to-pay')) ?>"><i class="bi bi-phone"></i>How to pay</a></li>
-                    <li><a class="dropdown-item" href="<?= e(url('/delivery-pickup')) ?>"><i class="bi bi-truck"></i>Delivery &amp; pickup</a></li>
-                    <li><a class="dropdown-item" href="<?= e(url('/returns-policy')) ?>"><i class="bi bi-arrow-repeat"></i>Returns &amp; refunds</a></li>
-                    <li><a class="dropdown-item" href="<?= e(url('/contact')) ?>"><i class="bi bi-chat-dots"></i>Contact us</a></li>
+                    <?php foreach ($menus->menu('help_menu') as $m): ?>
+                        <li><a class="dropdown-item" href="<?= e($m['href']) ?>"<?= $m['new_tab'] ? ' target="_blank" rel="noopener"' : '' ?>><?php if ($m['icon']): ?><i class="bi bi-<?= e($m['icon']) ?>"></i><?php endif; ?><?= e($m['label']) ?></a></li>
+                        <?php foreach ($m['children'] as $c): ?><li><a class="dropdown-item ps-5 small" href="<?= e($c['href']) ?>"><?= e($c['label']) ?></a></li><?php endforeach; ?>
+                    <?php endforeach; ?>
                 </ul>
             </div>
 

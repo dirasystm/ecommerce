@@ -22,6 +22,8 @@ try {
     $social = [];
 }
 $tagline = \Waimart\Services\Brand::tagline();
+$menus = new \Waimart\Services\SiteContentService();
+$footerNote = trim((string) Settings::get('footer_note', ''));
 ?>
 <footer class="wm-footer">
     <div class="wm-footer-top">
@@ -31,9 +33,9 @@ $tagline = \Waimart\Services\Brand::tagline();
                 <?php if ($tagline !== ''): ?><span><?= e($tagline) ?></span><?php endif; ?>
             </div>
             <div class="d-flex flex-wrap gap-4 text-white small">
-                <span><i class="bi bi-truck me-1" aria-hidden="true"></i>Home delivery</span>
-                <span><i class="bi bi-shop me-1" aria-hidden="true"></i>Pickup stations</span>
-                <span><i class="bi bi-phone me-1" aria-hidden="true"></i>M-Pesa &amp; COD</span>
+                <?php foreach ($menus->menu('footer_highlights') as $m): ?>
+                    <?php if ($m['href'] !== ''): ?><a class="text-white" href="<?= e($m['href']) ?>"><?php else: ?><span><?php endif; ?><?php if ($m['icon']): ?><i class="bi bi-<?= e($m['icon']) ?> me-1" aria-hidden="true"></i><?php endif; ?><?= e($m['label']) ?><?= $m['href'] !== '' ? '</a>' : '</span>' ?>
+                <?php endforeach; ?>
             </div>
         </div>
     </div>
@@ -41,33 +43,19 @@ $tagline = \Waimart\Services\Brand::tagline();
     <div class="wm-footer-main">
         <div class="container-wm">
             <div class="row g-4">
-                <div class="col-6 col-md-3">
-                    <h3>Need help?</h3>
-                    <ul>
-                        <li><a href="<?= e(url('/help')) ?>">Help Center</a></li>
-                        <li><a href="<?= e(url('/contact')) ?>">Contact us</a></li>
-                        <li><a href="<?= e(url('/track-order')) ?>">Track your order</a></li>
-                        <li><a href="<?= e(url('/returns-policy')) ?>">Returns &amp; refunds</a></li>
-                    </ul>
-                </div>
-                <div class="col-6 col-md-3">
-                    <h3>Shopping</h3>
-                    <ul>
-                        <li><a href="<?= e(url('/how-to-pay')) ?>">How to pay</a></li>
-                        <li><a href="<?= e(url('/delivery-pickup')) ?>">Delivery &amp; pickup</a></li>
-                        <li><a href="<?= e(url('/account')) ?>">My account</a></li>
-                        <li><a href="<?= e(url('/cart')) ?>">Cart</a></li>
-                    </ul>
-                </div>
-                <div class="col-6 col-md-3">
-                    <h3>About <?= e(brand_name()) ?></h3>
-                    <ul>
-                        <li><a href="<?= e(url('/about')) ?>">About us</a></li>
-                        <li><a href="<?= e(url('/sell')) ?>">Sell on <?= e(brand_name()) ?></a></li>
-                        <li><a href="<?= e(url('/terms')) ?>">Terms &amp; conditions</a></li>
-                        <li><a href="<?= e(url('/privacy')) ?>">Privacy policy</a></li>
-                    </ul>
-                </div>
+                <?php // Admin → Content → Menus: the three footer link columns (menu title = column heading). ?>
+                <?php foreach (['footer_col_1', 'footer_col_2', 'footer_col_3'] as $col): $links = $menus->menu($col); ?>
+                    <div class="col-6 col-md-3">
+                        <?php if ($links): ?>
+                            <h3><?= e($menus->menuTitle($col)) ?></h3>
+                            <ul>
+                                <?php foreach ($links as $m): ?>
+                                    <li><a href="<?= e($m['href']) ?>"<?= $m['new_tab'] ? ' target="_blank" rel="noopener"' : '' ?>><?= e($m['label']) ?></a></li>
+                                <?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
                 <div class="col-6 col-md-3">
                     <h3>Payment methods</h3>
                     <div class="wm-pay-badges mb-3">
@@ -101,7 +89,7 @@ $tagline = \Waimart\Services\Brand::tagline();
     <div class="wm-footer-bottom">
         <div class="container-wm d-flex flex-wrap justify-content-between gap-2">
             <span>&copy; <?= date('Y') ?> <?= e($legalName !== '' ? $legalName : brand_name()) ?>. All rights reserved.</span>
-            <span>Prices in Kenya Shillings (KSh), VAT inclusive where applicable.</span>
+            <?php if ($footerNote !== ''): ?><span><?= e($footerNote) ?></span><?php endif; ?>
         </div>
     </div>
 </footer>

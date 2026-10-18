@@ -47,7 +47,10 @@ $nav = [
         ['/admin/brands', 'award', 'Brands', 'catalogue.manage'],
         ['/admin/inventory', 'boxes', 'Inventory', 'inventory.view'],
     ]],
-    ['Marketing', [
+    ['Content & marketing', [
+        ['/admin/content/pages', 'file-earmark-text', 'Pages', 'content.manage'],
+        ['/admin/content/menus', 'list-ul', 'Menus', 'content.manage'],
+        ['/admin/content/homepage', 'house', 'Homepage', 'content.manage'],
         ['/admin/banners', 'images', 'Banners', 'content.manage'],
         ['/admin/flash-sales', 'lightning-charge', 'Flash sales', 'content.manage'],
     ]],

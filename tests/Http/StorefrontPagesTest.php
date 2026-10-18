@@ -36,7 +36,7 @@ final class StorefrontPagesTest extends HttpTestCase
 
     public static function pages(): array
     {
-        return array_map(fn ($s) => [$s], array_keys(PageController::PAGES));
+        return array_map(fn ($s) => [$s], \Waimart\Services\SiteContentService::SYSTEM_PAGES);
     }
 
     #[DataProvider('pages')]
