@@ -14,15 +14,15 @@ $statusText = [
     <nav class="wm-breadcrumb" aria-label="Breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="<?= e(url('/')) ?>">Home</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Sell on Waimart</li>
+            <li class="breadcrumb-item active" aria-current="page">Sell on <?= e(brand_name()) ?></li>
         </ol>
     </nav>
 
     <section class="wm-card wm-page mb-3">
         <div class="row g-4 align-items-center">
             <div class="col-lg-7">
-                <h1>Sell on Waimart</h1>
-                <p class="lead">Reach customers across Kenya from one trusted marketplace. You list and prepare your products — Waimart handles payment collection, delivery and pickup.</p>
+                <h1>Sell on <?= e(brand_name()) ?></h1>
+                <p class="lead">Reach customers across Kenya from one trusted marketplace. You list and prepare your products — <?= e(brand_name()) ?> handles payment collection, delivery and pickup.</p>
                 <div class="d-flex flex-wrap gap-2 mt-3">
                     <?php if ($isSeller): ?>
                         <a class="btn btn-wm btn-lg" href="<?= e(url('/seller')) ?>">Go to your Seller Centre</a>
@@ -38,7 +38,7 @@ $statusText = [
                 <?php if ($application && !$isSeller): ?>
                     <p class="small mt-2 mb-0"><?= e($statusText[$application['status']] ?? '') ?> (<?= e($application['application_number']) ?>)</p>
                 <?php elseif (!Auth::check()): ?>
-                    <p class="small text-muted mt-2 mb-0">Already selling on Waimart? Sign in to reach your Seller Centre.</p>
+                    <p class="small text-muted mt-2 mb-0">Already selling on <?= e(brand_name()) ?>? Sign in to reach your Seller Centre.</p>
                 <?php endif; ?>
             </div>
             <div class="col-lg-5">
@@ -64,8 +64,8 @@ $statusText = [
                 ['person-plus', 'Apply', 'Tell us about your business and upload the requested documents.'],
                 ['patch-check', 'Get approved', 'Our team reviews your application and emails you the decision.'],
                 ['box-seam', 'List products', 'Add your products, prices and stock from your Seller Centre.'],
-                ['truck', 'Prepare orders', 'Accept and pack your orders, then hand them over to Waimart for delivery or pickup.'],
-                ['cash-coin', 'Get paid', 'Customers pay Waimart. After delivery or collection, your earnings minus commission become available for payout.'],
+                ['truck', 'Prepare orders', 'Accept and pack your orders, then hand them over to ' . brand_name() . ' for delivery or pickup.'],
+                ['cash-coin', 'Get paid', 'Customers pay ' . brand_name() . '. After delivery or collection, your earnings minus commission become available for payout.'],
             ] as $i => [$icon, $head, $text]): ?>
                 <li class="col-sm-6 col-lg">
                     <div class="h-100">

@@ -16,7 +16,7 @@ final class OrderRepository
     /** @return array<string,mixed>|null */
     public function byNumber(string $number): ?array
     {
-        if (!preg_match('/^WM-[A-Z0-9]{8}$/', $number)) {
+        if (!preg_match(\Waimart\Services\Brand::ORDER_NUMBER_REGEX, $number)) {
             return null;
         }
         return $this->db->one('SELECT * FROM orders WHERE order_number = ?', [$number]);

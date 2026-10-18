@@ -10,7 +10,7 @@ $req = View::shared('request');
 <form class="wm-panel wm-panel-body mb-3 row g-2 align-items-end" method="get" action="<?= e(url('/admin/collections')) ?>">
     <div class="col-md-5">
         <label class="form-label small" for="q">Order number</label>
-        <input class="form-control text-uppercase" id="q" name="q" value="<?= e($req->query['q'] ?? '') ?>" placeholder="WM-XXXXXXXX" autofocus>
+        <input class="form-control text-uppercase" id="q" name="q" value="<?= e($req->query['q'] ?? '') ?>" placeholder="<?= e(\Waimart\Services\Brand::orderPrefix()) ?>-XXXXXXXX" autofocus>
     </div>
     <div class="col-md-5">
         <label class="form-label small" for="point">Pickup point</label>

@@ -32,7 +32,7 @@ final class MarketplaceSchemaTest extends DbTestCase
     public function testOfficialStoreExistsExactlyOnceAndOwnsAdminProducts(): void
     {
         $platform = Sellers::platformId($this->db);
-        $this->assertSame('waimart-official', $this->db->value('SELECT slug FROM sellers WHERE id = ?', [$platform]));
+        $this->assertSame('basemall-official', $this->db->value('SELECT slug FROM sellers WHERE id = ?', [$platform]));
         $this->assertDbRejects(fn () => $this->db->insert('sellers', ['name' => 'Second Platform', 'slug' => 'second', 'is_platform' => 1]), 'Duplicate');
         $v = $this->makeVariant(3);
         $this->assertSame($platform, (int) $this->db->value('SELECT seller_id FROM products WHERE id = ?', [$v['product_id']]));

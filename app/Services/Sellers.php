@@ -16,7 +16,7 @@ final class Sellers
     public static function platformId(?Database $db = null): int
     {
         return self::$platformId ??= (int) (($db ?? App::db())->value('SELECT id FROM sellers WHERE is_platform = 1')
-            ?: throw new \RuntimeException('The Waimart Official Store seller is missing (migration 010).'));
+            ?: throw new \RuntimeException('The ' . brand_name() . ' Official Store seller is missing (migration 010).'));
     }
 
     public static function flush(): void

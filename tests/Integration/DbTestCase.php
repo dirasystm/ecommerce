@@ -18,7 +18,7 @@ abstract class DbTestCase extends TestCase
     protected Database $db;
 
     /** Tables with reference data that must survive cleanup. */
-    private const KEEP = ['schema_migrations', 'counties', 'roles', 'permissions', 'role_permissions', 'settings'];
+    private const KEEP = ['schema_migrations', 'counties', 'roles', 'permissions', 'role_permissions', 'settings', 'seller_slug_aliases'];
     /** Tables cleaned only partially: the WHERE keeps reference rows seeded by migrations. */
     private const KEEP_ROWS = ['sellers' => ' WHERE is_platform = 0'];
     /** Tables whose triggers refuse UPDATE/DELETE; emptied with TRUNCATE between tests. */

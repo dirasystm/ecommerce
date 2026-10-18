@@ -103,7 +103,7 @@ $labels = ['confirmed' => 'Confirm order', 'processing' => 'Start processing', '
             </table></div>
             <?php if (!empty($marketplace)): ?>
                 <div class="wm-panel-body border-top">
-                    <p class="small mb-2"><strong>Fulfilment by part.</strong> Sellers accept, prepare and pack their items; Waimart confirms receipt (hand-over), then dispatches and delivers, or makes them ready at the pickup station. The order status follows the least advanced part.</p>
+                    <p class="small mb-2"><strong>Fulfilment by part.</strong> Sellers accept, prepare and pack their items; <?= e(brand_name()) ?> confirms receipt (hand-over), then dispatches and delivers, or makes them ready at the pickup station. The order status follows the least advanced part.</p>
                     <?php $labels = ['accepted' => 'Accept (Official Store)', 'processing' => 'Start preparing', 'packed' => 'Mark packed', 'handed_over' => 'Received from seller',
                         'dispatched' => 'Dispatch', 'out_for_delivery' => 'Out for delivery', 'delivered' => 'Mark delivered', 'ready_for_collection' => 'Ready at pickup station']; ?>
                     <?php foreach ($order['groups'] as $g): $acts = $partActions[(int) $g['id']] ?? []; if (!$acts) { continue; } ?>
@@ -132,7 +132,7 @@ $labels = ['confirmed' => 'Confirm order', 'processing' => 'Start processing', '
                     <?php endforeach; ?>
                 </div>
             <?php endif; ?>
-            <div class="wm-panel-body small text-muted pt-2">Commission is fixed at the rate in force when the order was placed. Delivery fees belong to Waimart. Coupon discounts are funded by Waimart and do not reduce seller net.</div>
+            <div class="wm-panel-body small text-muted pt-2">Commission is fixed at the rate in force when the order was placed. Delivery fees belong to <?= e(brand_name()) ?>. Coupon discounts are funded by <?= e(brand_name()) ?> and do not reduce seller net.</div>
         </section>
 
         <section class="wm-panel mb-3">

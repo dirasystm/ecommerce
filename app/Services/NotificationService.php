@@ -79,7 +79,7 @@ final class NotificationService
         $m->Password = (string) ($cfg['password'] ?? '');
         $m->SMTPSecure = ($cfg['encryption'] ?? 'tls') === 'ssl' ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
         $m->CharSet = 'UTF-8';
-        $m->setFrom((string) config('mail.from_email'), (string) config('mail.from_name', 'Waimart'));
+        $m->setFrom((string) config('mail.from_email'), (string) (config('mail.from_name') ?: brand_name()));
         $m->addAddress($to);
         $m->Subject = $subject;
         $m->Body = $body;

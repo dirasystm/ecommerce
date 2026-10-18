@@ -3,11 +3,11 @@ use Waimart\Services\DisputeService;
 
 /** @var array<string,mixed> $d @var list<array<string,mixed>> $messages @var bool $canReply */
 $open = in_array($d['status'], DisputeService::OPEN, true);
-$who = fn (array $m) => match ($m['author_role']) { 'customer' => $d['customer_name'] . ' (customer)', 'seller' => 'Your store', default => 'Waimart' };
+$who = fn (array $m) => match ($m['author_role']) { 'customer' => $d['customer_name'] . ' (customer)', 'seller' => 'Your store', default => brand_name() };
 ?>
 <div class="wm-admin-head">
     <h1>Case <?= e($d['dispute_number']) ?></h1>
-    <span class="badge fs-6 <?= $open ? 'badge-soft-warning' : 'badge-soft-success' ?>"><?= e(DisputeService::STATUS_LABELS[$d['status']]) ?></span>
+    <span class="badge fs-6 <?= $open ? 'badge-soft-warning' : 'badge-soft-success' ?>"><?= e(brand_text(DisputeService::STATUS_LABELS[$d['status']])) ?></span>
 </div>
 <p><a href="<?= e(url('/seller/disputes')) ?>"><i class="bi bi-arrow-left" aria-hidden="true"></i> Returns &amp; cases</a></p>
 <div class="row g-3">
@@ -15,14 +15,14 @@ $who = fn (array $m) => match ($m['author_role']) { 'customer' => $d['customer_n
         <section class="wm-panel">
             <div class="wm-panel-head">Messages</div>
             <div class="wm-panel-body">
-                <div class="border rounded p-2 mb-2 small"><div class="text-muted"><?= e($d['raised_by_role'] === 'customer' ? $d['customer_name'] . ' (customer)' : 'Waimart') ?> · <?= e(date('d M Y H:i', strtotime((string) $d['created_at']))) ?></div><?= nl2br(e((string) $d['details'])) ?></div>
+                <div class="border rounded p-2 mb-2 small"><div class="text-muted"><?= e($d['raised_by_role'] === 'customer' ? $d['customer_name'] . ' (customer)' : brand_name()) ?> · <?= e(date('d M Y H:i', strtotime((string) $d['created_at']))) ?></div><?= nl2br(e((string) $d['details'])) ?></div>
                 <?php foreach ($messages as $m): ?>
                     <div class="border rounded p-2 mb-2 small"><div class="text-muted"><?= e($who($m)) ?> · <?= e(date('d M Y H:i', strtotime((string) $m['created_at']))) ?></div><?= nl2br(e((string) $m['body'])) ?></div>
                 <?php endforeach; ?>
                 <?php if ($open && $canReply): ?>
                     <form method="post" action="<?= e(url('/seller/disputes/' . $d['id'] . '/message')) ?>" novalidate>
                         <?= csrf_field() ?>
-                        <label class="form-label small" for="body">Your reply (the customer and Waimart see it)</label>
+                        <label class="form-label small" for="body">Your reply (the customer and <?= e(brand_name()) ?> see it)</label>
                         <textarea class="form-control<?= invalid('body') ?>" id="body" name="body" rows="3" maxlength="2000"></textarea>
                         <?= field_error('body') ?>
                         <button class="btn btn-wm-green mt-2" type="submit">Send reply</button>

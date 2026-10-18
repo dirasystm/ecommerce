@@ -47,7 +47,7 @@ final class ReportController extends AdminController
 
     private function csv(string $tab, array $data, string $from, string $to): Response
     {
-        $name = "waimart-$tab-$from-to-$to.csv";
+        $name = \Waimart\Services\Brand::slug() . "-$tab-$from-to-$to.csv";
         return match ($tab) {
             'sales' => Csv::response($name, ['Day', 'Orders', 'Booked sales (KSh)'], array_map(fn ($d) => [$d['day'], $d['orders'], $d['booked']], $data['daily'])),
             'products' => Csv::response($name, ['Product', 'Units', 'Orders', 'Revenue (KSh)'], array_map(fn ($p) => [$p['product_name'], $p['units'], $p['orders'], $p['revenue']], $data['rows'])),

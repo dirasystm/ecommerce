@@ -40,11 +40,11 @@ final class SellerNotifier
             foreach ($users as $u) {
                 $ctx = ['user_id' => (int) $u['id'], 'order_id' => $orderId];
                 if ($important || (int) $u['notify_email'] === 1) {
-                    $svc->email((string) $u['email'], $subject, "Hello {$u['first_name']},\n\n$body\n\n— Waimart Seller Support", $template, $ctx);
+                    $svc->email((string) $u['email'], $subject, "Hello {$u['first_name']},\n\n$body\n\n— " . brand_name() . " Seller Support", $template, $ctx);
                     $n++;
                 }
                 if (!$important && (int) $u['notify_sms'] === 1 && (string) $u['phone'] !== '') {
-                    $svc->sms((string) $u['phone'], "Waimart Seller Centre: $subject", $template, $ctx);
+                    $svc->sms((string) $u['phone'], brand_name() . " Seller Centre: $subject", $template, $ctx);
                     $n++;
                 }
             }

@@ -38,7 +38,7 @@ final class CatalogueController extends Controller
 
         return $this->view('catalogue/listing', [
             'title' => $cat['name'],
-            'metaDescription' => 'Shop ' . $cat['name'] . ' at Waimart. Pay with M-Pesa or cash on delivery.',
+            'metaDescription' => 'Shop ' . $cat['name'] . ' at ' . brand_name() . '. Pay with M-Pesa or cash on delivery.',
             'heading' => $cat['name'],
             'crumbs' => $crumbs,
             'result' => $result,
@@ -91,6 +91,11 @@ final class CatalogueController extends Controller
         $stores = new \Waimart\Repositories\StoreRepository(App::db());
         $store = $stores->findPublic((string) $req->param('slug'));
         if ($store === null) {
+            // A store whose address changed (e.g. the Official Store after the rebrand) keeps its old links working.
+            $current = App::db()->value('SELECT s.slug FROM seller_slug_aliases a JOIN sellers s ON s.id = a.seller_id WHERE a.slug = ?', [(string) $req->param('slug')]);
+            if ($current) {
+                return Response::redirect('/store/' . $current, 301);
+            }
             throw HttpException::notFound('This store is not available.');
         }
         $categories = $stores->categories((int) $store['id']);
@@ -114,7 +119,7 @@ final class CatalogueController extends Controller
         );
         return $this->view('catalogue/listing', [
             'title' => $store['name'],
-            'metaDescription' => 'Shop ' . $store['name'] . ' on Waimart. ' . mb_substr((string) $store['description'], 0, 120),
+            'metaDescription' => 'Shop ' . $store['name'] . ' on ' . brand_name() . '. ' . mb_substr((string) $store['description'], 0, 120),
             'heading' => $current ? $store['name'] . ': ' . $current['name'] : ($q !== '' ? 'Results for “' . $q . '”' : 'Products from ' . $store['name']),
             'crumbs' => [['name' => 'Stores', 'url' => null], ['name' => $store['name'], 'url' => null]],
             'result' => (new ProductListing(App::db()))->find($criteria, $this->page($req)),

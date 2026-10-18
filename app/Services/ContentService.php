@@ -115,7 +115,7 @@ final class ContentService
         ) ?? throw new ValidationException(['sku' => 'No product variant has that SKU.']);
         // A flash price lowers what a marketplace seller earns, so their products join only if they opted in.
         if (!(int) $v['is_platform'] && !(int) $v['allow_promotions']) {
-            throw new ValidationException(['sku' => $v['seller_name'] . ' has not agreed to take part in Waimart flash sales.']);
+            throw new ValidationException(['sku' => $v['seller_name'] . ' has not agreed to take part in ' . brand_name() . ' flash sales.']);
         }
         if (!preg_match('/^\d{1,10}(\.\d{1,2})?$/', trim($price))) {
             throw new ValidationException(['sale_price' => 'Enter a valid sale price.']);

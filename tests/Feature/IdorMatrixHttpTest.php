@@ -117,7 +117,7 @@ final class IdorMatrixHttpTest extends FeatureTestCase
             str_contains($pattern, '/cases/') => 'dispute',
             default => null,
         };
-        return (string) preg_replace_callback('/\{(\w+)(?::[^}]+)?\}/', function ($m) use ($pattern, $resource) {
+        return (string) preg_replace_callback('/\{(\w+)(?::(?:[^{}]|\{[^{}]*\})+)?\}/', function ($m) use ($pattern, $resource) {
             return (string) match ($m[1]) {
                 'id' => $this->ids[$resource ?? 'none'] ?? $this->fail("unmapped resource for $pattern"),
                 'vid' => $this->ids['variant'],
@@ -161,7 +161,8 @@ final class IdorMatrixHttpTest extends FeatureTestCase
             $uid === null ? $this->post('/logout', [], '/') : $this->loginAs($uid);
             foreach ($routes as $r) {
                 $url = $this->fill($r['pattern']);
-                $res = $r['method'] === 'GET' ? $this->get($url) : $this->post($url, self::BODY, '/');
+                // A real CSRF token (the track-order form exists for everyone), so the request reaches the ownership check.
+                $res = $r['method'] === 'GET' ? $this->get($url) : $this->post($url, self::BODY, '/track-order');
                 $expected = $uid === null && str_starts_with($r['pattern'], '/account/') ? [302, 303] : [404];
                 $this->assertContains($res['status'], $expected, "{$r['method']} $url as $who");
             }

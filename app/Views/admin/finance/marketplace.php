@@ -50,7 +50,7 @@ foreach ($rows as $r) {
         <?php if ($rows): ?><tfoot><tr class="fw-semibold"><td>Total</td><td colspan="3"></td><td class="text-end"><?= e(money($tot['sales'])) ?></td><td class="text-end"><?= e(money($tot['commission'])) ?></td>
             <td class="text-end"><?= e(money($tot['refunds_reversals'])) ?></td><td class="text-end"><?= e(money($tot['net'])) ?></td><td></td></tr></tfoot><?php endif; ?>
     </table></div>
-    <div class="wm-panel-body small text-muted">Orders by confirmation date; money by the date it was recorded. Sales are sellers' merchandise — Waimart's marketplace revenue is the commission column. Official Store sales are in the main Reports.</div>
+    <div class="wm-panel-body small text-muted">Orders by confirmation date; money by the date it was recorded. Sales are sellers' merchandise — <?= e(brand_name()) ?>'s marketplace revenue is the commission column. Official Store sales are in the main Reports.</div>
 </section>
 
 <section class="wm-panel">

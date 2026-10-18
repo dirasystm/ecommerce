@@ -21,7 +21,7 @@ $canEdit = in_array(SellerContext::role(), ['owner', 'manager'], true) && $selle
                     <div class="form-label">Store address</div>
                     <div class="fw-semibold"><a href="<?= e(url('/store/' . $seller['slug'])) ?>" target="_blank" rel="noopener">/store/<?= e($seller['slug']) ?></a></div>
                 </div>
-                <div class="col-12 form-text mt-0">To change your store name or address, contact Waimart Seller Support.</div>
+                <div class="col-12 form-text mt-0">To change your store name or address, contact <?= e(brand_name()) ?> Seller Support.</div>
 
                 <div class="col-12">
                     <label class="form-label" for="description">Store description</label>
@@ -79,9 +79,9 @@ $canEdit = in_array(SellerContext::role(), ['owner', 'manager'], true) && $selle
                 <div class="col-12">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="allow_promotions" name="allow_promotions" value="1" <?= fchecked('allow_promotions', (int) $seller['allow_promotions'] === 1) ?>>
-                        <label class="form-check-label" for="allow_promotions">Allow Waimart to include my products in flash sales</label>
+                        <label class="form-check-label" for="allow_promotions">Allow <?= e(brand_name()) ?> to include my products in flash sales</label>
                     </div>
-                    <div class="form-text">A flash sale sells at a lower price agreed for the sale, and your earnings are based on the price the customer pays. Waimart cannot add your products to a flash sale unless this is ticked.</div>
+                    <div class="form-text">A flash sale sells at a lower price agreed for the sale, and your earnings are based on the price the customer pays. <?= e(brand_name()) ?> cannot add your products to a flash sale unless this is ticked.</div>
                 </div>
             </fieldset>
             <?php if ($canEdit): ?><div class="wm-panel-body pt-0"><button class="btn btn-wm-green" type="submit">Save store profile</button></div><?php endif; ?>
@@ -90,7 +90,7 @@ $canEdit = in_array(SellerContext::role(), ['owner', 'manager'], true) && $selle
     <div class="col-lg-4">
         <section class="wm-panel mb-3">
             <div class="wm-panel-head">Payout destination</div>
-            <div class="wm-panel-body small"><?= $payout ? e($payout['masked']) : 'No payout details on file.' ?><div class="text-muted mt-1">Changes are made through Waimart Seller Support for your security.</div></div>
+            <div class="wm-panel-body small"><?= $payout ? e($payout['masked']) : 'No payout details on file.' ?><div class="text-muted mt-1">Changes are made through <?= e(brand_name()) ?> Seller Support for your security.</div></div>
         </section>
         <section class="wm-panel">
             <div class="wm-panel-head">Store team</div>

@@ -66,10 +66,10 @@ final class SellerOnboardingHttpTest extends FeatureTestCase
     public function testLandingIsPublicLinkedFromHeaderAndApplyingNeedsSignIn(): void
     {
         $home = $this->get('/')['body'];
-        $this->assertStringContainsString('/sell"', $home, '"Sell on Waimart" link in the header/footer');
+        $this->assertStringContainsString('/sell"', $home, '"Sell on Basemall" link in the header/footer');
         $landing = $this->get('/sell');
         $this->assertSame(200, $landing['status']);
-        $this->assertStringContainsString('Sell on Waimart', $landing['body']);
+        $this->assertStringContainsString('Sell on Basemall', $landing['body']);
         $this->assertSame(200, $this->get('/sell/terms')['status']);
         $r = $this->get('/sell/apply');
         $this->assertSame(303, $r['status']);

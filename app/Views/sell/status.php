@@ -30,7 +30,7 @@ foreach ($history as $h) {
     <nav class="wm-breadcrumb" aria-label="Breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="<?= e(url('/')) ?>">Home</a></li>
-            <li class="breadcrumb-item"><a href="<?= e(url('/sell')) ?>">Sell on Waimart</a></li>
+            <li class="breadcrumb-item"><a href="<?= e(url('/sell')) ?>">Sell on <?= e(brand_name()) ?></a></li>
             <li class="breadcrumb-item active" aria-current="page">Your application</li>
         </ol>
     </nav>
@@ -137,7 +137,7 @@ foreach ($history as $h) {
                 <form class="wm-card wm-page mb-3" method="post" action="<?= e(url('/sell/application/submit')) ?>" novalidate>
                     <?= csrf_field() ?>
                     <h2 class="h5">Payout details</h2>
-                    <p class="small text-muted">Where Waimart sends your earnings. Stored encrypted and visible only to authorised Waimart finance staff.</p>
+                    <p class="small text-muted">Where <?= e(brand_name()) ?> sends your earnings. Stored encrypted and visible only to authorised <?= e(brand_name()) ?> finance staff.</p>
                     <?php if ($app['payout_masked']): ?>
                         <div class="alert alert-light border small">On file: <strong><?= e($app['payout_masked']) ?></strong>. Leave the fields below blank to keep it.</div>
                     <?php endif; ?>

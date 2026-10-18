@@ -1,20 +1,22 @@
 /* ==========================================================================
-   Waimart design system — built on Bootstrap 5.3
-   Brand colours sampled from the supplied logo.
-   Contrast: white text is only used on --wm-green (8.3:1) and --wm-action (4.6:1).
+   Basemall design system — built on Bootstrap 5.3
+   The brand colours below are defaults: the live values come from Admin → Settings → Branding and are printed
+   after this file by partials/brand-head.php (Brand::palette()), which also derives the shades.
+   Contrast: white text is only used on --wm-green (8.2:1) and --wm-action (≥4.5:1, derived automatically).
    The bright logo orange (--wm-orange) is used for accents with dark text.
    ========================================================================== */
 
 :root {
-    --wm-green: #0b5a3a;
-    --wm-green-700: #08472e;
-    --wm-green-50: #e8f3ee;
-    --wm-orange: #f7801e;          /* logo orange — accents, borders, icons, dark text on top */
-    --wm-orange-deep: #f15a22;     /* logo gradient end */
+    --wm-green: #005b3d;
+    --wm-green-700: #004730;
+    --wm-green-50: #ebf2ef;
+    --wm-orange: #ff6a00;          /* logo orange — accents, borders, icons, dark text on top */
+    --wm-orange-deep: #e65f00;     /* logo gradient end */
+    --wm-orange-rgb: 255, 106, 0;
     --wm-yellow: #fdb913;
-    --wm-action: #c25400;          /* accessible filled-button orange (white text AA) */
-    --wm-action-hover: #a64700;
-    --wm-orange-50: #fff3e8;
+    --wm-action: #c85200;          /* accessible filled-button orange (white text AA) */
+    --wm-action-hover: #ac4700;
+    --wm-orange-50: #fff6f0;
     --wm-bg: #f1f1f2;
     --wm-surface: #ffffff;
     --wm-text: #1f1f1f;
@@ -33,13 +35,13 @@
     --bs-body-font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --bs-body-font-size: .9375rem;
     --bs-link-color: var(--wm-green);
-    --bs-link-color-rgb: 11, 90, 58;
+    --bs-link-color-rgb: 0, 91, 61;
     --bs-link-hover-color: var(--wm-green-700);
     --bs-primary: var(--wm-green);
-    --bs-primary-rgb: 11, 90, 58;
+    --bs-primary-rgb: 0, 91, 61;
     --bs-border-color: var(--wm-border);
     --bs-border-radius: var(--wm-radius);
-    --bs-focus-ring-color: rgba(247, 128, 30, .45);
+    --bs-focus-ring-color: rgba(var(--wm-orange-rgb), .45);
 }
 
 body { background: var(--wm-bg); min-height: 100vh; display: flex; flex-direction: column; }
@@ -108,7 +110,7 @@ p a:not(.btn), li > a:not(.btn):not(.dropdown-item):not(.nav-link):not(.page-lin
 
 .wm-search { flex: 1 1 auto; display: flex; gap: 8px; max-width: 640px; }
 .wm-search .form-control { border-radius: 4px; border-color: #c9c9c9; padding-left: 38px; height: 42px; }
-.wm-search .form-control:focus { border-color: var(--wm-orange); box-shadow: 0 0 0 .2rem rgba(247, 128, 30, .2); }
+.wm-search .form-control:focus { border-color: var(--wm-orange); box-shadow: 0 0 0 .2rem rgba(var(--wm-orange-rgb), .2); }
 .wm-search .wm-search-field { position: relative; flex: 1; }
 .wm-search .wm-search-field i { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--wm-muted); }
 .wm-search .btn { height: 42px; padding-inline: 18px; }

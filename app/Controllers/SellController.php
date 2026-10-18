@@ -22,7 +22,7 @@ final class SellController extends Controller
     {
         $app = Auth::check() ? (new SellerApplicationService())->latestFor((int) Auth::id()) : null;
         return $this->view('sell/landing', [
-            'title' => 'Sell on Waimart', 'application' => $app, 'isSeller' => SellerContext::current() !== null,
+            'title' => 'Sell on ' . brand_name(), 'application' => $app, 'isSeller' => SellerContext::current() !== null,
             'docs' => SellerDocumentPolicy::load(),
         ]);
     }
@@ -45,7 +45,7 @@ final class SellController extends Controller
         }
         $user = Auth::user();
         return $this->view('sell/apply', [
-            'title' => $app ? 'Edit your seller application' : 'Apply to sell on Waimart',
+            'title' => $app ? 'Edit your seller application' : 'Apply to sell on ' . brand_name(),
             'app' => $app && $app['status'] === 'draft' ? $app : null,
             'prefill' => $app ?? ['contact_name' => trim($user['first_name'] . ' ' . $user['last_name']), 'email' => $user['email'], 'phone' => $user['phone']],
             'counties' => (new DeliveryService())->counties(),

@@ -32,7 +32,7 @@ $expires = $order['reservation_expires_at'];
                         <div class="small text-uppercase fw-bold text-muted">Your collection code</div>
                         <div class="wm-collect-code" aria-label="Collection code <?= e(implode(' ', str_split($collectionCode))) ?>"><?= e(substr($collectionCode, 0, 4) . ' ' . substr($collectionCode, 4)) ?></div>
                         <p class="small mb-0">Show this code and your ID at <strong><?= e($order['fulfilment']['pickup_name']) ?></strong>.
-                            Keep it private — Waimart staff will never call you to ask for it.</p>
+                            Keep it private — <?= e(brand_name()) ?> staff will never call you to ask for it.</p>
                     <?php else: ?>
                         <p class="small mb-0"><i class="bi bi-shield-lock" aria-hidden="true"></i> Your collection code was sent to the phone number<?= $order['customer_email'] ? ' and email' : '' ?> used for this order.
                             For your security it is shown here only when you sign in or open your private tracking link.</p>
@@ -122,7 +122,7 @@ $expires = $order['reservation_expires_at'];
                 <h3 class="fs-6 fw-bold mt-4">Cases</h3>
                 <?php foreach ($cases as $c): ?>
                     <p class="small mb-1"><a href="<?= e(url('/order/' . $order['order_number'] . '/cases/' . $c['id'])) ?>"><?= e($c['dispute_number']) ?></a> ·
-                        <?= e($c['seller_name']) ?> · <?= e(\Waimart\Services\DisputeService::STATUS_LABELS[$c['status']]) ?></p>
+                        <?= e($c['seller_name']) ?> · <?= e(brand_text(\Waimart\Services\DisputeService::STATUS_LABELS[$c['status']])) ?></p>
                 <?php endforeach; ?>
             <?php endif; ?>
 

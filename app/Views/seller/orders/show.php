@@ -29,7 +29,7 @@ $active = $seller['status'] === 'active';
                     <?php endif; ?>
                     <?php if (in_array('packed', $next, true)): ?>
                         <form class="d-flex flex-wrap gap-2 align-items-end" method="post" action="<?= e(url('/seller/orders/' . $so['id'] . '/status')) ?>"><?= csrf_field() ?><input type="hidden" name="to" value="packed">
-                            <div><label class="form-label small mb-1" for="note">Note for Waimart <span class="text-muted">(optional, e.g. number of parcels)</span></label>
+                            <div><label class="form-label small mb-1" for="note">Note for <?= e(brand_name()) ?> <span class="text-muted">(optional, e.g. number of parcels)</span></label>
                                 <input class="form-control form-control-sm" id="note" name="note" maxlength="500"></div>
                             <button class="btn btn-wm-green" type="submit">Mark packed — ready to hand over</button></form>
                     <?php endif; ?>
@@ -48,7 +48,7 @@ $active = $seller['status'] === 'active';
                 </div>
             </section>
         <?php elseif ($so['status'] === 'packed'): ?>
-            <div class="alert alert-info">Packed and waiting for Waimart to collect it from you. We will update this order when we receive the parcel.</div>
+            <div class="alert alert-info">Packed and waiting for <?= e(brand_name()) ?> to collect it from you. We will update this order when we receive the parcel.</div>
         <?php endif; ?>
 
         <section class="wm-panel mb-3">
@@ -76,10 +76,10 @@ $active = $seller['status'] === 'active';
         <section class="wm-panel mb-3">
             <div class="wm-panel-head">Fulfilment</div>
             <div class="wm-panel-body small">
-                <p class="mb-1"><strong><?= $so['fulfilment_method'] === 'pickup' ? 'Pickup station' : 'Home delivery by Waimart' ?></strong></p>
+                <p class="mb-1"><strong><?= $so['fulfilment_method'] === 'pickup' ? 'Pickup station' : 'Home delivery by ' . brand_name() ?></strong></p>
                 <p class="mb-1"><?= $so['fulfilment_method'] === 'pickup' ? e((string) $so['pickup_name']) : e(trim($so['delivery_town'] . ', ' . $so['delivery_county'], ', ')) ?></p>
                 <p class="mb-1">Customer: <?= e((string) $so['customer_first_name']) ?></p>
-                <p class="text-muted mb-0">Waimart delivers to the customer, so you do not need their contact details. Pack the items with this order number and hand them to Waimart.</p>
+                <p class="text-muted mb-0"><?= e(brand_name()) ?> delivers to the customer, so you do not need their contact details. Pack the items with this order number and hand them to <?= e(brand_name()) ?>.</p>
                 <?php if ($so['tracking_reference']): ?><p class="mt-2 mb-0">Delivery reference: <strong><?= e($so['tracking_reference']) ?></strong></p><?php endif; ?>
                 <?php if ($so['reject_reason'] || $so['cancel_reason']): ?><p class="mt-2 mb-0 text-danger"><?= e((string) ($so['reject_reason'] ?: $so['cancel_reason'])) ?></p><?php endif; ?>
             </div>
@@ -92,7 +92,7 @@ $active = $seller['status'] === 'active';
                         <li class="mb-1">Return <?= e($rt['return_number']) ?> · <?= e(ucfirst($rt['status'])) ?><?= $rt['refund_amount'] !== null ? ' · refund ' . e(money($rt['refund_amount'])) : '' ?></li>
                     <?php endforeach; ?>
                     <?php foreach ($cases as $c): ?>
-                        <li class="mb-1"><a href="<?= e(url('/seller/disputes/' . $c['id'])) ?>">Case <?= e($c['dispute_number']) ?></a> · <?= e(\Waimart\Services\DisputeService::STATUS_LABELS[$c['status']]) ?></li>
+                        <li class="mb-1"><a href="<?= e(url('/seller/disputes/' . $c['id'])) ?>">Case <?= e($c['dispute_number']) ?></a> · <?= e(brand_text(\Waimart\Services\DisputeService::STATUS_LABELS[$c['status']])) ?></li>
                     <?php endforeach; ?>
                 </ul>
             </section>
@@ -102,7 +102,7 @@ $active = $seller['status'] === 'active';
             <ol class="list-unstyled small wm-panel-body mb-0">
                 <?php foreach ($so['history'] as $h): ?>
                     <li class="mb-2"><span class="text-muted"><?= e(date('d M Y H:i', strtotime($h['created_at']))) ?></span><br>
-                        <?= e(OrderPresenter::sellerOrderStatus((string) $h['to_status'])) ?> <span class="text-muted">· <?= e(['seller' => 'you', 'staff' => 'Waimart', 'system' => 'automatic', 'customer' => 'customer'][$h['actor_type']] ?? $h['actor_type']) ?></span>
+                        <?= e(OrderPresenter::sellerOrderStatus((string) $h['to_status'])) ?> <span class="text-muted">· <?= e(['seller' => 'you', 'staff' => brand_name(), 'system' => 'automatic', 'customer' => 'customer'][$h['actor_type']] ?? $h['actor_type']) ?></span>
                         <?php if ($h['note']): ?><div class="text-muted"><?= e($h['note']) ?></div><?php endif; ?></li>
                 <?php endforeach; ?>
             </ol>

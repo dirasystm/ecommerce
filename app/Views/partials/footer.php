@@ -12,7 +12,7 @@ try {
     <div class="wm-footer-top">
         <div class="container-wm d-flex flex-wrap align-items-center justify-content-between gap-3">
             <div class="wm-footer-brand">
-                <img src="<?= e(asset('img/logo-wordmark.png')) ?>" alt="Waimart" width="142" height="28">
+                <img src="<?= e(\Waimart\Services\Brand::asset('brand_logo_header')) ?>" alt="<?= e(brand_name()) ?>" height="28">
                 <span>Everything You Need. One Marketplace.</span>
             </div>
             <div class="d-flex flex-wrap gap-4 text-white small">
@@ -45,10 +45,10 @@ try {
                     </ul>
                 </div>
                 <div class="col-6 col-md-3">
-                    <h3>About Waimart</h3>
+                    <h3>About <?= e(brand_name()) ?></h3>
                     <ul>
                         <li><a href="<?= e(url('/about')) ?>">About us</a></li>
-                        <li><a href="<?= e(url('/sell')) ?>">Sell on Waimart</a></li>
+                        <li><a href="<?= e(url('/sell')) ?>">Sell on <?= e(brand_name()) ?></a></li>
                         <li><a href="<?= e(url('/terms')) ?>">Terms &amp; conditions</a></li>
                         <li><a href="<?= e(url('/privacy')) ?>">Privacy policy</a></li>
                     </ul>
@@ -75,7 +75,7 @@ try {
 
     <div class="wm-footer-bottom">
         <div class="container-wm d-flex flex-wrap justify-content-between gap-2">
-            <span>&copy; <?= date('Y') ?> Waimart. All rights reserved.</span>
+            <span>&copy; <?= date('Y') ?> <?= e(brand_name()) ?>. All rights reserved.</span>
             <span>Prices in Kenya Shillings (KSh), VAT inclusive where applicable.</span>
         </div>
     </div>

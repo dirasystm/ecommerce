@@ -14,14 +14,14 @@ $statusLabels = ['requested' => ['badge-soft-warning', 'Requested'], 'approved' 
 ?>
 <div class="wm-admin-head"><h1>Earnings &amp; payouts</h1></div>
 <?php if (Money::cmp($balances['available'], '0') < 0): ?>
-    <div class="alert alert-warning small">A customer was refunded after these earnings had already been paid to you, so you owe Waimart <strong><?= e(Money::format(bcmul($balances['available'], '-1', 2))) ?></strong>.
+    <div class="alert alert-warning small">A customer was refunded after these earnings had already been paid to you, so you owe <?= e(brand_name()) ?> <strong><?= e(Money::format(bcmul($balances['available'], '-1', 2))) ?></strong>.
         It is taken from your next earnings automatically; payouts resume once your available balance is above zero again.</div>
 <?php endif; ?>
 
 <div class="row g-3 mb-3">
     <?php foreach ([['pending', 'Pending', 'Paid by customers, waiting for delivery and the ' . (int) Settings::int('payout_hold_days', 7) . '-day holding period.'],
                     ['available', 'Available to withdraw', 'You can request this now (minimum ' . Money::format($minimum) . ').'],
-                    ['reserved', 'In payout requests', 'Requested and being processed by Waimart.'],
+                    ['reserved', 'In payout requests', 'Requested and being processed by ' . brand_name() . '.'],
                     ['paid', 'Paid out', 'Sent to you, with a payment reference.']] as [$k, $label, $help]): ?>
         <div class="col-6 col-lg-3">
             <div class="wm-panel h-100"><div class="wm-panel-body">
@@ -43,7 +43,7 @@ $statusLabels = ['requested' => ['badge-soft-warning', 'Requested'], 'approved' 
                 <?php foreach ($entries as $en): ?>
                     <tr>
                         <td class="small text-nowrap"><?= e(date('d M Y H:i', strtotime((string) $en['created_at']))) ?></td>
-                        <td class="small"><?= e(SellerLedgerService::TYPE_LABELS[$en['entry_type']] ?? $en['entry_type']) ?></td>
+                        <td class="small"><?= e(brand_text(SellerLedgerService::TYPE_LABELS[$en['entry_type']] ?? $en['entry_type'])) ?></td>
                         <td class="small"><?= e((string) ($en['sub_number'] ?: $en['payout_number'])) ?></td>
                         <td class="small"><?= e(SellerLedgerService::BUCKET_LABELS[$en['bucket']]) ?></td>
                         <td class="text-end text-nowrap <?= Money::cmp((string) $en['amount'], '0') < 0 ? 'text-danger' : '' ?>"><?= e(money($en['amount'])) ?></td>
@@ -99,7 +99,7 @@ $statusLabels = ['requested' => ['badge-soft-warning', 'Requested'], 'approved' 
             <div class="wm-panel-head">All-time summary</div>
             <dl class="row small wm-panel-body mb-0">
                 <dt class="col-7">Sales received</dt><dd class="col-5 text-end"><?= e(money($summary['gross_sales'])) ?></dd>
-                <dt class="col-7">Waimart commission</dt><dd class="col-5 text-end">−<?= e(money($summary['commission'])) ?></dd>
+                <dt class="col-7"><?= e(brand_name()) ?> commission</dt><dd class="col-5 text-end">−<?= e(money($summary['commission'])) ?></dd>
                 <dt class="col-7">Reversed / refunded</dt><dd class="col-5 text-end"><?= e(money($summary['reversed'])) ?></dd>
                 <dt class="col-7">Net earnings</dt><dd class="col-5 text-end fw-bold"><?= e(money($summary['net_earnings'])) ?></dd>
             </dl>

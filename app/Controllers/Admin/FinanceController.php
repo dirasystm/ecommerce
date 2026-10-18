@@ -12,6 +12,7 @@ use Waimart\Core\Request;
 use Waimart\Core\Response;
 use Waimart\Core\Settings;
 use Waimart\Services\AuditLogger;
+use Waimart\Services\Brand;
 use Waimart\Services\CommissionService;
 use Waimart\Services\MarketplaceReportService;
 use Waimart\Services\PayoutService;
@@ -33,7 +34,7 @@ final class FinanceController extends AdminController
         $report = (new CommissionService())->report($from, $to);
         if (($req->query['format'] ?? '') === 'csv') {
             AuditLogger::log('report.exported', 'report', 'commission', null, ['from' => $from, 'to' => $to], $this->actor());
-            return Csv::response('waimart-commission-' . substr($from, 0, 10) . '-to-' . substr($to, 0, 10) . '.csv',
+            return Csv::response(Brand::slug() . '-commission-' . substr($from, 0, 10) . '-to-' . substr($to, 0, 10) . '.csv',
                 ['Seller', 'Gross sales received', 'Commission', 'Commission reversed', 'Sales reversed'],
                 array_map(fn ($r) => [$r['seller_name'], $r['gross_sales'], $r['commission'], $r['commission_reversed'], $r['sales_reversed']], $report));
         }
@@ -70,7 +71,7 @@ final class FinanceController extends AdminController
         $rows = (new PayoutService())->list(null, $status);
         if (($req->query['format'] ?? '') === 'csv') {
             AuditLogger::log('report.exported', 'report', 'payouts', null, ['status' => $status], $this->actor());
-            return Csv::response("waimart-payouts-$status.csv", ['Payout', 'Seller', 'Amount', 'Status', 'Requested', 'Destination', 'Paid method', 'Paid reference', 'Paid at'],
+            return Csv::response(Brand::slug() . "-payouts-$status.csv", ['Payout', 'Seller', 'Amount', 'Status', 'Requested', 'Destination', 'Paid method', 'Paid reference', 'Paid at'],
                 array_map(fn ($p) => [$p['payout_number'], $p['seller_name'], $p['amount'], $p['status'], $p['requested_at'], $p['destination_masked'],
                     $p['paid_method'], $p['paid_reference'], $p['paid_at']], $rows));
         }
@@ -126,7 +127,7 @@ final class FinanceController extends AdminController
         $rows = $svc->sellerPerformance($from, $to);
         if (($req->query['format'] ?? '') === 'csv') {
             AuditLogger::log('report.exported', 'report', 'marketplace', null, ['from' => $from, 'to' => $to], $this->actor());
-            return Csv::response('waimart-marketplace-' . substr($from, 0, 10) . '-to-' . substr($to, 0, 10) . '.csv',
+            return Csv::response(Brand::slug() . '-marketplace-' . substr($from, 0, 10) . '-to-' . substr($to, 0, 10) . '.csv',
                 ['Seller', 'Status', 'Orders', 'Completed', 'Declined', 'Cancelled', 'Sales received', 'Commission (net)', 'Refunds and reversals', 'Seller net',
                  'Pending now', 'Available now', 'In payout requests now', 'Paid out (all time)'],
                 array_map(fn ($r) => [$r['seller_name'], $r['seller_status'], $r['parts'], $r['completed'], $r['declined'], $r['cancelled'], $r['sales'], $r['commission'],

@@ -16,7 +16,7 @@
             <button class="btn btn-wm w-100" type="submit">Sign in</button>
         </form>
         <hr>
-        <p class="small text-center mb-2">New to Waimart?</p>
+        <p class="small text-center mb-2">New to <?= e(brand_name()) ?>?</p>
         <a class="btn btn-outline-wm w-100" href="<?= e(url('/register')) ?>">Create an account</a>
         <p class="small text-muted text-center mt-3 mb-0">You can also <a href="<?= e(url('/cart')) ?>">check out as a guest</a> without an account.</p>
     </div>

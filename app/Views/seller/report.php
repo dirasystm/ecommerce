@@ -10,7 +10,7 @@
 <div class="row g-3 mb-3">
     <?php foreach ([['Orders', (string) $r['parts'], $r['completed'] . ' completed · ' . $r['declined'] . ' declined · ' . $r['cancelled'] . ' cancelled'],
                     ['Sales received', money($r['sales']), 'Paid by customers for your items'],
-                    ['Waimart commission', money($r['commission']), 'Less commission returned on refunds'],
+                    [brand_name() . ' commission', money($r['commission']), 'Less commission returned on refunds'],
                     ['Your net earnings', money($r['net']), 'After refunds and reversals of ' . money(bcmul($r['adjustments'], '-1', 2))]] as [$label, $value, $help]): ?>
         <div class="col-6 col-lg-3"><div class="wm-panel h-100"><div class="wm-panel-body">
             <div class="small text-muted"><?= e($label) ?></div><div class="fs-5 fw-bold"><?= e($value) ?></div><div class="small text-muted"><?= e($help) ?></div>

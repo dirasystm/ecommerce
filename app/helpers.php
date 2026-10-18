@@ -34,6 +34,18 @@ function asset(string $path): string
     return url('/assets/' . ltrim($path, '/')) . $v;
 }
 
+/** The store's name from settings (Admin → Settings → Branding). Use this for every user-facing mention of the store. */
+function brand_name(): string
+{
+    return \Waimart\Services\Brand::name();
+}
+
+/** Fills "{store}" in fixed labels (class constants cannot call functions) with the store's name. */
+function brand_text(string $text): string
+{
+    return str_replace('{store}', brand_name(), $text);
+}
+
 function csrf_field(): string
 {
     return '<input type="hidden" name="_csrf" value="' . e(Csrf::token()) . '">';

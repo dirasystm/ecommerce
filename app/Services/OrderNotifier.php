@@ -18,9 +18,9 @@ final class OrderNotifier
         'confirmed' => 'Your order {n} has been confirmed.',
         'dispatched' => 'Your order {n} has been dispatched and is on its way.',
         'out_for_delivery' => 'Your order {n} is out for delivery today.',
-        'delivered' => 'Your order {n} has been delivered. Thank you for shopping with Waimart!',
+        'delivered' => 'Your order {n} has been delivered. Thank you for shopping with {store}!',
         'ready_for_collection' => 'Your order {n} is ready for collection.',
-        'collected' => 'Your order {n} has been collected. Thank you for shopping with Waimart!',
+        'collected' => 'Your order {n} has been collected. Thank you for shopping with {store}!',
         'cancelled' => 'Your order {n} has been cancelled.',
         'expired' => 'The reservation for your order {n} expired before it was confirmed, so the items have been released. You are welcome to order again.',
         'requires_resolution' => 'Our team is reviewing your order {n} and will contact you about the next steps.',
@@ -43,7 +43,7 @@ final class OrderNotifier
         try {
             $db = App::db();
             $user = $order['user_id'] ? $db->one('SELECT notify_email, notify_sms FROM users WHERE id = ?', [$order['user_id']]) : null;
-            $text = str_replace('{n}', (string) $order['order_number'], $tpl);
+            $text = brand_text(str_replace('{n}', (string) $order['order_number'], $tpl));
             if ($order['status'] === 'cancelled' && $order['payment_status'] === 'refund_due') {
                 $text .= ' Because your payment was already received, our team will arrange your refund.';
             }
@@ -66,11 +66,11 @@ final class OrderNotifier
             $n = new NotificationService();
             if ($order['customer_email'] && ($essential || $user === null || (int) $user['notify_email'] === 1)) {
                 $n->email((string) $order['customer_email'], "Order {$order['order_number']}: " . OrderPresenter::status((string) $order['status']),
-                    "Hello {$order['customer_name']},\n\n$text\n\nTrack your order at $track using your order number and phone number.\n\nWaimart",
+                    "Hello {$order['customer_name']},\n\n$text\n\nTrack your order at $track using your order number and phone number.\n\n" . brand_name(),
                     'order_' . $order['status'], $ctx);
             }
             if ($essential || $user === null || (int) $user['notify_sms'] === 1) {
-                $n->sms((string) $order['customer_phone'], "Waimart: $text", 'order_' . $order['status'], $ctx);
+                $n->sms((string) $order['customer_phone'], brand_name() . ": $text", 'order_' . $order['status'], $ctx);
             }
         } catch (\Throwable $e) {
             Logger::error('Status notification failed', ['order_id' => $order['id'] ?? null, 'error' => $e->getMessage()]);

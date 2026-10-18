@@ -55,6 +55,7 @@ $nav = [
         ['/admin/staff', 'person-badge', 'Staff & roles', 'users.manage'],
         ['/admin/audit', 'journal-text', 'Audit log', 'audit.view'],
         ['/admin/settings', 'gear', 'Settings', 'settings.manage'],
+        ['/admin/settings/branding', 'palette', 'Branding', 'settings.manage'],
     ]],
 ];
 // Highlight only the most specific matching link (e.g. /admin/sellers/applications, not also /admin/sellers).
@@ -95,12 +96,12 @@ $renderNav = function () use ($nav, $active): string {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <title><?= e(($title ?? 'Admin') . ' | Waimart Admin') ?></title>
-    <link rel="icon" type="image/png" sizes="32x32" href="<?= e(asset('img/favicon-32.png')) ?>">
+    <title><?= e(($title ?? 'Admin') . ' | ' . brand_name() . ' Admin') ?></title>
     <link rel="stylesheet" href="<?= e(asset('vendor/bootstrap/bootstrap.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('vendor/bootstrap-icons/bootstrap-icons.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/admin.css')) ?>">
+<?= \Waimart\Core\View::partial('partials/brand-head', ['ogTitle' => null, 'ogDescription' => null]) ?>
 </head>
 <body class="wm-admin">
 <a class="skip-link" href="#main">Skip to main content</a>
@@ -109,7 +110,7 @@ $renderNav = function () use ($nav, $active): string {
         <i class="bi bi-list fs-3" aria-hidden="true"></i>
     </button>
     <a class="wm-admin-brand" href="<?= e(url('/admin')) ?>">
-        <img src="<?= e(asset('img/logo-wordmark.png')) ?>" alt="Waimart" width="110" height="22"><span>Admin</span>
+        <img src="<?= e(\Waimart\Services\Brand::asset('brand_logo_header')) ?>" alt="<?= e(brand_name()) ?>" height="22"><span>Admin</span>
     </a>
     <div class="ms-auto d-flex align-items-center gap-3">
         <a class="text-white small d-none d-sm-inline" href="<?= e(url('/')) ?>" target="_blank" rel="noopener">View store <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>

@@ -6,8 +6,8 @@
  */
 return [
     'app' => [
-        'name'      => 'Waimart',
-        'tagline'   => 'Everything You Need. One Marketplace.',
+        // Fallback only: the store's name and tagline are settings (Admin → Settings → Branding).
+        'name'      => 'Basemall',
         'env'       => 'production',          // production | development | testing
         'debug'     => false,
         'url'       => 'http://localhost/ecommerce',
@@ -32,8 +32,8 @@ return [
     ],
     'mail' => [
         'driver'     => 'log',                // log | smtp
-        'from_email' => 'no-reply@waimart.local',
-        'from_name'  => 'Waimart',
+        'from_email' => 'no-reply@basemall.local', // set the real sending address in config.local.php
+        'from_name'  => null,                    // null = the store's name from settings
         'smtp'       => ['host' => '', 'port' => 587, 'username' => '', 'password' => '', 'encryption' => 'tls'],
     ],
     'paths' => [

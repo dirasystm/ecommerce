@@ -13,7 +13,7 @@ $back = \Waimart\Services\OrderAccess::isOwner($order) ? '/account/orders/' . $o
     <form class="wm-card wm-page" method="post" action="<?= e(url('/order/' . $order['order_number'] . '/problem')) ?>" style="max-width:720px" novalidate>
         <?= csrf_field() ?>
         <h1>Report a problem with a seller's items</h1>
-        <p class="small text-muted">Waimart looks into every case with you and the seller. If you simply want to send items back, use <strong>Request a return</strong> on your order instead.</p>
+        <p class="small text-muted"><?= e(brand_name()) ?> looks into every case with you and the seller. If you simply want to send items back, use <strong>Request a return</strong> on your order instead.</p>
         <fieldset class="mb-3">
             <legend class="form-label fs-6">Which items?</legend>
             <?php foreach ($parts as $i => $p): ?>

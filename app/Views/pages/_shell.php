@@ -20,7 +20,7 @@ use Waimart\Controllers\PageController;
     <div class="row g-3">
         <aside class="col-lg-3">
             <nav class="wm-card wm-help-nav list-group list-group-flush py-2" aria-label="Help topics">
-                <?php foreach (PageController::PAGES as $s => [$t]): ?>
+                <?php foreach (PageController::PAGES as $s => [$t]): $t = brand_text($t); ?>
                     <a class="list-group-item list-group-item-action<?= $s === $slug ? ' active' : '' ?>"
                        href="<?= e(url('/' . $s)) ?>" <?= $s === $slug ? 'aria-current="page"' : '' ?>><?= e($t) ?></a>
                 <?php endforeach; ?>

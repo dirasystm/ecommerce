@@ -46,7 +46,7 @@ $canManage = Auth::can('sellers.manage') && !$platform;
                 <?php foreach ($members as $m): ?>
                     <tr><td><?= e($m['first_name'] . ' ' . $m['last_name']) ?></td><td class="small"><?= e($m['email']) ?></td><td><?= e(ucfirst($m['role'])) ?></td><td><?= e(ucfirst($m['status'])) ?></td></tr>
                 <?php endforeach; ?>
-                <?php if (!$members): ?><tr><td colspan="4" class="text-muted small">No seller users linked<?= $platform ? ' (the Official Store is run by Waimart staff)' : '' ?>.</td></tr><?php endif; ?>
+                <?php if (!$members): ?><tr><td colspan="4" class="text-muted small">No seller users linked<?= $platform ? ' (the Official Store is run by ' . brand_name() . ' staff)' : '' ?>.</td></tr><?php endif; ?>
                 </tbody>
             </table></div>
         </section>
@@ -85,7 +85,7 @@ $canManage = Auth::can('sellers.manage') && !$platform;
                 </div>
             </form>
         <?php elseif ($platform): ?>
-            <div class="alert alert-light border small">The Waimart Official Store is owned by the platform. It holds the products created in the admin catalogue.</div>
+            <div class="alert alert-light border small">The <?= e(brand_name()) ?> Official Store is owned by the platform. It holds the products created in the admin catalogue.</div>
         <?php endif; ?>
     </div>
 </div>

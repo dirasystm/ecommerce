@@ -147,6 +147,11 @@ final class SellerOnboardingTest extends DbTestCase
     {
         $u = $this->user();
         $this->assertValidation(fn () => $this->apps->saveDetails($u, $this->details(['store_name' => 'Waimart Deals'])), 'store_name');
+        // No store may pass itself off as the platform under its current name (from settings), however it is spelled.
+        foreach (['Basemall Deals', 'Base Mall Store', 'BASE-MALL Outlet'] as $impostor) {
+            $this->assertValidation(fn () => $this->apps->saveDetails($u, $this->details(['store_name' => $impostor])), 'store_name');
+        }
+        $this->assertValidation(fn () => $this->apps->saveDetails($u, $this->details(['store_slug' => 'basemall-deals'])), 'store_slug');
         $this->assertValidation(fn () => $this->apps->saveDetails($u, $this->details(['business_description' => 'Too short'])), 'business_description');
         $this->assertValidation(fn () => $this->apps->saveDetails($u, $this->details(['category_ids' => ['999999']])), 'category_ids');
         $this->assertValidation(fn () => $this->apps->saveDetails($u, $this->details(['county_id' => '99'])), 'county_id');

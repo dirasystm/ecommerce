@@ -8,12 +8,12 @@ use Waimart\Services\OrderPresenter;
  * @var string $refundable @var list<array<string,mixed>> $refunds
  */
 $open = in_array($d['status'], DisputeService::OPEN, true);
-$who = fn (array $m) => match ($m['author_role']) { 'customer' => 'Customer', 'seller' => $d['seller_name'], default => trim($m['first_name'] . ' ' . $m['last_name']) . ' (Waimart)' };
+$who = fn (array $m) => match ($m['author_role']) { 'customer' => 'Customer', 'seller' => $d['seller_name'], default => trim($m['first_name'] . ' ' . $m['last_name']) . ' (' . brand_name() . ')' };
 $paid = in_array($part['payment_status'], ['verified', 'cod_collected', 'refund_due', 'refunded'], true);
 ?>
 <div class="wm-admin-head">
     <h1>Case <?= e($d['dispute_number']) ?></h1>
-    <span class="badge fs-6 <?= $open ? 'badge-soft-warning' : 'badge-soft-success' ?>"><?= e(DisputeService::STATUS_LABELS[$d['status']]) ?></span>
+    <span class="badge fs-6 <?= $open ? 'badge-soft-warning' : 'badge-soft-success' ?>"><?= e(brand_text(DisputeService::STATUS_LABELS[$d['status']])) ?></span>
 </div>
 <p><a href="<?= e(url('/admin/disputes')) ?>"><i class="bi bi-arrow-left" aria-hidden="true"></i> Seller cases</a></p>
 <div class="row g-3">
@@ -62,7 +62,7 @@ $paid = in_array($part['payment_status'], ['verified', 'cod_collected', 'refund_
                 <div class="wm-panel-body d-flex gap-2 align-items-end">
                     <div class="flex-grow-1"><label class="form-label small" for="status">Status</label>
                         <select class="form-select form-select-sm" id="status" name="status">
-                            <?php foreach (DisputeService::OPEN as $s): ?><option value="<?= e($s) ?>" <?= $d['status'] === $s ? 'selected' : '' ?>><?= e(DisputeService::STATUS_LABELS[$s]) ?></option><?php endforeach; ?>
+                            <?php foreach (DisputeService::OPEN as $s): ?><option value="<?= e($s) ?>" <?= $d['status'] === $s ? 'selected' : '' ?>><?= e(brand_text(DisputeService::STATUS_LABELS[$s])) ?></option><?php endforeach; ?>
                         </select></div>
                     <button class="btn btn-sm btn-outline-secondary" type="submit">Update</button>
                 </div>

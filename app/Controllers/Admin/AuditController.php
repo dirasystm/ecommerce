@@ -47,7 +47,7 @@ final class AuditController extends AdminController
         if (($req->query['format'] ?? '') === 'csv') {
             \Waimart\Services\AuditLogger::log('audit.exported', 'audit_log', null, null, ['from' => $from, 'to' => $to, 'action' => $action, 'entity' => $entity], $this->actor());
             $rows = $db->all($sql . ' LIMIT 10000', $params);
-            return Csv::response('waimart-audit-' . substr($from, 0, 10) . '-to-' . substr($to, 0, 10) . '.csv',
+            return Csv::response(\Waimart\Services\Brand::slug() . '-audit-' . substr($from, 0, 10) . '-to-' . substr($to, 0, 10) . '.csv',
                 ['When', 'Actor', 'Action', 'Entity', 'Entity ID', 'Before', 'After', 'IP'],
                 array_map(fn ($r) => [$r['created_at'], $r['actor_name'] ?? 'System/customer', $r['action'], $r['entity_type'], $r['entity_id'], $r['before_json'], $r['after_json'], $r['ip_address']], $rows));
         }

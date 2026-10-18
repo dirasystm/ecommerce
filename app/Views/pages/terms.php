@@ -3,7 +3,7 @@ use Waimart\Core\View;
 
 /** @var array<string,mixed> $settings */
 ob_start(); ?>
-<p>These terms apply to purchases made on the Waimart website. By placing an order you agree to them.</p>
+<p>These terms apply to purchases made on the <?= e(brand_name()) ?> website. By placing an order you agree to them.</p>
 
 <h2>1. Orders and stock</h2>
 <p>An order is an offer to buy. When you place an order, the items are reserved for a limited time

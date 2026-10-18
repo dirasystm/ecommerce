@@ -27,7 +27,7 @@ final class SellerLedgerService
     public const BUCKETS = ['pending', 'available', 'reserved', 'paid'];
     public const BUCKET_LABELS = ['pending' => 'Pending', 'available' => 'Available', 'reserved' => 'In payout requests', 'paid' => 'Paid out'];
     public const TYPE_LABELS = [
-        'sale' => 'Sale', 'commission' => 'Waimart commission', 'release' => 'Became payable', 'refund' => 'Refund to customer',
+        'sale' => 'Sale', 'commission' => '{store} commission', 'release' => 'Became payable', 'refund' => 'Refund to customer',
         'commission_reversal' => 'Commission reversed', 'cancellation' => 'Sale reversed (not supplied)', 'payout_request' => 'Payout requested',
         'payout_return' => 'Payout request returned', 'payout_paid' => 'Payout paid', 'correction' => 'Adjustment',
     ];

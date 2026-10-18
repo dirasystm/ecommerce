@@ -11,6 +11,24 @@ use Waimart\Repositories\CatalogueRepository;
 
 final class HomeController extends Controller
 {
+    /** Web app manifest from the branding settings (so a rebrand needs no file edits). */
+    public function manifest(Request $req): Response
+    {
+        $brand = \Waimart\Services\Brand::class;
+        $icon = fn (string $key, int $size) => ['src' => $brand::asset($key), 'sizes' => "{$size}x{$size}", 'type' => 'image/png', 'purpose' => 'any'];
+        return Response::json([
+            'name' => brand_name(),
+            'short_name' => mb_substr(brand_name(), 0, 12),
+            'description' => $brand::tagline(),
+            'start_url' => url('/'),
+            'scope' => url('/'),
+            'display' => 'standalone',
+            'background_color' => '#FFFFFF',
+            'theme_color' => $brand::primary(),
+            'icons' => [$icon('brand_icon_192', 192), $icon('brand_icon_512', 512)],
+        ])->withHeader('Content-Type', 'application/manifest+json; charset=utf-8')->withHeader('Cache-Control', 'public, max-age=3600');
+    }
+
     public function index(Request $req): Response
     {
         $repo = new CatalogueRepository(App::db());
@@ -47,7 +65,7 @@ final class HomeController extends Controller
         }
         return $this->view('pages/pickup-stations', [
             'title' => 'Pickup stations',
-            'metaDescription' => 'Find a Waimart pickup station near you: addresses, opening hours and collection instructions.',
+            'metaDescription' => 'Find a ' . brand_name() . ' pickup station near you: addresses, opening hours and collection instructions.',
             'byCounty' => $byCounty,
         ]);
     }

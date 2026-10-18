@@ -20,6 +20,8 @@ $router->get('/flash-sales', [CatalogueController::class, 'flashSales'], [], 'fl
 $router->get('/store/{slug:[a-z0-9-]+}', [CatalogueController::class, 'store'], ['throttle:120,60'], 'store');
 $router->get('/product/{slug:[a-z0-9-]+}', [ProductController::class, 'show'], [], 'product');
 $router->get('/health', [HealthController::class, 'show'], ['throttle:30,60'], 'health');
+// Web app manifest (name, colours, icons for "Add to home screen"), generated from the branding settings.
+$router->get('/manifest.webmanifest', [HomeController::class, 'manifest']);
 
 // ------------------------------------------------------------------ customers
 use Waimart\Controllers\AccountController;
@@ -51,7 +53,7 @@ $router->group(['prefix' => '/account', 'middleware' => ['auth']], function ($r)
     $r->post('/orders/link', [OrderController::class, 'linkStart'], ['throttle:10,300']);
     $r->post('/orders/link/verify', [OrderController::class, 'linkVerify'], ['throttle:20,300']);
     $r->post('/orders/link/cancel', [OrderController::class, 'linkCancel']);
-    $r->get('/orders/{number:WM-[A-Z0-9]+}', [OrderController::class, 'accountShow']);
+    $r->get('/orders/{number:[A-Z]{2}-[A-Z0-9]{8}}', [OrderController::class, 'accountShow']);
     $r->get('/wishlist', [AccountController::class, 'wishlist']);
     $r->get('/reviews', [AccountController::class, 'reviews']);
     $r->post('/reviews/{item:\d+}', [AccountController::class, 'submitReview'], ['throttle:20,3600']);
@@ -75,18 +77,18 @@ $router->post('/checkout/quote', [CheckoutController::class, 'quote'], ['throttl
 $router->get('/checkout/towns', [CheckoutController::class, 'towns'], ['throttle:120,60']);
 $router->post('/checkout', [CheckoutController::class, 'submit'], ['throttle:30,60']);
 
-$router->get('/order/{number:WM-[A-Z0-9]+}/confirmation', [OrderController::class, 'confirmation']);
+$router->get('/order/{number:[A-Z]{2}-[A-Z0-9]{8}}/confirmation', [OrderController::class, 'confirmation']);
 $router->get('/track/{number:[A-Za-z0-9-]+}', [OrderController::class, 'track'], ['throttle:60,60']);
-$router->post('/order/{number:WM-[A-Z0-9]{8}}/cancel', [OrderController::class, 'cancel'], ['throttle:10,300']);
-$router->post('/order/{number:WM-[A-Z0-9]{8}}/payment', [OrderController::class, 'submitPayment'], ['throttle:10,300']);
-$router->get('/order/{number:WM-[A-Z0-9]{8}}/return', [OrderController::class, 'returnForm']);
-$router->post('/order/{number:WM-[A-Z0-9]{8}}/return', [OrderController::class, 'requestReturn'], ['throttle:10,3600']);
+$router->post('/order/{number:[A-Z]{2}-[A-Z0-9]{8}}/cancel', [OrderController::class, 'cancel'], ['throttle:10,300']);
+$router->post('/order/{number:[A-Z]{2}-[A-Z0-9]{8}}/payment', [OrderController::class, 'submitPayment'], ['throttle:10,300']);
+$router->get('/order/{number:[A-Z]{2}-[A-Z0-9]{8}}/return', [OrderController::class, 'returnForm']);
+$router->post('/order/{number:[A-Z]{2}-[A-Z0-9]{8}}/return', [OrderController::class, 'requestReturn'], ['throttle:10,3600']);
 // Seller disputes ("report a problem"): same access as returns (owner or verified guest); cases load only through their order.
-$router->get('/order/{number:WM-[A-Z0-9]{8}}/problem', [\Waimart\Controllers\DisputeController::class, 'form']);
-$router->post('/order/{number:WM-[A-Z0-9]{8}}/problem', [\Waimart\Controllers\DisputeController::class, 'open'], ['throttle:10,3600']);
-$router->get('/order/{number:WM-[A-Z0-9]{8}}/cases/{id:\d+}', [\Waimart\Controllers\DisputeController::class, 'show']);
-$router->post('/order/{number:WM-[A-Z0-9]{8}}/cases/{id:\d+}/message', [\Waimart\Controllers\DisputeController::class, 'message'], ['throttle:30,3600']);
-$router->post('/order/{number:WM-[A-Z0-9]{8}}/cases/{id:\d+}/withdraw', [\Waimart\Controllers\DisputeController::class, 'withdraw'], ['throttle:10,3600']);
+$router->get('/order/{number:[A-Z]{2}-[A-Z0-9]{8}}/problem', [\Waimart\Controllers\DisputeController::class, 'form']);
+$router->post('/order/{number:[A-Z]{2}-[A-Z0-9]{8}}/problem', [\Waimart\Controllers\DisputeController::class, 'open'], ['throttle:10,3600']);
+$router->get('/order/{number:[A-Z]{2}-[A-Z0-9]{8}}/cases/{id:\d+}', [\Waimart\Controllers\DisputeController::class, 'show']);
+$router->post('/order/{number:[A-Z]{2}-[A-Z0-9]{8}}/cases/{id:\d+}/message', [\Waimart\Controllers\DisputeController::class, 'message'], ['throttle:30,3600']);
+$router->post('/order/{number:[A-Z]{2}-[A-Z0-9]{8}}/cases/{id:\d+}/withdraw', [\Waimart\Controllers\DisputeController::class, 'withdraw'], ['throttle:10,3600']);
 $router->get('/track-order', [OrderController::class, 'lookupForm'], [], 'track-order');
 $router->post('/track-order', [OrderController::class, 'lookup'], ['throttle:20,300']);
 
@@ -228,6 +230,8 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     $r->post('/cod/{id:\d+}', [Admin\PaymentController::class, 'recordCod'], ['can:cod.collect']);
     $r->get('/settings', [Admin\SettingsController::class, 'edit'], ['can:settings.manage']);
     $r->post('/settings', [Admin\SettingsController::class, 'update'], ['can:settings.manage']);
+    $r->get('/settings/branding', [Admin\BrandingController::class, 'edit'], ['can:settings.manage']);
+    $r->post('/settings/branding', [Admin\BrandingController::class, 'update'], ['can:settings.manage', 'throttle:30,3600']);
 
     $r->get('/reports', [Admin\ReportController::class, 'index'], ['can:reports.view']);
     $r->get('/audit', [Admin\AuditController::class, 'index'], ['can:audit.view']);

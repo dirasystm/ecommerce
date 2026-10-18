@@ -52,14 +52,14 @@ final class OrderPresenter
     /** Customer-facing labels for a seller's part of an order. */
     public const SELLER_ORDER_LABELS = [
         'pending_acceptance' => 'Waiting for confirmation', 'accepted' => 'Confirmed', 'rejected' => 'Not available from this seller',
-        'processing' => 'Being prepared', 'packed' => 'Packed', 'handed_over' => 'With Waimart for delivery',
+        'processing' => 'Being prepared', 'packed' => 'Packed', 'handed_over' => 'With {store} for delivery',
         'dispatched' => 'Dispatched', 'out_for_delivery' => 'Out for delivery', 'delivered' => 'Delivered',
         'ready_for_collection' => 'Ready for collection', 'collected' => 'Collected', 'cancelled' => 'Cancelled',
     ];
 
     public static function sellerOrderStatus(string $s): string
     {
-        return self::SELLER_ORDER_LABELS[$s] ?? ucfirst(str_replace('_', ' ', $s));
+        return brand_text(self::SELLER_ORDER_LABELS[$s] ?? ucfirst(str_replace('_', ' ', $s)));
     }
 
     public static function payment(string $s): string
@@ -93,8 +93,8 @@ final class OrderPresenter
                 : 'Your order is being prepared for delivery.',
             'dispatched', 'out_for_delivery' => 'Your order is on its way.',
             'ready_for_collection' => 'Your order is ready for collection. Bring your collection code and ID to the pickup station.',
-            'delivered' => 'Your order has been delivered. Thank you for shopping with Waimart!',
-            'collected' => 'Your order has been collected. Thank you for shopping with Waimart!',
+            'delivered' => 'Your order has been delivered. Thank you for shopping with ' . brand_name() . '!',
+            'collected' => 'Your order has been collected. Thank you for shopping with ' . brand_name() . '!',
             'cancelled' => 'This order has been cancelled.',
             'expired' => 'The reservation for this order expired before it was confirmed, so the items were released.',
             'requires_resolution' => 'Our team is reviewing this order and will contact you about the next steps.',

@@ -34,7 +34,7 @@ final class OrderClaimService
             throw ValidationException::withMessage('Too many attempts. Please try again in an hour.');
         }
         $orderNumber = strtoupper(trim($orderNumber));
-        $order = preg_match('/^WM-[A-Z0-9]{8}$/', $orderNumber)
+        $order = preg_match(Brand::ORDER_NUMBER_REGEX, $orderNumber)
             ? $this->db->one('SELECT * FROM orders WHERE order_number = ? AND user_id IS NULL', [$orderNumber])
             : null;
         if ($order === null) {
@@ -56,13 +56,13 @@ final class OrderClaimService
             ]);
         });
 
-        $msg = "Your Waimart verification code to add order {$order['order_number']} to your account is $code. "
+        $msg = "Your " . brand_name() . " verification code to add order {$order['order_number']} to your account is $code. "
             . 'It expires in ' . self::TTL_MINUTES . ' minutes. If you did not request this, ignore this message.';
         $n = new NotificationService();
         $ctx = ['order_id' => (int) $order['id'], 'secrets' => [$code]];
         $n->sms((string) $order['customer_phone'], $msg, 'order_claim_code', $ctx);
         if ($order['customer_email']) {
-            $n->email((string) $order['customer_email'], 'Your Waimart verification code', $msg, 'order_claim_code', $ctx);
+            $n->email((string) $order['customer_email'], 'Your ' . brand_name() . ' verification code', $msg, 'order_claim_code', $ctx);
         }
         return $claimId;
     }

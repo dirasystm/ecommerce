@@ -19,7 +19,7 @@ $canEdit = in_array(SellerContext::role(), ['owner', 'manager'], true) && $selle
     <div class="alert alert-warning small"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> <?= (int) $counts['low_stock'] ?> product(s) are low on stock or sold out.</div>
 <?php endif; ?>
 <p class="small text-muted"><?= $moderated
-    ? 'New products, and changes to a product\'s name, description, category or photos, are checked by Waimart before they appear in the shop. Price and stock changes apply immediately.'
+    ? 'New products, and changes to a product\'s name, description, category or photos, are checked by ' . brand_name() . ' before they appear in the shop. Price and stock changes apply immediately.'
     : 'Products are published as soon as you submit them.' ?></p>
 
 <div class="wm-panel"><div class="table-responsive">

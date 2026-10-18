@@ -55,8 +55,8 @@ final class OrderController extends SellerController
         $msg = match ($to) {
             'accepted' => 'Order accepted. Prepare the items, then mark them packed.',
             'processing' => 'Marked as being prepared.',
-            'packed' => 'Marked as packed. Hand the parcel to Waimart; we will confirm when we receive it.',
-            'rejected' => 'You declined this order. The customer has been told, and Waimart will refund them for these items if they had already paid.',
+            'packed' => 'Marked as packed. Hand the parcel to ' . brand_name() . '; we will confirm when we receive it.',
+            'rejected' => 'You declined this order. The customer has been told, and ' . brand_name() . ' will refund them for these items if they had already paid.',
             default => 'Order updated.',
         };
         return $this->success($msg, "/seller/orders/$id");

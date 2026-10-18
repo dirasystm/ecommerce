@@ -101,6 +101,8 @@ The script removes only the marketplace tables, columns and reference data. If a
 
 Migration 016 adds triggers that make the seller ledger and payout history append-only. Backups include them, but only if the database user has the `TRIGGER` privilege, which `bin/install.php` grants. Restoring as `root` always works.
 
+The Basemall rebrand has its own rollback, `database/rollback/rollback_basemall.sql` (migrations 018 onwards). It runs **before** the marketplace rollback, and restores the Waimart values only where they still hold the shipped Basemall values. Drilled with the marketplace rollback on a copy of the pre-upgrade backup: identical schema and data.
+
 ### Test your backups
 
 A backup you have never restored is a hope, not a backup. Once a month, restore the latest backup into the **test** database, which is disposable and rebuilt by the test suite anyway:

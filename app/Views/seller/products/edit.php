@@ -33,7 +33,7 @@ $live = $status === 'published' && (int) $product['is_active'] === 1 && $active;
     <?php if ($status === 'draft'): ?>
         <p class="mb-2">This product is a <strong>draft</strong> and is not in the shop. Add at least one photo and a description, then submit it<?= $moderated ? ' for approval' : '' ?>.</p>
     <?php elseif ($status === 'pending'): ?>
-        <p class="mb-0">Waiting for Waimart's approval. You will get an email when it has been reviewed. Price and stock changes still apply.</p>
+        <p class="mb-0">Waiting for <?= e(brand_name()) ?>'s approval. You will get an email when it has been reviewed. Price and stock changes still apply.</p>
     <?php elseif ($status === 'rejected'): ?>
         <p class="mb-2 text-danger"><strong>Not approved:</strong> <?= e((string) $product['moderation_note']) ?></p>
         <p class="mb-2 small">Make the changes needed, then submit it again.</p>

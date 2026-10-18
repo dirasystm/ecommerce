@@ -2,7 +2,7 @@
 use Waimart\Services\OrderPresenter;
 
 /** @var string $tab @var list<array<string,mixed>> $rows @var array<string,int> $counts */
-$tabs = ['new' => 'New — accept or decline', 'preparing' => 'Preparing', 'handover' => 'Ready to hand over', 'with_waimart' => 'With Waimart',
+$tabs = ['new' => 'New — accept or decline', 'preparing' => 'Preparing', 'handover' => 'Ready to hand over', 'with_waimart' => 'With ' . brand_name(),
          'completed' => 'Completed', 'cancelled' => 'Cancelled / declined'];
 ?>
 <div class="wm-admin-head"><h1>Orders</h1></div>
@@ -12,7 +12,7 @@ $tabs = ['new' => 'New — accept or decline', 'preparing' => 'Preparing', 'hand
             <span class="badge <?= $k === 'new' && $counts[$k] > 0 ? 'text-bg-warning' : 'text-bg-light' ?>"><?= (int) $counts[$k] ?></span></a></li>
     <?php endforeach; ?>
 </ul>
-<p class="small text-muted">You see orders once the customer has paid (M-Pesa verified) or a cash order has been confirmed. Accept or decline new orders promptly, prepare and pack the items, then hand them to Waimart for delivery or pickup.</p>
+<p class="small text-muted">You see orders once the customer has paid (M-Pesa verified) or a cash order has been confirmed. Accept or decline new orders promptly, prepare and pack the items, then hand them to <?= e(brand_name()) ?> for delivery or pickup.</p>
 <div class="wm-panel"><div class="table-responsive">
     <table class="table table-hover mb-0 align-middle">
         <thead><tr><th>Order</th><th>Confirmed</th><th>Fulfilment</th><th class="text-end">Items</th><th class="text-end">Value</th><th class="text-end">Your earnings</th><th>Status</th></tr></thead>
@@ -32,4 +32,4 @@ $tabs = ['new' => 'New — accept or decline', 'preparing' => 'Preparing', 'hand
         </tbody>
     </table>
 </div></div>
-<p class="small text-muted mt-2">"Your earnings" is the order value less Waimart's commission. It becomes payable only after the customer has received the items and the holding period has passed.</p>
+<p class="small text-muted mt-2">"Your earnings" is the order value less <?= e(brand_name()) ?>'s commission. It becomes payable only after the customer has received the items and the holding period has passed.</p>

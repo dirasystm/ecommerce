@@ -47,12 +47,12 @@ $renderNav = function () use ($nav, $active, $seller): string {
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <title><?= e(($title ?? 'Seller Centre') . ' | Waimart Seller Centre') ?></title>
-    <link rel="icon" type="image/png" sizes="32x32" href="<?= e(asset('img/favicon-32.png')) ?>">
+    <title><?= e(($title ?? 'Seller Centre') . ' | ' . brand_name() . ' Seller Centre') ?></title>
     <link rel="stylesheet" href="<?= e(asset('vendor/bootstrap/bootstrap.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('vendor/bootstrap-icons/bootstrap-icons.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/admin.css')) ?>">
+<?= \Waimart\Core\View::partial('partials/brand-head', ['ogTitle' => null, 'ogDescription' => null]) ?>
 </head>
 <body class="wm-admin wm-seller">
 <a class="skip-link" href="#main">Skip to main content</a>
@@ -61,13 +61,13 @@ $renderNav = function () use ($nav, $active, $seller): string {
         <i class="bi bi-list fs-3" aria-hidden="true"></i>
     </button>
     <a class="wm-admin-brand" href="<?= e(url('/seller')) ?>">
-        <img src="<?= e(asset('img/logo-wordmark.png')) ?>" alt="Waimart" width="110" height="22"><span>Seller Centre</span>
+        <img src="<?= e(\Waimart\Services\Brand::asset('brand_logo_header')) ?>" alt="<?= e(brand_name()) ?>" height="22"><span>Seller Centre</span>
     </a>
     <div class="ms-auto d-flex align-items-center gap-3">
         <?php if ($seller && $seller['status'] === 'active'): ?>
             <a class="text-white small d-none d-sm-inline" href="<?= e(url('/store/' . $seller['slug'])) ?>" target="_blank" rel="noopener">View my store <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
         <?php else: ?>
-            <a class="text-white small d-none d-sm-inline" href="<?= e(url('/')) ?>" target="_blank" rel="noopener">View Waimart <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+            <a class="text-white small d-none d-sm-inline" href="<?= e(url('/')) ?>" target="_blank" rel="noopener">View <?= e(brand_name()) ?> <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
         <?php endif; ?>
         <span class="text-white small d-none d-md-inline"><i class="bi bi-person-circle" aria-hidden="true"></i> <?= e(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')) ?></span>
         <form action="<?= e(url('/logout')) ?>" method="post" class="m-0">

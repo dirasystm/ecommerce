@@ -131,7 +131,7 @@ final class ReturnService
         foreach ($rets as $r) {
             $this->notifySeller($r, 'seller_return_requested', "Return {$r['return_number']} requested",
                 'A customer has asked to return items from order ' . $this->subNumber($r) . ' (reason: ' . self::REASONS[$reason] . ").\n"
-                . 'Waimart will collect and inspect the items. Earnings for this order are held until the return is closed.');
+                . brand_name() . ' will collect and inspect the items. Earnings for this order are held until the return is closed.');
         }
         return $rets;
     }
@@ -154,7 +154,7 @@ final class ReturnService
         });
         $this->notify((int) $r['order_id'], 'return_rejected', "Your return {$r['return_number']} could not be accepted: $note");
         $this->notifySeller($r, 'seller_return_rejected', "Return {$r['return_number']} not accepted",
-            'Waimart did not accept the return on order ' . $this->subNumber($r) . '. Your earnings for it are no longer held by this return.');
+            brand_name() . ' did not accept the return on order ' . $this->subNumber($r) . '. Your earnings for it are no longer held by this return.');
     }
 
     public function receive(int $returnId, int $staffId): void
@@ -249,7 +249,7 @@ final class ReturnService
         $this->notify((int) $r['order_id'], 'return_completed', $msg);
         $this->notifySeller($r, 'seller_return_completed', "Return {$r['return_number']} closed",
             'The return on order ' . $this->subNumber($r) . ' has been closed. '
-            . (Money::isZero($amount) ? 'No refund was given, so your earnings are unchanged.' : 'The customer is refunded ' . Money::format($amount) . '; the matching share of your sale (less Waimart\'s commission on it) is deducted in your ledger.'));
+            . (Money::isZero($amount) ? 'No refund was given, so your earnings are unchanged.' : 'The customer is refunded ' . Money::format($amount) . '; the matching share of your sale (less ' . brand_name() . '\'s commission on it) is deducted in your ledger.'));
     }
 
     /**
@@ -335,10 +335,10 @@ final class ReturnService
             $n = new NotificationService();
             $ctx = ['order_id' => $orderId, 'user_id' => $o['user_id'] ? (int) $o['user_id'] : null];
             if ($o['customer_email'] && ($o['user_id'] === null || (int) $o['notify_email'] === 1)) {
-                $n->email((string) $o['customer_email'], "Order {$o['order_number']}: return update", "Hello {$o['customer_name']},\n\n$text\n\nWaimart", $template, $ctx);
+                $n->email((string) $o['customer_email'], "Order {$o['order_number']}: return update", "Hello {$o['customer_name']},\n\n$text\n\n" . brand_name(), $template, $ctx);
             }
             if ($o['user_id'] === null || (int) $o['notify_sms'] === 1) {
-                $n->sms((string) $o['customer_phone'], "Waimart: $text", $template, $ctx);
+                $n->sms((string) $o['customer_phone'], brand_name() . ": $text", $template, $ctx);
             }
         } catch (\Throwable $e) {
             \Waimart\Core\Logger::error('Return notification failed', ['order_id' => $orderId, 'error' => $e->getMessage()]);

@@ -1,4 +1,4 @@
-/* Waimart storefront behaviour. No inline scripts (CSP: script-src 'self'). */
+/* Basemall storefront behaviour. No inline scripts (CSP: script-src 'self'). */
 (function () {
     'use strict';
 

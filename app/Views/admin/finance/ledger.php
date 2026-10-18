@@ -18,7 +18,7 @@ use Waimart\Services\SellerLedgerService;
         <tbody>
         <?php foreach ($entries as $en): ?>
             <tr><td class="small text-muted"><?= (int) $en['id'] ?></td><td class="small text-nowrap"><?= e(date('d M Y H:i', strtotime((string) $en['created_at']))) ?></td>
-                <td class="small"><?= e(SellerLedgerService::TYPE_LABELS[$en['entry_type']] ?? $en['entry_type']) ?></td><td class="small"><?= e(SellerLedgerService::BUCKET_LABELS[$en['bucket']]) ?></td>
+                <td class="small"><?= e(brand_text(SellerLedgerService::TYPE_LABELS[$en['entry_type']] ?? $en['entry_type'])) ?></td><td class="small"><?= e(SellerLedgerService::BUCKET_LABELS[$en['bucket']]) ?></td>
                 <td class="small"><?= e((string) ($en['sub_number'] ?: $en['payout_number'])) ?></td><td class="small text-muted"><?= e((string) $en['note']) ?></td>
                 <td class="text-end text-nowrap <?= Money::cmp((string) $en['amount'], '0') < 0 ? 'text-danger' : '' ?>"><?= e(money($en['amount'])) ?></td></tr>
         <?php endforeach; ?>

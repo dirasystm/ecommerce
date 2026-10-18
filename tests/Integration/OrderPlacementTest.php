@@ -83,7 +83,7 @@ final class OrderPlacementTest extends DbTestCase
         $r = $this->place($cart, ['grand_total' => '1', 'delivery_fee' => '0']);   // tampered values ignored
         $o = $r['order'];
         $this->assertTrue($r['created']);
-        $this->assertMatchesRegularExpression('/^WM-[A-Z0-9]{8}$/', $o['order_number']);
+        $this->assertMatchesRegularExpression('/^BM-[A-Z0-9]{8}$/', $o['order_number']);
         $this->assertSame('awaiting_payment', $o['status']);
         $this->assertSame('unpaid', $o['payment_status']);
         $this->assertSame(['2250.00', '200.00', '2450.00'], [$o['subtotal'], $o['delivery_fee'], $o['grand_total']]);

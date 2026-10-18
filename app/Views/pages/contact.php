@@ -19,7 +19,7 @@ ob_start(); ?>
     </div>
 </div>
 <p class="mt-3">When contacting us about an order, please have your <strong>order number</strong> ready.
-    For your security, never share your M-Pesa PIN or your pickup collection code with anyone claiming to be from Waimart.</p>
+    For your security, never share your M-Pesa PIN or your pickup collection code with anyone claiming to be from <?= e(brand_name()) ?>.</p>
 <?php
 $body = (string) ob_get_clean();
 echo View::partial('pages/_shell', compact('title', 'slug', 'body'));

@@ -28,11 +28,11 @@ $searchForm = function (string $id) use ($q): string {
     <div class="container-wm wm-topbar-inner">
         <div class="wm-promo">
             <span><i class="bi bi-phone" aria-hidden="true"></i>Pay with M-Pesa or Cash on Delivery</span>
-            <a href="<?= e(url('/pickup-stations')) ?>"><i class="bi bi-shop" aria-hidden="true"></i>Free pickup at Waimart stations</a>
+            <a href="<?= e(url('/pickup-stations')) ?>"><i class="bi bi-shop" aria-hidden="true"></i>Free pickup at <?= e(brand_name()) ?> stations</a>
             <span><i class="bi bi-arrow-repeat" aria-hidden="true"></i>Easy returns</span>
         </div>
         <div class="wm-topbar-links d-none d-lg-flex gap-3">
-            <a href="<?= e(url('/sell')) ?>"><i class="bi bi-shop-window" aria-hidden="true"></i> Sell on Waimart</a>
+            <a href="<?= e(url('/sell')) ?>"><i class="bi bi-shop-window" aria-hidden="true"></i> Sell on <?= e(brand_name()) ?></a>
             <a href="<?= e(url('/track-order')) ?>"><i class="bi bi-truck" aria-hidden="true"></i> Track order</a>
             <a href="<?= e(url('/help')) ?>"><i class="bi bi-question-circle" aria-hidden="true"></i> Help</a>
         </div>
@@ -46,9 +46,9 @@ $searchForm = function (string $id) use ($q): string {
             <i class="bi bi-list fs-3" aria-hidden="true"></i>
         </button>
 
-        <a class="wm-logo" href="<?= e(url('/')) ?>" aria-label="Waimart home">
-            <img class="wm-logo-icon" src="<?= e(asset('img/logo-icon.png')) ?>" alt="" width="62" height="40">
-            <img class="wm-logo-word" src="<?= e(asset('img/logo-wordmark.png')) ?>" alt="Waimart" width="142" height="28">
+        <a class="wm-logo" href="<?= e(url('/')) ?>" aria-label="<?= e(brand_name()) ?> home">
+            <img class="wm-logo-icon" src="<?= e(\Waimart\Services\Brand::asset('brand_logo_icon')) ?>" alt="" height="40">
+            <img class="wm-logo-word" src="<?= e(\Waimart\Services\Brand::asset('brand_logo_header')) ?>" alt="<?= e(brand_name()) ?>" height="28">
         </a>
 
         <?= $searchForm('wmSearchDesktop') ?>
@@ -147,7 +147,7 @@ $searchForm = function (string $id) use ($q): string {
             <a class="d-block py-1" href="<?= e(url('/help')) ?>">Help Center</a>
             <a class="d-block py-1" href="<?= e(url('/track-order')) ?>">Track an order</a>
             <a class="d-block py-1" href="<?= e(url('/delivery-pickup')) ?>">Delivery &amp; pickup</a>
-            <a class="d-block py-1" href="<?= e(url('/sell')) ?>">Sell on Waimart</a>
+            <a class="d-block py-1" href="<?= e(url('/sell')) ?>">Sell on <?= e(brand_name()) ?></a>
         </div>
     </div>
 </div>

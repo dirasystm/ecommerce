@@ -13,6 +13,6 @@
     <label for="password" style="display:block;font-weight:600;margin-bottom:4px">Password</label>
     <input id="password" name="password" type="password" autocomplete="current-password" required
            style="width:100%;padding:10px;border:1px solid #bbb;border-radius:4px;margin-bottom:16px">
-    <button type="submit" style="width:100%;padding:11px;background:#c25400;color:#fff;border:0;border-radius:4px;font-weight:700;cursor:pointer">Sign in</button>
+    <button type="submit" style="width:100%;padding:11px;background:var(--wm-action);color:#fff;border:0;border-radius:4px;font-weight:700;cursor:pointer">Sign in</button>
 </form>
 <p style="font-size:.85rem;color:#5f6368;margin-top:16px">Staff access only. Sign-in attempts are rate-limited and logged.</p>

@@ -37,7 +37,7 @@ final class AuthController extends Controller
         $guestToken = CartService::current()->guestToken();
         $user = (new AccountService())->register($req->post, $req->ip());
         Auth::login($user);
-        return $this->afterSignIn((int) $user['id'], $guestToken, 'Your account has been created. Welcome to Waimart!');
+        return $this->afterSignIn((int) $user['id'], $guestToken, 'Your account has been created. Welcome to ' . brand_name() . '!');
     }
 
     public function forgotForm(Request $req): Response

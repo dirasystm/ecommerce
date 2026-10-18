@@ -70,9 +70,9 @@ final class SellerService
         }
         $this->db->exec("UPDATE sellers SET status = 'suspended', suspended_at = NOW(), suspension_reason = ? WHERE id = ? AND status = 'active'", [$reason, $sellerId]);
         AuditLogger::log('seller.suspended', 'seller', $sellerId, ['status' => 'active'], ['status' => 'suspended', 'reason' => $reason], $staffId);
-        $this->notifyOwners($sellerId, 'seller_suspended', 'Your Waimart store has been suspended',
+        $this->notifyOwners($sellerId, 'seller_suspended', 'Your ' . brand_name() . ' store has been suspended',
             "Your store \"{$seller['name']}\" has been suspended.\n\nReason: $reason\n\nWhile suspended, your products are not shown to customers and you cannot make changes. "
-            . "Your existing orders and financial records remain available in the Seller Centre. Please contact Waimart to resolve this.");
+            . "Your existing orders and financial records remain available in the Seller Centre. Please contact " . brand_name() . " to resolve this.");
     }
 
     public function reactivate(int $sellerId, int $staffId, string $note = ''): void
@@ -84,7 +84,7 @@ final class SellerService
         $this->db->exec("UPDATE sellers SET status = 'active', suspended_at = NULL, suspension_reason = NULL WHERE id = ? AND status = 'suspended'", [$sellerId]);
         AuditLogger::log('seller.reactivated', 'seller', $sellerId, ['status' => 'suspended', 'reason' => $seller['suspension_reason']],
             ['status' => 'active', 'note' => trim($note) ?: null], $staffId);
-        $this->notifyOwners($sellerId, 'seller_reactivated', 'Your Waimart store is active again',
+        $this->notifyOwners($sellerId, 'seller_reactivated', 'Your ' . brand_name() . ' store is active again',
             "Your store \"{$seller['name']}\" has been reactivated. You can sign in to the Seller Centre and continue selling.");
     }
 
@@ -145,7 +145,7 @@ final class SellerService
     {
         $s = $this->find($sellerId) ?? throw \Waimart\Core\HttpException::notFound();
         if ((int) $s['is_platform'] === 1) {
-            throw ValidationException::withMessage('The Waimart Official Store is managed by the platform and cannot be changed here.');
+            throw ValidationException::withMessage('The ' . brand_name() . ' Official Store is managed by the platform and cannot be changed here.');
         }
         return $s;
     }

@@ -63,7 +63,7 @@ final class PayoutService
                 throw new ValidationException(['amount' => 'You can request at most ' . Money::format($available) . ' (your available balance).']);
             }
             $method = $this->db->one('SELECT id, masked FROM seller_payout_methods WHERE seller_id = ? AND is_active = 1', [$sellerId])
-                ?? throw ValidationException::withMessage('Add payout details before requesting a payout (contact Waimart Seller Support).');
+                ?? throw ValidationException::withMessage('Add payout details before requesting a payout (contact ' . brand_name() . ' Seller Support).');
             $id = $this->db->insert('seller_payouts', [
                 'payout_number' => $this->number(), 'seller_id' => $sellerId, 'amount' => $amount, 'status' => 'requested',
                 'payout_method_id' => $method['id'], 'destination_masked' => $method['masked'], 'requested_by' => $userId,

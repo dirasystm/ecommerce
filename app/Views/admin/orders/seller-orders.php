@@ -8,7 +8,7 @@ $sellerQ = (string) ($req->query['seller'] ?? '');
 $tabs = ['pending_acceptance', 'accepted', 'processing', 'packed', 'handed_over', 'dispatched', 'out_for_delivery', 'ready_for_collection', 'delivered', 'collected', 'rejected', 'cancelled'];
 ?>
 <div class="wm-admin-head"><h1>Seller orders</h1></div>
-<p class="small text-muted">Every seller's part of confirmed orders. "Packed" parts are waiting for Waimart to receive them from the seller.</p>
+<p class="small text-muted">Every seller's part of confirmed orders. "Packed" parts are waiting for <?= e(brand_name()) ?> to receive them from the seller.</p>
 <ul class="nav nav-pills mb-3 small flex-wrap">
     <?php foreach ($tabs as $k): ?>
         <li class="nav-item"><a class="nav-link<?= $status === $k ? ' active' : '' ?>" href="<?= e(url('/admin/seller-orders', array_filter(['status' => $k, 'seller' => $sellerQ]))) ?>"><?= e(OrderPresenter::sellerOrderStatus($k)) ?>

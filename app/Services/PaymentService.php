@@ -226,10 +226,10 @@ final class PaymentService
             $n = new NotificationService();
             $ctx = ['order_id' => $orderId, 'user_id' => $o['user_id'] ? (int) $o['user_id'] : null];
             if ($o['customer_email'] && ($o['user_id'] === null || (int) $o['notify_email'] === 1)) {
-                $n->email((string) $o['customer_email'], "Order {$o['order_number']}: payment update", "Hello {$o['customer_name']},\n\n$text\n\nWaimart", $template, $ctx);
+                $n->email((string) $o['customer_email'], "Order {$o['order_number']}: payment update", "Hello {$o['customer_name']},\n\n$text\n\n" . brand_name(), $template, $ctx);
             }
             if ($o['user_id'] === null || (int) $o['notify_sms'] === 1) {
-                $n->sms((string) $o['customer_phone'], "Waimart: $text", $template, $ctx);
+                $n->sms((string) $o['customer_phone'], brand_name() . ": $text", $template, $ctx);
             }
         } catch (\Throwable $e) {
             \Waimart\Core\Logger::error('Payment notification failed', ['order_id' => $orderId, 'error' => $e->getMessage()]);

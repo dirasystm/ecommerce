@@ -80,7 +80,7 @@ final class ProductController extends SellerController
         $id = $this->id($req);
         $this->service()->submit($this->sellerId(), $id, (int) Auth::id());
         return $this->success(SellerProductService::moderationRequired()
-            ? 'Submitted. Waimart will review the product and email you.' : 'Published — the product is now in the shop.', "/seller/products/$id");
+            ? 'Submitted. ' . brand_name() . ' will review the product and email you.' : 'Published — the product is now in the shop.', "/seller/products/$id");
     }
 
     public function archive(Request $req): Response

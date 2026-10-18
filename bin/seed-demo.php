@@ -46,12 +46,12 @@ if ((int) $db->value('SELECT COUNT(*) FROM delivery_zones') === 0) {
             }
         }
         $points = [
-            ['NBO-CBD-01', 'Waimart Pickup — Moi Avenue', 'Nairobi', 'Nairobi CBD', 'Moi Avenue, Ground Floor, Shop 12', 'Mon–Sat 8:00–19:00, Sun 10:00–16:00', 'Enter through the main lobby; the counter is on the left.', '0', 1, 1],
-            ['NBO-WLD-01', 'Waimart Pickup — Westlands', 'Nairobi', 'Westlands', 'Woodvale Grove, 1st Floor', 'Mon–Sat 9:00–18:00', 'Bring your collection code and ID.', '0', 1, 1],
-            ['KBU-THK-01', 'Waimart Pickup — Thika Town', 'Kiambu', 'Thika', 'Kenyatta Highway, Opp. bus park', 'Mon–Sat 8:30–18:00', null, '50', 1, 1],
-            ['MSA-NYL-01', 'Waimart Pickup — Nyali', 'Mombasa', 'Nyali', 'Links Road, Shop 4', 'Mon–Sat 9:00–18:00', null, '0', 1, 1],
-            ['KSM-CBD-01', 'Waimart Pickup — Kisumu CBD', 'Kisumu', 'Kisumu', 'Oginga Odinga Street, Shop 7', 'Mon–Sat 8:00–18:00', null, '0', 0, 1],
-            ['NKR-CBD-01', 'Waimart Pickup — Nakuru (temporarily closed)', 'Nakuru', 'Nakuru', 'Kenyatta Avenue', 'Closed for renovation', null, '0', 1, 0],
+            ['NBO-CBD-01', brand_name() . ' Pickup — Moi Avenue', 'Nairobi', 'Nairobi CBD', 'Moi Avenue, Ground Floor, Shop 12', 'Mon–Sat 8:00–19:00, Sun 10:00–16:00', 'Enter through the main lobby; the counter is on the left.', '0', 1, 1],
+            ['NBO-WLD-01', brand_name() . ' Pickup — Westlands', 'Nairobi', 'Westlands', 'Woodvale Grove, 1st Floor', 'Mon–Sat 9:00–18:00', 'Bring your collection code and ID.', '0', 1, 1],
+            ['KBU-THK-01', brand_name() . ' Pickup — Thika Town', 'Kiambu', 'Thika', 'Kenyatta Highway, Opp. bus park', 'Mon–Sat 8:30–18:00', null, '50', 1, 1],
+            ['MSA-NYL-01', brand_name() . ' Pickup — Nyali', 'Mombasa', 'Nyali', 'Links Road, Shop 4', 'Mon–Sat 9:00–18:00', null, '0', 1, 1],
+            ['KSM-CBD-01', brand_name() . ' Pickup — Kisumu CBD', 'Kisumu', 'Kisumu', 'Oginga Odinga Street, Shop 7', 'Mon–Sat 8:00–18:00', null, '0', 0, 1],
+            ['NKR-CBD-01', brand_name() . ' Pickup — Nakuru (temporarily closed)', 'Nakuru', 'Nakuru', 'Kenyatta Avenue', 'Closed for renovation', null, '0', 1, 0],
         ];
         foreach ($points as [$code, $name, $c, $town, $addr, $hours, $instr, $fee, $cod, $active]) {
             $db->insert('pickup_points', [
@@ -103,7 +103,7 @@ $categories = [
 ];
 
 // Fictional brands (demo only).
-$brands = ['Nyota', 'Kilele', 'Zuri', 'Savanna', 'Pwani', 'Simba Home', 'Jua Tech', 'Mto', 'Amani', 'Waimart Basics'];
+$brands = ['Nyota', 'Kilele', 'Zuri', 'Savanna', 'Pwani', 'Simba Home', 'Jua Tech', 'Mto', 'Amani', brand_name() . ' Basics'];
 
 // [name, subcategory, brand, svg kind, colour, price, compare_at|null, stock, featured, variants|null]
 // variants: [name, [attr => value], price, compare_at|null, stock]
@@ -170,12 +170,12 @@ $products = [
     ['Simba Home 5-Piece Non-Stick Cookware Set', 'Kitchen & Dining', 'Simba Home', 'pot', '#c62828', '4999', '6499', 18, 1, null],
     ['Simba Home Cotton Duvet Set 6x6', 'Bedding', 'Simba Home', 'bedding', '#5c6bc0', '3999', '4999', 14, 0, null],
     ['Mto LED Desk Lamp with USB Port', 'Lighting', 'Mto', 'lamp', '#fdb913', '1499', '1899', 33, 0, null],
-    ['Waimart Basics Long-Grain Rice 5kg', 'Food Cupboard', 'Waimart Basics', 'sack', '#fff8e1', '899', '999', 120, 1, null],
-    ['Waimart Basics Maize Flour 2kg', 'Food Cupboard', 'Waimart Basics', 'sack', '#ffe082', '199', null, 200, 0, null],
-    ['Waimart Basics Cooking Oil 3L', 'Food Cupboard', 'Waimart Basics', 'bottle', '#fdb913', '1099', '1249', 90, 0, null],
-    ['Waimart Basics Breakfast Cereal 500g', 'Food Cupboard', 'Waimart Basics', 'box', '#f15a22', '549', null, 60, 0, null],
+    [brand_name() . ' Basics Long-Grain Rice 5kg', 'Food Cupboard', brand_name() . ' Basics', 'sack', '#fff8e1', '899', '999', 120, 1, null],
+    [brand_name() . ' Basics Maize Flour 2kg', 'Food Cupboard', brand_name() . ' Basics', 'sack', '#ffe082', '199', null, 200, 0, null],
+    [brand_name() . ' Basics Cooking Oil 3L', 'Food Cupboard', brand_name() . ' Basics', 'bottle', '#fdb913', '1099', '1249', 90, 0, null],
+    [brand_name() . ' Basics Breakfast Cereal 500g', 'Food Cupboard', brand_name() . ' Basics', 'box', '#f15a22', '549', null, 60, 0, null],
     ['Pwani Mango Juice 1L (Pack of 6)', 'Beverages', 'Pwani', 'can', '#ffb300', '1199', '1399', 45, 0, null],
-    ['Waimart Basics Laundry Detergent 2kg', 'Household Cleaning', 'Waimart Basics', 'detergent', '#1e88e5', '699', '849', 75, 0, null],
+    [brand_name() . ' Basics Laundry Detergent 2kg', 'Household Cleaning', brand_name() . ' Basics', 'detergent', '#1e88e5', '699', '849', 75, 0, null],
     ['Amani Baby Diapers Size 3 (64 pcs)', 'Diapering', 'Amani', 'diaper', '#4fc3f7', '1899', '2199', 50, 1, null],
     ['Amani Anti-Colic Baby Feeding Bottle 250ml', 'Feeding', 'Amani', 'babybottle', '#f06292', '599', null, 40, 0, null],
     ['Amani Soft Plush Teddy Bear', 'Baby Toys', 'Amani', 'toy', '#ffb74d', '999', '1299', 28, 0, null],

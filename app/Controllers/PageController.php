@@ -17,13 +17,13 @@ final class PageController extends Controller
     /** slug => [title, meta description] */
     public const PAGES = [
         'help'            => ['Help Center', 'Answers to common questions about ordering, payment, delivery, pickup and returns.'],
-        'how-to-pay'      => ['How to pay', 'Pay for your Waimart order with M-Pesa Till, Paybill, Send Money or cash on delivery.'],
-        'delivery-pickup' => ['Delivery & pickup', 'Home and office delivery or collection from a Waimart pickup station.'],
-        'returns-policy'  => ['Returns & refunds', 'How to request a return and how refunds work at Waimart.'],
-        'contact'         => ['Contact us', 'Get in touch with Waimart customer care.'],
-        'about'           => ['About Waimart', 'Waimart — Everything You Need. One Marketplace.'],
-        'terms'           => ['Terms & conditions', 'Terms and conditions of sale on Waimart.'],
-        'privacy'         => ['Privacy policy', 'How Waimart collects, uses and protects your personal data.'],
+        'how-to-pay'      => ['How to pay', 'Pay for your {store} order with M-Pesa Till, Paybill, Send Money or cash on delivery.'],
+        'delivery-pickup' => ['Delivery & pickup', 'Home and office delivery or collection from a {store} pickup station.'],
+        'returns-policy'  => ['Returns & refunds', 'How to request a return and how refunds work at {store}.'],
+        'contact'         => ['Contact us', 'Get in touch with {store} customer care.'],
+        'about'           => ['About {store}', '{store} — Everything You Need. One Marketplace.'],
+        'terms'           => ['Terms & conditions', 'Terms and conditions of sale on {store}.'],
+        'privacy'         => ['Privacy policy', 'How {store} collects, uses and protects your personal data.'],
     ];
 
     public function show(Request $req): Response
@@ -32,7 +32,7 @@ final class PageController extends Controller
         if (!isset(self::PAGES[$slug])) {
             throw HttpException::notFound();
         }
-        [$title, $desc] = self::PAGES[$slug];
+        [$title, $desc] = array_map('brand_text', self::PAGES[$slug]);
         return $this->view('pages/' . $slug, [
             'title' => $title,
             'metaDescription' => $desc,

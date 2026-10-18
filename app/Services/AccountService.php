@@ -150,10 +150,10 @@ final class AccountService
         $link = rtrim((string) config('app.url'), '/') . '/reset-password?token=' . $token;
         (new NotificationService())->email(
             $user['email'],
-            'Reset your Waimart password',
-            "Hello {$user['first_name']},\n\nWe received a request to reset your Waimart password.\n"
+            'Reset your ' . brand_name() . ' password',
+            "Hello {$user['first_name']},\n\nWe received a request to reset your " . brand_name() . " password.\n"
             . "Use this link within " . self::RESET_TTL_MINUTES . " minutes:\n\n$link\n\n"
-            . "If you did not ask for this, you can ignore this email. Your password will not change.\n\nWaimart",
+            . "If you did not ask for this, you can ignore this email. Your password will not change.\n\n" . brand_name(),
             'password_reset',
             ['user_id' => (int) $user['id'], 'secrets' => [$token]]
         );

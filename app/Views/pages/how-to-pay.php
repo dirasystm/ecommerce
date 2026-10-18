@@ -4,7 +4,7 @@ use Waimart\Core\View;
 /** @var array<string,mixed> $settings */
 $na = '<em>shown at checkout</em>';
 ob_start(); ?>
-<p>Waimart accepts <strong>M-Pesa</strong> and <strong>cash on delivery</strong>. We do not accept card payments online.</p>
+<p><?= e(brand_name()) ?> accepts <strong>M-Pesa</strong> and <strong>cash on delivery</strong>. We do not accept card payments online.</p>
 
 <div class="wm-callout my-3">
     <strong>Important:</strong> submitting an M-Pesa code does not complete your payment on its own. Our team checks each payment
@@ -34,7 +34,7 @@ ob_start(); ?>
 
 <h2>Stay safe</h2>
 <ul>
-    <li>Waimart staff will <strong>never</strong> ask for your M-Pesa PIN.</li>
+    <li><?= e(brand_name()) ?> staff will <strong>never</strong> ask for your M-Pesa PIN.</li>
     <li>Only pay to the Till, Paybill or phone number shown on this page or at checkout.</li>
     <li>Payment instructions are never sent from personal numbers.</li>
 </ul>

@@ -114,14 +114,14 @@ final class SellerOrderWorkflow
     private function permitted(string $to, array $so, array $order, bool $platform, bool $asSeller): ?string
     {
         if (!SellerOrderService::hasMarketplaceSeller((int) $so['order_id'], $this->db)) {
-            return 'Orders sold only by the Waimart Official Store are updated from the order itself.';
+            return 'Orders sold only by the ' . brand_name() . ' Official Store are updated from the order itself.';
         }
         if ($asSeller) {
             if (!in_array($to, self::SELLER_STEPS, true)) {
-                return 'Waimart staff handle hand-over, delivery and collection.';
+                return brand_name() . ' staff handle hand-over, delivery and collection.';
             }
             if ($platform) {
-                return 'The Official Store is fulfilled by Waimart staff.';
+                return 'The Official Store is fulfilled by ' . brand_name() . ' staff.';
             }
         } elseif (in_array($to, ['accepted', 'processing', 'packed', 'rejected'], true) && !$platform) {
             return 'Only the seller can accept, prepare or decline their part. Staff can cancel it instead.';
@@ -140,7 +140,7 @@ final class SellerOrderWorkflow
             return 'This is a home-delivery order.';
         }
         if (in_array($to, ['dispatched', 'ready_for_collection'], true) && $so['status'] === 'packed' && !$platform) {
-            return 'Waimart must receive the parcel from the seller first (hand-over).';
+            return brand_name() . ' must receive the parcel from the seller first (hand-over).';
         }
         if ($to === 'collected' && !$this->collectionVerified) {
             return 'Collection must be confirmed with the customer\'s collection code at the pickup desk.';
@@ -169,7 +169,7 @@ final class SellerOrderWorkflow
                 array_push($params, $actorId, $note !== '' && $note !== null ? mb_substr($note, 0, 500) : null);
                 break;
             case 'handed_over':
-                $reservations->consumeForSellerOrder($orderId, $id, $actorType, $actorId, 'Handed over to Waimart by the seller');
+                $reservations->consumeForSellerOrder($orderId, $id, $actorType, $actorId, 'Handed over to ' . brand_name() . ' by the seller');
                 array_push($sets, 'handed_over_at = NOW()', 'handed_over_by = ?');
                 $params[] = $actorId;
                 break;

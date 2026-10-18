@@ -63,7 +63,7 @@ final class OrderFlowTest extends FeatureTestCase
     private function trackingLink(): string
     {
         $log = (string) file_get_contents(App::root() . '/storage/logs/mail-' . date('Y-m-d') . '.log');
-        preg_match_all('#/track/(WM-[A-Z0-9]{8})\?t=([A-Za-z0-9_-]{43})#', $log, $m);
+        preg_match_all('#/track/(BM-[A-Z0-9]{8})\?t=([A-Za-z0-9_-]{43})#', $log, $m);
         return '/track/' . end($m[1]) . '?t=' . end($m[2]);
     }
 
@@ -71,7 +71,7 @@ final class OrderFlowTest extends FeatureTestCase
     {
         [$r] = $this->placeOrder();
         $this->assertSame(303, $r['status']);
-        $this->assertMatchesRegularExpression('#/order/WM-[A-Z0-9]{8}/confirmation$#', $r['headers']['location']);
+        $this->assertMatchesRegularExpression('#/order/BM-[A-Z0-9]{8}/confirmation$#', $r['headers']['location']);
         $page = $this->follow($r);
         $this->assertSame(200, $page['status']);
         $this->assertStringContainsString('Your order has been placed', $page['body']);
@@ -125,7 +125,7 @@ final class OrderFlowTest extends FeatureTestCase
     public function testLookupByNumberAndPhoneIsGenericAndRateLimited(): void
     {
         [$r] = $this->placeOrder([], '0733444555');
-        preg_match('#(WM-[A-Z0-9]{8})#', $r['headers']['location'], $m);
+        preg_match('#(BM-[A-Z0-9]{8})#', $r['headers']['location'], $m);
         $number = $m[1];
         $this->freshSession();
 
@@ -151,7 +151,7 @@ final class OrderFlowTest extends FeatureTestCase
         $this->post('/register', ['first_name' => 'A', 'last_name' => 'One', 'email' => 'a1@example.com', 'phone' => '0711000001',
             'password' => 'Secret123', 'password_confirmation' => 'Secret123', 'accept_terms' => '1'], '/register');
         [$r] = $this->placeOrder([], '0711000001', 'a1@example.com');
-        preg_match('#(WM-[A-Z0-9]{8})#', $r['headers']['location'], $m);
+        preg_match('#(BM-[A-Z0-9]{8})#', $r['headers']['location'], $m);
         $this->assertSame(200, $this->get('/account/orders/' . $m[1])['status']);
         $this->assertStringContainsString($m[1], $this->get('/account/orders')['body']);
         $this->post('/logout', [], '/account');
@@ -167,7 +167,7 @@ final class OrderFlowTest extends FeatureTestCase
     public function testGuestOrderLinksToAccountOnlyWithVerifiedCode(): void
     {
         [$r] = $this->placeOrder([], '0744555666', 'linkme@example.com');
-        preg_match('#(WM-[A-Z0-9]{8})#', $r['headers']['location'], $m);
+        preg_match('#(BM-[A-Z0-9]{8})#', $r['headers']['location'], $m);
         $number = $m[1];
         $this->freshSession();
 

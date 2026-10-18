@@ -117,7 +117,7 @@ final class SellerApplicationService
             throw ValidationException::withMessage('Your application has already been approved.');
         }
         if ($app !== null && $app['status'] === 'rejected' && !(int) $app['resubmission_allowed']) {
-            throw ValidationException::withMessage('This application cannot be resubmitted. Please contact Waimart for details.');
+            throw ValidationException::withMessage('This application cannot be resubmitted. Please contact ' . brand_name() . ' for details.');
         }
         if ($problem = $this->slugProblem($data['store_slug'], $app && $app['status'] === 'draft' ? (int) $app['id'] : null)) {
             throw new ValidationException(['store_slug' => $problem]);
@@ -212,7 +212,7 @@ final class SellerApplicationService
         });
         $fresh = (array) $this->find((int) $app['id']);
         $this->notifyApplicant($fresh, 'seller_application_submitted', 'We received your seller application ' . $fresh['application_number'],
-            "Thank you for applying to sell on Waimart as \"{$fresh['store_name']}\".\n\nYour application {$fresh['application_number']} is now waiting for review. "
+            "Thank you for applying to sell on " . brand_name() . " as \"{$fresh['store_name']}\".\n\nYour application {$fresh['application_number']} is now waiting for review. "
             . "We will email you when a decision has been made. You can check its status at any time: " . config('app.url') . "/sell/application");
         if ($ops = (string) Settings::get('store_email', '')) {
             (new NotificationService())->email($ops, 'New seller application ' . $fresh['application_number'],
@@ -290,7 +290,7 @@ final class SellerApplicationService
             return $sellerId;
         });
         $app = (array) $this->find($applicationId);
-        $this->notifyApplicant($app, 'seller_application_approved', 'Welcome to Waimart — your seller application is approved',
+        $this->notifyApplicant($app, 'seller_application_approved', 'Welcome to ' . brand_name() . ' — your seller application is approved',
             "Good news! Your application {$app['application_number']} has been approved and your store is ready.\n\n"
             . "Sign in to the Seller Centre to complete your store profile: " . config('app.url') . "/seller");
         return $sellerId;
@@ -318,7 +318,7 @@ final class SellerApplicationService
             "We are unable to approve your seller application {$app['application_number']} at this time.\n\nReason: $reason\n\n"
             . ($resubmissionAllowed
                 ? 'You may update your application and submit it again: ' . config('app.url') . '/sell/application'
-                : 'This application cannot be resubmitted. Please contact Waimart if you have questions.'));
+                : 'This application cannot be resubmitted. Please contact ' . brand_name() . ' if you have questions.'));
     }
 
     // ------------------------------------------------------------------ helpers
@@ -336,7 +336,8 @@ final class SellerApplicationService
         if (mb_strlen($slug) < 3) {
             return 'The store address must have at least 3 letters or numbers.';
         }
-        if (in_array($slug, self::RESERVED_SLUGS, true) || str_starts_with($slug, 'waimart')) {
+        $compact = str_replace('-', '', $slug);
+        if (in_array($slug, self::RESERVED_SLUGS, true) || array_filter(Brand::protectedNames(), fn ($n) => str_contains($compact, $n))) {
             return 'This store address is reserved. Please choose another.';
         }
         if ($this->db->value('SELECT 1 FROM sellers WHERE slug = ?', [$slug])) {
@@ -362,8 +363,9 @@ final class SellerApplicationService
                    'legal_name' => 'Registered business name'];
         $errors = Validator::check($in, $rules, $labels);
         $name = trim((string) ($in['store_name'] ?? ''));
-        if (!isset($errors['store_name']) && stripos($name, 'waimart') !== false) {
-            $errors['store_name'] = 'Store names may not include "Waimart".';
+        $compactName = str_replace([' ', '-', '.', '_'], '', strtolower($name));
+        if (!isset($errors['store_name']) && array_filter(Brand::protectedNames(), fn ($n) => str_contains($compactName, $n))) {
+            $errors['store_name'] = 'Store names may not include "' . brand_name() . '" or look like it.';
         }
         if (($in['business_type'] ?? '') === 'registered_business' && trim((string) ($in['legal_name'] ?? '')) === '') {
             $errors['legal_name'] = 'Enter the registered business name.';
@@ -493,7 +495,7 @@ final class SellerApplicationService
 
     private function notifyApplicant(array $app, string $template, string $subject, string $body): void
     {
-        (new NotificationService())->email((string) $app['email'], $subject, "Hello {$app['contact_name']},\n\n$body\n\n— Waimart Seller Support", $template,
+        (new NotificationService())->email((string) $app['email'], $subject, "Hello {$app['contact_name']},\n\n$body\n\n— " . brand_name() . " Seller Support", $template,
             ['user_id' => (int) $app['user_id']]);
     }
 }

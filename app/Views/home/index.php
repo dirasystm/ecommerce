@@ -14,7 +14,7 @@ $slideArt = ['bag-heart', 'phone', 'basket2', 'truck', 'tv', 'stars'];
 $tileColours = ['#e8f3ee', '#fff3e8', '#fff8e1', '#eef3fb', '#fdecef', '#f1eefb'];
 ?>
 <div class="container-wm">
-    <h1 class="visually-hidden">Waimart — Everything You Need. One Marketplace.</h1>
+    <h1 class="visually-hidden"><?= e(brand_name()) ?> — Everything You Need. One Marketplace.</h1>
 
     <!-- Hero: category sidebar · carousel · info tiles -->
     <section class="wm-hero-grid wm-hero-row" aria-label="Featured">
@@ -73,7 +73,7 @@ $tileColours = ['#e8f3ee', '#fff3e8', '#fff8e1', '#eef3fb', '#fdecef', '#f1eefb'
                                     <img class="wm-slide-img" src="<?= e(media($b['image_path'])) ?>" alt="">
                                 <?php endif; ?>
                                 <div class="wm-slide-content">
-                                    <span class="wm-eyebrow">Waimart deals</span>
+                                    <span class="wm-eyebrow"><?= e(brand_name()) ?> deals</span>
                                     <h2><?= e($b['title']) ?></h2>
                                     <?php if ($b['subtitle']): ?><p><?= e($b['subtitle']) ?></p><?php endif; ?>
                                     <?php if ($b['link_url']): ?>
@@ -214,7 +214,7 @@ $tileColours = ['#e8f3ee', '#fff3e8', '#fff8e1', '#eef3fb', '#fdecef', '#f1eefb'
     <?php endforeach; ?>
 
     <!-- Why shop with us -->
-    <section class="wm-values" aria-label="Why shop with Waimart">
+    <section class="wm-values" aria-label="Why shop with <?= e(brand_name()) ?>">
         <div class="wm-card wm-value"><i class="bi bi-truck" aria-hidden="true"></i><div><strong>Home &amp; office delivery</strong><span>Delivery estimates shown at checkout for your area.</span></div></div>
         <div class="wm-card wm-value"><i class="bi bi-shop" aria-hidden="true"></i><div><strong>Pickup stations</strong><span>Collect your order with a secure collection code.</span></div></div>
         <div class="wm-card wm-value"><i class="bi bi-shield-check" aria-hidden="true"></i><div><strong>Safe payments</strong><span>M-Pesa Till, Paybill, Send Money or cash on delivery.</span></div></div>

@@ -2,8 +2,8 @@
 use Waimart\Core\View;
 
 ob_start(); ?>
-<p class="lead">Waimart — <strong>Everything You Need. One Marketplace.</strong></p>
-<p>Waimart is an online store bringing phones, electronics, home appliances, fashion, beauty, groceries and more together in one place,
+<p class="lead"><?= e(brand_name()) ?> — <strong>Everything You Need. One Marketplace.</strong></p>
+<p><?= e(brand_name()) ?> is an online store bringing phones, electronics, home appliances, fashion, beauty, groceries and more together in one place,
     with simple payment by M-Pesa or cash on delivery.</p>
 <h2>What we promise</h2>
 <ul>

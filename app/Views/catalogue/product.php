@@ -199,7 +199,7 @@ $qtyMax = max(1, min($selected['available'], $maxPerOrder));
                     <div class="wm-rating small mb-1"><?= stars((float) $sellerRating['avg']) ?> <?= e(number_format($sellerRating['avg'], 1)) ?> (<?= (int) $sellerRating['count'] ?> reviews)</div>
                 <?php endif; ?>
                 <a class="small" href="<?= e(url('/store/' . $p['seller_slug'])) ?>">Visit store <i class="bi bi-chevron-right" aria-hidden="true"></i></a>
-                <p class="small text-muted mt-2 mb-0">Paid to Waimart and delivered or collected through Waimart.</p>
+                <p class="small text-muted mt-2 mb-0">Paid to <?= e(brand_name()) ?> and delivered or collected through <?= e(brand_name()) ?>.</p>
             </div>
             <div class="wm-card p-3 wm-delivery-box">
                 <h2 class="fs-6 fw-bold text-uppercase mb-3">Delivery &amp; returns</h2>

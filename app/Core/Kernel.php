@@ -106,7 +106,7 @@ final class Kernel
                 }
                 $seller = \Waimart\Services\SellerContext::current();
                 if ($seller === null) {
-                    Session::flash('info', 'You do not have a seller account yet. Apply to sell on Waimart below.');
+                    Session::flash('info', 'You do not have a seller account yet. Apply to sell on ' . brand_name() . ' below.');
                     return Response::redirect('/sell');
                 }
                 if ($seller['status'] === 'closed') {

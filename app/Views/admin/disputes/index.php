@@ -19,7 +19,7 @@ use Waimart\Services\DisputeService;
                 <td><?= e($c['sub_number']) ?></td><td><?= e($c['seller_name']) ?></td><td class="small"><?= e($c['customer_name']) ?></td>
                 <td class="small"><?= e(DisputeService::REASONS[$c['reason']] ?? $c['reason']) ?></td>
                 <td class="small text-nowrap"><?= e(date('d M Y H:i', strtotime((string) $c['updated_at']))) ?></td>
-                <td><span class="badge <?= $c['status'] === 'open' ? 'text-bg-warning' : (in_array($c['status'], DisputeService::OPEN, true) ? 'badge-soft-warning' : 'badge-soft-muted') ?>"><?= e(DisputeService::STATUS_LABELS[$c['status']]) ?></span></td></tr>
+                <td><span class="badge <?= $c['status'] === 'open' ? 'text-bg-warning' : (in_array($c['status'], DisputeService::OPEN, true) ? 'badge-soft-warning' : 'badge-soft-muted') ?>"><?= e(brand_text(DisputeService::STATUS_LABELS[$c['status']])) ?></span></td></tr>
         <?php endforeach; ?>
         <?php if (!$rows): ?><tr><td colspan="7" class="text-center text-muted py-4">No cases here.</td></tr><?php endif; ?>
         </tbody>

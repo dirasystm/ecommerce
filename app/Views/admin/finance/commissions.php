@@ -91,5 +91,5 @@ $target = fn ($r) => $r['scope'] === 'default' ? 'All sellers (default)' : ($r['
         <?php if (!$report): ?><tr><td colspan="5" class="text-center text-muted py-3">No marketplace sales received in this period.</td></tr><?php endif; ?>
         </tbody>
     </table></div>
-    <div class="wm-panel-body small text-muted">Counts only money actually received (verified M-Pesa or recorded cash). Sales are the sellers' merchandise — Waimart's revenue is the commission column.</div>
+    <div class="wm-panel-body small text-muted">Counts only money actually received (verified M-Pesa or recorded cash). Sales are the sellers' merchandise — <?= e(brand_name()) ?>'s revenue is the commission column.</div>
 </section>

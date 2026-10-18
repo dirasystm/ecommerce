@@ -252,7 +252,7 @@ final class PaymentFlowTest extends DbTestCase
     {
         Settings::set('mpesa_till_number', '');
         $svc = new SettingsService();
-        $valid = ['store_name' => 'Waimart', 'max_payment_submissions' => '3', 'reservation_minutes' => '45', 'reservation_minutes_cod' => '240',
+        $valid = ['store_name' => (string) Settings::get('store_name'), 'max_payment_submissions' => '3', 'reservation_minutes' => '45', 'reservation_minutes_cod' => '240',
                   'collection_hold_days' => '7', 'return_window_days' => '7',
                   'product_moderation' => '1', 'payout_min_amount' => '500', 'payout_hold_days' => '7', 'payout_requires_fulfilment' => '1'];
         try {

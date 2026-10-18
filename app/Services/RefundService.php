@@ -101,9 +101,9 @@ final class RefundService
             $n = new NotificationService();
             $ctx = ['order_id' => $orderId, 'user_id' => $o['user_id'] ? (int) $o['user_id'] : null];
             if ($o['customer_email']) {
-                $n->email((string) $o['customer_email'], "Order {$o['order_number']}: refund sent", "Hello {$o['customer_name']},\n\n$text\n\nWaimart", 'refund_paid', $ctx);
+                $n->email((string) $o['customer_email'], "Order {$o['order_number']}: refund sent", "Hello {$o['customer_name']},\n\n$text\n\n" . brand_name(), 'refund_paid', $ctx);
             }
-            $n->sms((string) $o['customer_phone'], "Waimart: $text", 'refund_paid', $ctx);
+            $n->sms((string) $o['customer_phone'], brand_name() . ": $text", 'refund_paid', $ctx);
         } catch (\Throwable $e) {
             \Waimart\Core\Logger::error('Refund notification failed', ['order_id' => $orderId, 'error' => $e->getMessage()]);
         }

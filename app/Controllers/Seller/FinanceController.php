@@ -41,7 +41,7 @@ final class FinanceController extends SellerController
     {
         SellerContext::requireRole('owner');
         $p = (new PayoutService())->request($this->sellerId(), (int) Auth::id(), (string) $req->input('amount', ''));
-        return $this->success('Payout ' . $p['payout_number'] . ' requested. Waimart will review it and tell you when it has been paid.', '/seller/finance');
+        return $this->success('Payout ' . $p['payout_number'] . ' requested. ' . brand_name() . ' will review it and tell you when it has been paid.', '/seller/finance');
     }
 
     public function cancel(Request $req): Response

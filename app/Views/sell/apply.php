@@ -20,7 +20,7 @@ $type = (string) ($p('business_type') ?: 'individual');
     <nav class="wm-breadcrumb" aria-label="Breadcrumb">
         <ol class="breadcrumb">
             <li class="breadcrumb-item"><a href="<?= e(url('/')) ?>">Home</a></li>
-            <li class="breadcrumb-item"><a href="<?= e(url('/sell')) ?>">Sell on Waimart</a></li>
+            <li class="breadcrumb-item"><a href="<?= e(url('/sell')) ?>">Sell on <?= e(brand_name()) ?></a></li>
             <li class="breadcrumb-item active" aria-current="page"><?= $app ? 'Edit application' : 'Apply' ?></li>
         </ol>
     </nav>
@@ -36,7 +36,7 @@ $type = (string) ($p('business_type') ?: 'individual');
                     <div class="col-md-6">
                         <label class="form-label" for="store_name">Store name</label>
                         <input class="form-control<?= invalid('store_name') ?>" id="store_name" name="store_name" maxlength="120" required value="<?= e($p('store_name')) ?>">
-                        <div class="form-text">Shown to customers. It may not include "Waimart".</div>
+                        <div class="form-text">Shown to customers. It may not include "<?= e(brand_name()) ?>".</div>
                         <?= field_error('store_name') ?>
                     </div>
                     <div class="col-md-6">

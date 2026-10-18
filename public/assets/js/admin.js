@@ -1,4 +1,4 @@
-/* Waimart admin behaviour (CSP-safe, no inline handlers). */
+/* Basemall admin behaviour (CSP-safe, no inline handlers). */
 (function () {
     'use strict';
 
@@ -29,6 +29,16 @@
             col.addEventListener('blur', hide);
         });
         if (svg) { svg.addEventListener('pointerleave', hide); }
+    });
+
+    // Colour pickers kept in step with their hex text field (Branding). The server validates the value.
+    document.querySelectorAll('input[type="color"][data-sync]').forEach(function (picker) {
+        var text = document.getElementById(picker.dataset.sync);
+        if (!text) { return; }
+        picker.addEventListener('input', function () { text.value = picker.value.toUpperCase(); });
+        text.addEventListener('input', function () {
+            if (/^#[0-9a-fA-F]{6}$/.test(text.value)) { picker.value = text.value.toLowerCase(); }
+        });
     });
 
     // Prevent double submission of admin forms (the server is the real safeguard).

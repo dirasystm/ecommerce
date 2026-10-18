@@ -4,9 +4,10 @@
  * @var string|null $title
  * @var string|null $metaDescription
  */
-$storeName = (string) config('app.name', 'Waimart');
-$pageTitle = isset($title) && $title !== '' ? $title . ' | ' . $storeName : $storeName . ' Kenya — ' . config('app.tagline');
-$metaDescription ??= 'Shop phones, electronics, fashion, groceries and more at Waimart. Pay with M-Pesa or cash on delivery. Home delivery or pickup across Kenya.';
+$storeName = brand_name();
+$tagline = \Waimart\Services\Brand::tagline();
+$pageTitle = isset($title) && $title !== '' ? $title . ' | ' . $storeName : $storeName . ($tagline !== '' ? ' — ' . $tagline : '');
+$metaDescription ??= 'Shop phones, electronics, fashion, groceries and more at ' . brand_name() . '. Pay with M-Pesa or cash on delivery. Home delivery or pickup across Kenya.';
 ?><!doctype html>
 <html lang="en-KE">
 <head>
@@ -14,12 +15,10 @@ $metaDescription ??= 'Shop phones, electronics, fashion, groceries and more at W
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e($pageTitle) ?></title>
     <meta name="description" content="<?= e($metaDescription) ?>">
-    <meta name="theme-color" content="#0b5a3a">
-    <link rel="icon" type="image/png" sizes="32x32" href="<?= e(asset('img/favicon-32.png')) ?>">
-    <link rel="apple-touch-icon" href="<?= e(asset('img/apple-touch-icon.png')) ?>">
     <link rel="stylesheet" href="<?= e(asset('vendor/bootstrap/bootstrap.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('vendor/bootstrap-icons/bootstrap-icons.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
+<?= \Waimart\Core\View::partial('partials/brand-head', ['ogTitle' => $pageTitle, 'ogDescription' => $metaDescription]) ?>
 </head>
 <body<?= !empty($bodyClass) ? ' class="' . e($bodyClass) . '"' : '' ?>>
 <a class="skip-link" href="#main">Skip to main content</a>

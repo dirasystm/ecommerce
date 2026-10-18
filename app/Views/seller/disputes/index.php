@@ -7,7 +7,7 @@ $returnLabels = ['requested' => 'Requested', 'approved' => 'Approved — coming 
                  'completed' => 'Completed', 'rejected' => 'Not accepted', 'cancelled' => 'Cancelled'];
 ?>
 <div class="wm-admin-head"><h1>Returns &amp; cases</h1></div>
-<p class="small text-muted">Customers report problems to Waimart, which handles every case with you and the customer. Earnings for an order are held while it has an open return or case. Refunds Waimart decides are deducted in proportion from your earnings for that order, and Waimart gives back its commission on the refunded part.</p>
+<p class="small text-muted">Customers report problems to <?= e(brand_name()) ?>, which handles every case with you and the customer. Earnings for an order are held while it has an open return or case. Refunds <?= e(brand_name()) ?> decides are deducted in proportion from your earnings for that order, and <?= e(brand_name()) ?> gives back its commission on the refunded part.</p>
 
 <section class="wm-panel mb-3">
     <div class="wm-panel-head">Cases
@@ -25,7 +25,7 @@ $returnLabels = ['requested' => 'Requested', 'approved' => 'Approved — coming 
                 <td><?= e($c['sub_number']) ?></td><td><?= e($c['customer_name']) ?></td>
                 <td class="small"><?= e(DisputeService::REASONS[$c['reason']] ?? $c['reason']) ?></td>
                 <td class="small text-nowrap"><?= e(date('d M Y H:i', strtotime((string) $c['updated_at']))) ?></td>
-                <td><span class="badge <?= $c['status'] === 'awaiting_seller' ? 'text-bg-warning' : (in_array($c['status'], DisputeService::OPEN, true) ? 'badge-soft-warning' : 'badge-soft-muted') ?>"><?= e(DisputeService::STATUS_LABELS[$c['status']]) ?></span></td></tr>
+                <td><span class="badge <?= $c['status'] === 'awaiting_seller' ? 'text-bg-warning' : (in_array($c['status'], DisputeService::OPEN, true) ? 'badge-soft-warning' : 'badge-soft-muted') ?>"><?= e(brand_text(DisputeService::STATUS_LABELS[$c['status']])) ?></span></td></tr>
         <?php endforeach; ?>
         <?php if (!$cases): ?><tr><td colspan="6" class="text-center text-muted py-3">No cases here.</td></tr><?php endif; ?>
         </tbody>

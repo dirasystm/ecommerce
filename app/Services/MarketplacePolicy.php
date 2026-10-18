@@ -40,7 +40,7 @@ final class MarketplacePolicy
         }
         foreach ($lines as $l) {
             if (!(bool) ($l['seller_is_platform'] ?? true)) {
-                return ['allowed' => false, 'reason' => 'Cash on delivery is available for pickup orders, or for home delivery of Waimart Official Store items only. Please pay by M-Pesa or choose a pickup station.'];
+                return ['allowed' => false, 'reason' => 'Cash on delivery is available for pickup orders, or for home delivery of ' . brand_name() . ' Official Store items only. Please pay by M-Pesa or choose a pickup station.'];
             }
         }
         return ['allowed' => true, 'reason' => null];

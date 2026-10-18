@@ -42,7 +42,7 @@ $done = count(array_filter($checklist, fn ($c) => $c[1]));
 <section class="wm-panel mb-3">
     <div class="wm-panel-head">Orders</div>
     <div class="wm-panel-body row g-3 text-center">
-        <?php foreach (['new' => 'New — accept or decline', 'preparing' => 'Being prepared', 'handover' => 'Waiting for Waimart pickup', 'with_waimart' => 'With Waimart', 'completed' => 'Completed'] as $k => $label): ?>
+        <?php foreach (['new' => 'New — accept or decline', 'preparing' => 'Being prepared', 'handover' => 'Waiting for ' . brand_name() . ' pickup', 'with_waimart' => 'With ' . brand_name(), 'completed' => 'Completed'] as $k => $label): ?>
             <div class="col-6 col-md">
                 <a class="d-block text-decoration-none" href="<?= e(url('/seller/orders', ['tab' => $k])) ?>">
                     <div class="fs-4 fw-bold <?= $k === 'new' && $orderCounts[$k] > 0 ? 'text-danger' : 'text-body' ?>"><?= (int) $orderCounts[$k] ?></div>

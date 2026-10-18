@@ -9,7 +9,7 @@ ob_start(); ?>
     <form method="post" action="<?= e(url('/account/orders/link')) ?>" style="max-width:420px" novalidate>
         <?= csrf_field() ?>
         <label class="form-label" for="order_number">Order number</label>
-        <input class="form-control text-uppercase mb-3" id="order_number" name="order_number" required maxlength="11" placeholder="WM-XXXXXXXX">
+        <input class="form-control text-uppercase mb-3" id="order_number" name="order_number" required maxlength="11" placeholder="<?= e(\Waimart\Services\Brand::orderPrefix()) ?>-XXXXXXXX">
         <button class="btn btn-wm" type="submit">Send code</button>
     </form>
 <?php else: ?>

@@ -40,7 +40,7 @@ final class DisputeService
         'other' => 'Other',
     ];
     public const STATUS_LABELS = [
-        'open' => 'Open — with Waimart', 'awaiting_seller' => 'Waiting for the seller', 'awaiting_customer' => 'Waiting for the customer',
+        'open' => 'Open — with {store}', 'awaiting_seller' => 'Waiting for the seller', 'awaiting_customer' => 'Waiting for the customer',
         'resolved' => 'Resolved', 'closed' => 'Withdrawn',
     ];
     public const OPEN = ['open', 'awaiting_seller', 'awaiting_customer'];
@@ -89,7 +89,7 @@ final class DisputeService
                 ?? throw HttpException::notFound();
             $order = (array) $this->db->one('SELECT * FROM orders WHERE id = ?', [$so['order_id']]);
             if ((int) $so['is_platform'] === 1 || (int) $so['is_legacy'] === 1) {
-                throw ValidationException::withMessage('Items sold by Waimart are handled by customer care directly.');
+                throw ValidationException::withMessage('Items sold by ' . brand_name() . ' are handled by customer care directly.');
             }
             if ($role === 'customer' && !in_array((int) $so['id'], array_map('intval', array_column($this->disputableParts($order), 'id')), true)) {
                 throw ValidationException::withMessage('A problem can no longer be reported online for these items. Please contact customer care.');
@@ -128,7 +128,7 @@ final class DisputeService
         $d = $this->db->transaction(function () use ($disputeId, $role, $userId, $body, $internal) {
             $d = $this->lock($disputeId);
             if (!in_array($d['status'], self::OPEN, true)) {
-                throw ValidationException::withMessage('This case is closed. Contact Waimart customer care if you need more help.');
+                throw ValidationException::withMessage('This case is closed. Contact ' . brand_name() . ' customer care if you need more help.');
             }
             $this->db->insert('seller_dispute_messages', ['dispute_id' => $disputeId, 'author_id' => $userId, 'author_role' => $role,
                 'body' => mb_substr($body, 0, 2000), 'is_internal' => $internal ? 1 : 0]);
@@ -146,10 +146,10 @@ final class DisputeService
         $excerpt = '"' . mb_substr($body, 0, 500) . '"';
         if ($role !== 'seller') {
             $this->tellSeller($d, 'seller_dispute_message', "New message on case {$d['dispute_number']}",
-                ($role === 'staff' ? 'Waimart' : 'The customer') . " wrote about order {$d['sub_number']}:\n\n$excerpt\n\n" . config('app.url') . '/seller/disputes/' . $d['id']);
+                ($role === 'staff' ? brand_name() : 'The customer') . " wrote about order {$d['sub_number']}:\n\n$excerpt\n\n" . config('app.url') . '/seller/disputes/' . $d['id']);
         }
         if ($role !== 'customer') {
-            $this->tellCustomer($d, 'dispute_message', ($role === 'staff' ? 'Waimart' : $d['seller_name']) . " replied on case {$d['dispute_number']}: $excerpt");
+            $this->tellCustomer($d, 'dispute_message', ($role === 'staff' ? brand_name() : $d['seller_name']) . " replied on case {$d['dispute_number']}: $excerpt");
         }
     }
 
@@ -217,7 +217,7 @@ final class DisputeService
         $outcome = self::RESOLUTIONS[$resolution] . ($refund !== null ? ' (' . Money::format($refund) . ')' : '') . ". $note";
         $this->tellCustomer($d, 'dispute_resolved', "Case {$d['dispute_number']} is resolved: $outcome" . ($refund !== null ? ' Our team will send the refund to you.' : ''));
         $this->tellSeller($d, 'seller_dispute_resolved', "Case {$d['dispute_number']} resolved", "Decision on order {$d['sub_number']}: $outcome"
-            . ($refund !== null ? "\n\nThe customer is refunded " . Money::format($refund) . '; the matching share of your sale (less Waimart\'s commission on it) is deducted in your ledger.' : ''));
+            . ($refund !== null ? "\n\nThe customer is refunded " . Money::format($refund) . '; the matching share of your sale (less ' . brand_name() . '\'s commission on it) is deducted in your ledger.' : ''));
     }
 
     /** The customer who raised it withdraws the case. */
@@ -333,10 +333,10 @@ final class DisputeService
             $n = new NotificationService();
             $ctx = ['order_id' => (int) $d['order_id'], 'user_id' => $o['user_id'] ? (int) $o['user_id'] : null];
             if ($o['customer_email'] && ($o['user_id'] === null || (int) $o['notify_email'] === 1)) {
-                $n->email((string) $o['customer_email'], "Order {$o['order_number']}: case {$d['dispute_number']}", "Hello {$o['customer_name']},\n\n$text\n\nWaimart", $template, $ctx);
+                $n->email((string) $o['customer_email'], "Order {$o['order_number']}: case {$d['dispute_number']}", "Hello {$o['customer_name']},\n\n$text\n\n" . brand_name(), $template, $ctx);
             }
             if ($o['user_id'] === null || (int) $o['notify_sms'] === 1) {
-                $n->sms((string) $o['customer_phone'], "Waimart: $text", $template, $ctx);
+                $n->sms((string) $o['customer_phone'], brand_name() . ": $text", $template, $ctx);
             }
         } catch (\Throwable $e) {
             \Waimart\Core\Logger::error('Dispute notification failed', ['dispute_id' => $d['id'] ?? null, 'error' => $e->getMessage()]);

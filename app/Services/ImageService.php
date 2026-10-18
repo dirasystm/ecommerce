@@ -38,38 +38,7 @@ final class ImageService
         if (!in_array($folder, ['products', 'banners', 'stores'], true)) {
             throw new \InvalidArgumentException('Unknown upload folder.');
         }
-        $tmp = (string) ($file['tmp_name'] ?? '');
-        $error = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
-        if ($error === UPLOAD_ERR_INI_SIZE || $error === UPLOAD_ERR_FORM_SIZE) {
-            throw new ValidationException(['image' => 'Image is too large (maximum 5 MB).']);
-        }
-        if ($error !== UPLOAD_ERR_OK || $tmp === '' || !is_file($tmp)) {
-            throw new ValidationException(['image' => 'Choose an image to upload.']);
-        }
-        // is_uploaded_file guards against path tricks; tests may pass a local file explicitly.
-        if (PHP_SAPI !== 'cli' && !is_uploaded_file($tmp)) {
-            throw new ValidationException(['image' => 'Invalid upload.']);
-        }
-        if (filesize($tmp) > self::MAX_BYTES) {
-            throw new ValidationException(['image' => 'Image is too large (maximum 5 MB).']);
-        }
-        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($tmp);
-        if (!in_array($mime, self::ALLOWED, true)) {
-            throw new ValidationException(['image' => 'Only JPEG, PNG or WebP images are allowed.']);
-        }
-        $info = @getimagesize($tmp);
-        if ($info === false || $info[0] < 1 || $info[1] < 1 || $info[0] > self::MAX_DIMENSION || $info[1] > self::MAX_DIMENSION) {
-            throw new ValidationException(['image' => 'The image could not be read or is too large in dimensions.']);
-        }
-
-        $src = match ($mime) {
-            'image/jpeg' => @imagecreatefromjpeg($tmp),
-            'image/png'  => @imagecreatefrompng($tmp),
-            'image/webp' => @imagecreatefromwebp($tmp),
-        };
-        if (!$src) {
-            throw new ValidationException(['image' => 'The image file is damaged or unsupported.']);
-        }
+        $src = $this->decode($file);
 
         [$w, $h] = [imagesx($src), imagesy($src)];
         $scale = min(1, $maxEdge / max($w, $h));
@@ -91,10 +60,52 @@ final class ImageService
         return $rel;
     }
 
-    /** Deletes a previously stored upload (only inside public/uploads/products). */
+    /**
+     * Validates an upload by content (size, real type, dimensions) and decodes it with GD. The caller re-encodes it,
+     * so the original bytes are never stored. Transparency is kept (callers decide the background).
+     * @param array{name?:string,tmp_name?:string,error?:int,size?:int} $file
+     */
+    public function decode(array $file, string $field = 'image'): \GdImage
+    {
+        $tmp = (string) ($file['tmp_name'] ?? '');
+        $error = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
+        if ($error === UPLOAD_ERR_INI_SIZE || $error === UPLOAD_ERR_FORM_SIZE) {
+            throw new ValidationException([$field => 'Image is too large (maximum 5 MB).']);
+        }
+        if ($error !== UPLOAD_ERR_OK || $tmp === '' || !is_file($tmp)) {
+            throw new ValidationException([$field => 'Choose an image to upload.']);
+        }
+        // is_uploaded_file guards against path tricks; tests may pass a local file explicitly.
+        if (PHP_SAPI !== 'cli' && !is_uploaded_file($tmp)) {
+            throw new ValidationException([$field => 'Invalid upload.']);
+        }
+        if (filesize($tmp) > self::MAX_BYTES) {
+            throw new ValidationException([$field => 'Image is too large (maximum 5 MB).']);
+        }
+        $mime = (new \finfo(FILEINFO_MIME_TYPE))->file($tmp);
+        if (!in_array($mime, self::ALLOWED, true)) {
+            throw new ValidationException([$field => 'Only JPEG, PNG or WebP images are allowed.']);
+        }
+        $info = @getimagesize($tmp);
+        if ($info === false || $info[0] < 1 || $info[1] < 1 || $info[0] > self::MAX_DIMENSION || $info[1] > self::MAX_DIMENSION) {
+            throw new ValidationException([$field => 'The image could not be read or is too large in dimensions.']);
+        }
+
+        $src = match ($mime) {
+            'image/jpeg' => @imagecreatefromjpeg($tmp),
+            'image/png'  => @imagecreatefrompng($tmp),
+            'image/webp' => @imagecreatefromwebp($tmp),
+        };
+        if (!$src) {
+            throw new ValidationException([$field => 'The image file is damaged or unsupported.']);
+        }
+        return $src;
+    }
+
+    /** Deletes a previously stored upload (only inside public/uploads: products, banners, stores, brand). */
     public function delete(string $relPath): void
     {
-        if (!preg_match('#^uploads/(products|banners|stores)/[\w/-]+\.(webp|svg)$#', $relPath) || str_contains($relPath, '..')) {
+        if (!preg_match('#^uploads/(products|banners|stores|brand)/[\w/-]+\.(webp|svg|png)$#', $relPath) || str_contains($relPath, '..')) {
             return;
         }
         $abs = App::root() . '/public/' . $relPath;

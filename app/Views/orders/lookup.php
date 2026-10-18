@@ -1,7 +1,7 @@
 <div class="container-wm">
     <div class="wm-auth-card wm-card">
         <h1>Track your order</h1>
-        <p class="text-muted small">Enter your order number (e.g. <code>WM-7K3F9Q2X</code>) and the phone number you used at checkout.</p>
+        <p class="text-muted small">Enter your order number (e.g. <code><?= e(\Waimart\Services\Brand::orderPrefix()) ?>-7K3F9Q2X</code>) and the phone number you used at checkout.</p>
         <form method="post" action="<?= e(url('/track-order')) ?>" novalidate>
             <?= csrf_field() ?>
             <div class="mb-3">
