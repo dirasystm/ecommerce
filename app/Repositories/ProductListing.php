@@ -80,6 +80,7 @@ final class ProductListing
         return 'FROM products p
                 JOIN categories c ON c.id = p.category_id AND c.is_active = 1
                 LEFT JOIN brands b ON b.id = p.brand_id AND b.is_active = 1
+                ' . CatalogueRepository::SELLER_JOIN . '
                 JOIN product_variants v ON v.default_product_key = p.id AND v.is_active = 1
                 JOIN inventory i ON i.variant_id = v.id
                 LEFT JOIN (' . PricingService::ACTIVE_FLASH_SQL . ') fs ON fs.variant_id = v.id';
@@ -90,7 +91,7 @@ final class ProductListing
      */
     private function conditions(array $c, bool $withBrandFilter): array
     {
-        $w = ['p.is_active = 1'];
+        $w = [CatalogueRepository::PUBLIC_PRODUCT];
         $p = [];
         $relevance = null;
 

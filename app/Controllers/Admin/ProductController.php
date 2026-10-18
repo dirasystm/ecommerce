@@ -34,12 +34,23 @@ final class ProductController extends AdminController
         if ($status === 'active' || $status === 'inactive') {
             $where[] = 'p.is_active = ' . ($status === 'active' ? 1 : 0);
         }
+        $seller = (string) ($req->query['seller'] ?? '');
+        if (ctype_digit($seller)) {
+            $where[] = 'p.seller_id = ?';
+            $params[] = (int) $seller;
+        }
+        $moderation = (string) ($req->query['moderation'] ?? '');
+        if (in_array($moderation, ['draft', 'pending', 'published', 'rejected', 'archived'], true)) {
+            $where[] = 'p.moderation_status = ?';
+            $params[] = $moderation;
+        }
         $w = implode(' AND ', $where);
         $total = (int) $db->value("SELECT COUNT(*) FROM products p JOIN categories c ON c.id = p.category_id WHERE $w", $params);
         $pages = max(1, (int) ceil($total / self::PER_PAGE));
         $page = max(1, min($pages, (int) ($req->query['page'] ?? 1)));
         $rows = $db->all(
-            "SELECT p.id, p.name, p.slug, p.is_active, p.is_featured, c.name AS category, b.name AS brand,
+            "SELECT p.id, p.name, p.slug, p.is_active, p.is_featured, p.moderation_status, c.name AS category, b.name AS brand,
+                    s.name AS seller_name, s.is_platform, s.status AS seller_status,
                     (SELECT path FROM product_images pi WHERE pi.product_id = p.id ORDER BY sort_order, id LIMIT 1) AS image,
                     (SELECT MIN(v.price) FROM product_variants v WHERE v.product_id = p.id AND v.is_active = 1) AS min_price,
                     (SELECT COUNT(*) FROM product_variants v WHERE v.product_id = p.id) AS variants,
@@ -48,13 +59,39 @@ final class ProductController extends AdminController
                FROM products p
                JOIN categories c ON c.id = p.category_id
                LEFT JOIN brands b ON b.id = p.brand_id
+               JOIN sellers s ON s.id = p.seller_id
               WHERE $w ORDER BY p.id DESC LIMIT " . self::PER_PAGE . ' OFFSET ' . (($page - 1) * self::PER_PAGE),
             $params
         );
         return $this->view('products/index', [
             'title' => 'Products', 'rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => $pages,
             'categories' => $db->all('SELECT id, name FROM categories WHERE parent_id IS NULL ORDER BY sort_order, name'),
+            'sellers' => $db->all('SELECT id, name FROM sellers ORDER BY is_platform DESC, name'),
         ]);
+    }
+
+    /** Seller products waiting for approval (and recent decisions). */
+    public function moderation(Request $req): Response
+    {
+        $status = (string) ($req->query['status'] ?? 'pending');
+        $status = in_array($status, ['pending', 'rejected', 'published'], true) ? $status : 'pending';
+        return $this->view('products/moderation', [
+            'title' => 'Product approvals', 'status' => $status,
+            'rows' => (new \Waimart\Services\SellerProductService())->moderationQueue($status),
+        ]);
+    }
+
+    public function approve(Request $req): Response
+    {
+        (new \Waimart\Services\SellerProductService())->approve($this->intParam($req, 'id'), $this->actor(), trim((string) $req->input('note', '')) ?: null);
+        return $this->success('Product approved and published.', '/admin/moderation/products');
+    }
+
+    public function reject(Request $req): Response
+    {
+        $id = $this->intParam($req, 'id');
+        (new \Waimart\Services\SellerProductService())->reject($id, $this->actor(), (string) $req->input('reason', ''));
+        return $this->success('Product rejected. The seller has been told why.', (string) $req->input('back', '') === 'edit' ? "/admin/products/$id" : '/admin/moderation/products');
     }
 
     public function create(Request $req): Response
@@ -72,7 +109,7 @@ final class ProductController extends AdminController
     {
         $db = App::db();
         $id = $this->intParam($req, 'id');
-        $product = $db->one('SELECT * FROM products WHERE id = ?', [$id]) ?? throw HttpException::notFound();
+        $product = $db->one('SELECT p.*, s.name AS seller_name, s.is_platform AS seller_is_platform, s.status AS seller_status FROM products p JOIN sellers s ON s.id = p.seller_id WHERE p.id = ?', [$id]) ?? throw HttpException::notFound();
         $variants = $db->all(
             'SELECT v.*, i.on_hand, i.reserved, i.low_stock_threshold,
                     (SELECT GROUP_CONCAT(CONCAT(attr_name, ": ", attr_value) ORDER BY attr_name SEPARATOR "\n")

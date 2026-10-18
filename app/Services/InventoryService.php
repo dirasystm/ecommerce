@@ -46,7 +46,7 @@ final class InventoryService
     }
 
     /** Records stock received into the warehouse. */
-    public function receive(int $variantId, int $qty, string $reason, ?string $note, int $actorId): array
+    public function receive(int $variantId, int $qty, string $reason, ?string $note, int $actorId, string $actorType = 'staff'): array
     {
         if ($qty < 1 || $qty > 100000) {
             throw new ValidationException(['quantity' => 'Enter a quantity between 1 and 100,000.']);
@@ -54,10 +54,10 @@ final class InventoryService
         if (!isset(self::RECEIPT_REASONS[$reason])) {
             throw new ValidationException(['reason' => 'Select a valid reason.']);
         }
-        return $this->db->transaction(function () use ($variantId, $qty, $reason, $note, $actorId) {
+        return $this->db->transaction(function () use ($variantId, $qty, $reason, $note, $actorId, $actorType) {
             $before = $this->lock($variantId);
             $after = $this->applyChange($variantId, $qty, 0, 'receipt', [
-                'actor_type' => 'staff', 'actor_user_id' => $actorId, 'reason' => $reason, 'note' => $note,
+                'actor_type' => $actorType, 'actor_user_id' => $actorId, 'reason' => $reason, 'note' => $note,
             ]);
             AuditLogger::log('inventory.receive', 'variant', $variantId, $before, $after + ['qty' => $qty, 'reason' => $reason], $actorId);
             return $after;
@@ -68,7 +68,7 @@ final class InventoryService
      * Manual adjustment by a signed delta. Physical stock can never drop below the units
      * already reserved for open orders — those must be released through the order workflow.
      */
-    public function adjust(int $variantId, int $delta, string $reason, ?string $note, int $actorId): array
+    public function adjust(int $variantId, int $delta, string $reason, ?string $note, int $actorId, string $actorType = 'staff'): array
     {
         if ($delta === 0 || abs($delta) > 100000) {
             throw new ValidationException(['delta' => 'Enter a non-zero adjustment (maximum 100,000).']);
@@ -79,7 +79,7 @@ final class InventoryService
         if ($reason === 'other' && trim((string) $note) === '') {
             throw new ValidationException(['note' => 'Explain the adjustment when the reason is "Other".']);
         }
-        return $this->db->transaction(function () use ($variantId, $delta, $reason, $note, $actorId) {
+        return $this->db->transaction(function () use ($variantId, $delta, $reason, $note, $actorId, $actorType) {
             $before = $this->lock($variantId);
             if ($before['on_hand'] + $delta < $before['reserved']) {
                 throw new ValidationException(['delta' => sprintf(
@@ -89,7 +89,7 @@ final class InventoryService
                 )]);
             }
             $after = $this->applyChange($variantId, $delta, 0, 'adjustment', [
-                'actor_type' => 'staff', 'actor_user_id' => $actorId, 'reason' => $reason, 'note' => $note,
+                'actor_type' => $actorType, 'actor_user_id' => $actorId, 'reason' => $reason, 'note' => $note,
             ]);
             AuditLogger::log('inventory.adjust', 'variant', $variantId, $before, $after + ['delta' => $delta, 'reason' => $reason], $actorId);
             return $after;
@@ -97,18 +97,18 @@ final class InventoryService
     }
 
     /** Stock count: sets on-hand to the counted figure (as an adjustment). */
-    public function setCount(int $variantId, int $counted, ?string $note, int $actorId): array
+    public function setCount(int $variantId, int $counted, ?string $note, int $actorId, string $actorType = 'staff'): array
     {
         if ($counted < 0) {
             throw new ValidationException(['counted' => 'Counted stock cannot be negative.']);
         }
-        return $this->db->transaction(function () use ($variantId, $counted, $note, $actorId) {
+        return $this->db->transaction(function () use ($variantId, $counted, $note, $actorId, $actorType) {
             $current = $this->lock($variantId);
             $delta = $counted - $current['on_hand'];
             if ($delta === 0) {
                 return $current;
             }
-            return $this->adjust($variantId, $delta, 'stock_count', $note, $actorId);
+            return $this->adjust($variantId, $delta, 'stock_count', $note, $actorId, $actorType);
         });
     }
 

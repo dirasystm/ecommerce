@@ -12,6 +12,15 @@ use Waimart\Services\PricingService;
  */
 final class CatalogueRepository
 {
+    /**
+     * THE public-visibility rule, used by every storefront query: a product is listed and purchasable only when
+     * it is active, published (moderation) and its seller is active. Use with the products alias `p`.
+     */
+    public const SELLER_JOIN = "JOIN sellers ps ON ps.id = p.seller_id AND ps.status = 'active'";
+    public const PUBLIC_PRODUCT = "p.is_active = 1 AND p.moderation_status = 'published'";
+    /** Same rule as a 0/1 expression, for queries that must still return unavailable rows (e.g. the cart). Needs `LEFT JOIN sellers ps`. */
+    public const PUBLIC_EXPR = "(p.is_active = 1 AND p.moderation_status = 'published' AND ps.status = 'active')";
+
     /** @var list<array<string,mixed>>|null */
     private static ?array $tree = null;
 
@@ -129,10 +138,11 @@ final class CatalogueRepository
         $sql = 'SELECT ' . self::CARD_COLUMNS . '
                   FROM products p
                   JOIN categories c ON c.id = p.category_id AND c.is_active = 1
+                  ' . self::SELLER_JOIN . '
                   JOIN product_variants v ON v.default_product_key = p.id AND v.is_active = 1
                   JOIN inventory i ON i.variant_id = v.id
                   LEFT JOIN (' . PricingService::ACTIVE_FLASH_SQL . ') fs ON fs.variant_id = v.id
-                 WHERE p.is_active = 1 AND ' . $where . '
+                 WHERE ' . self::PUBLIC_PRODUCT . ' AND ' . $where . '
                  ORDER BY ' . $orderBy . '
                  LIMIT ' . max(1, min(100, $limit));
         return self::hydrate($this->db, $this->db->all($sql, $params));

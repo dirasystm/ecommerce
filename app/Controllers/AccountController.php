@@ -100,7 +100,7 @@ final class AccountController extends Controller
     {
         $pid = (int) $req->param('id');
         $db = App::db();
-        if (!$db->value('SELECT id FROM products WHERE id = ? AND is_active = 1', [$pid])) {
+        if (!$db->value('SELECT p.id FROM products p ' . \Waimart\Repositories\CatalogueRepository::SELLER_JOIN . ' WHERE p.id = ? AND ' . \Waimart\Repositories\CatalogueRepository::PUBLIC_PRODUCT, [$pid])) {
             throw HttpException::notFound();
         }
         $uid = (int) Auth::id();

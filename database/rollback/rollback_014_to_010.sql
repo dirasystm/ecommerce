@@ -1,4 +1,4 @@
--- EMERGENCY ROLLBACK of migrations 013 → 010 (marketplace schema). Run only after taking a backup:
+-- EMERGENCY ROLLBACK of migrations 014 → 010 (marketplace schema). Run only after taking a backup:
 --   php bin/backup.php
 --   C:\xampp\mysql\bin\mysql.exe -u root waimart < database\rollback\rollback_013_to_010.sql
 -- Removes the marketplace tables/columns and their reference data, returning the schema to migration 009.
@@ -14,6 +14,9 @@ SET @third_party_order_items := (SELECT COUNT(*) FROM order_items WHERE seller_i
 CREATE TEMPORARY TABLE rollback_guard (ok TINYINT, CONSTRAINT ck_rollback_guard CHECK (ok = 1));
 INSERT INTO rollback_guard VALUES (IF(@third_party_products = 0 AND @third_party_order_items = 0, 1, 0));
 DROP TEMPORARY TABLE rollback_guard;
+
+-- 014 (seller stock actor). Seller stock movements exist only for third-party products, which the guard above excludes.
+ALTER TABLE stock_movements MODIFY actor_type ENUM('customer','staff','system') NOT NULL;
 
 -- 013
 ALTER TABLE order_items DROP FOREIGN KEY fk_oi_commission_rule;
@@ -56,4 +59,4 @@ DELETE FROM permissions WHERE slug IN ('sellers.view','sellers.manage','products
 DELETE FROM settings WHERE setting_key IN ('marketplace_delivery_handler','marketplace_delivery_fee_policy','marketplace_cod_policy',
     'marketplace_commission_provisional','product_moderation','payout_min_amount','payout_hold_days','payout_requires_fulfilment',
     'seller_terms_version','seller_required_documents');
-DELETE FROM schema_migrations WHERE filename IN ('010_marketplace_sellers.sql','011_product_ownership.sql','012_seller_orders.sql','013_marketplace_finance.sql');
+DELETE FROM schema_migrations WHERE filename IN ('014_seller_stock_actor.sql', '010_marketplace_sellers.sql','011_product_ownership.sql','012_seller_orders.sql','013_marketplace_finance.sql');

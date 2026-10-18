@@ -106,6 +106,24 @@ $router->group(['prefix' => '/seller', 'middleware' => ['seller']], function ($r
     $r->get('/', [Seller\DashboardController::class, 'index'], [], 'seller');
     $r->get('/profile', [Seller\ProfileController::class, 'edit']);
     $r->post('/profile', [Seller\ProfileController::class, 'update'], ['seller_role:owner,manager']);
+    $r->get('/products', [Seller\ProductController::class, 'index']);
+    $r->get('/products/new', [Seller\ProductController::class, 'create'], ['seller_role:owner,manager']);
+    $r->post('/products', [Seller\ProductController::class, 'store'], ['seller_role:owner,manager', 'throttle:60,3600']);
+    $r->get('/products/{id:\d+}', [Seller\ProductController::class, 'edit']);
+    $r->group(['middleware' => ['seller_role:owner,manager']], function ($r) {
+        $r->post('/products/{id:\d+}', [Seller\ProductController::class, 'update']);
+        $r->post('/products/{id:\d+}/submit', [Seller\ProductController::class, 'submit']);
+        $r->post('/products/{id:\d+}/archive', [Seller\ProductController::class, 'archive']);
+        $r->post('/products/{id:\d+}/restore', [Seller\ProductController::class, 'restore']);
+        $r->post('/products/{id:\d+}/variants', [Seller\ProductController::class, 'addVariant']);
+        $r->post('/products/{id:\d+}/variants/{vid:\d+}', [Seller\ProductController::class, 'updateVariant']);
+        $r->post('/products/{id:\d+}/variants/{vid:\d+}/default', [Seller\ProductController::class, 'defaultVariant']);
+        $r->post('/products/{id:\d+}/images', [Seller\ProductController::class, 'uploadImage'], ['throttle:60,3600']);
+        $r->post('/products/{id:\d+}/images/{iid:\d+}/delete', [Seller\ProductController::class, 'deleteImage']);
+        $r->post('/products/{id:\d+}/images/{iid:\d+}/main', [Seller\ProductController::class, 'mainImage']);
+    });
+    // Stock may be updated by every store member, including staff.
+    $r->post('/products/{id:\d+}/variants/{vid:\d+}/stock', [Seller\ProductController::class, 'stock']);
     $r->get('/notifications', [Seller\ProfileController::class, 'notifications']);
     $r->post('/notifications', [Seller\ProfileController::class, 'saveNotifications']);
 });
@@ -119,6 +137,10 @@ $router->post('/logout', [Admin\AuthController::class, 'logout'], [], 'logout');
 
 $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) {
     $r->get('/', [Admin\DashboardController::class, 'index'], ['can:dashboard.view'], 'admin');
+
+    $r->get('/moderation/products', [Admin\ProductController::class, 'moderation'], ['can:products.moderate']);
+    $r->post('/moderation/products/{id:\d+}/approve', [Admin\ProductController::class, 'approve'], ['can:products.moderate']);
+    $r->post('/moderation/products/{id:\d+}/reject', [Admin\ProductController::class, 'reject'], ['can:products.moderate']);
 
     $r->group(['middleware' => ['can:catalogue.manage']], function ($r) {
         $r->get('/categories', [Admin\CategoryController::class, 'index']);

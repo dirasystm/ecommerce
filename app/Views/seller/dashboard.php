@@ -1,5 +1,5 @@
 <?php
-/** @var array<string,mixed> $seller @var array<string,mixed>|null $payout @var int $productCount @var list<array{0:string,1:bool,2:?string}> $checklist */
+/** @var array<string,mixed> $seller @var array<string,mixed>|null $payout @var array<string,int> $productCounts @var list<array{0:string,1:bool,2:?string}> $checklist */
 $done = count(array_filter($checklist, fn ($c) => $c[1]));
 ?>
 <div class="wm-admin-head">
@@ -18,8 +18,12 @@ $done = count(array_filter($checklist, fn ($c) => $c[1]));
     <div class="col-md-4">
         <div class="wm-panel h-100"><div class="wm-panel-body">
             <div class="small text-muted">Products</div>
-            <div class="fs-5 fw-semibold"><?= $productCount ?></div>
-            <div class="small text-muted">Product listing opens in the next update of the Seller Centre.</div>
+            <div class="fs-5 fw-semibold"><?= (int) ($productCounts['published'] ?? 0) ?> published <span class="fs-6 fw-normal text-muted">of <?= (int) ($productCounts['all'] ?? 0) ?></span></div>
+            <div class="small">
+                <a href="<?= e(url('/seller/products', ['status' => 'pending'])) ?>"><?= (int) ($productCounts['pending'] ?? 0) ?> waiting for approval</a> ·
+                <a href="<?= e(url('/seller/products', ['status' => 'rejected'])) ?>"><?= (int) ($productCounts['rejected'] ?? 0) ?> need changes</a> ·
+                <span class="<?= ($productCounts['low_stock'] ?? 0) > 0 ? 'text-danger' : 'text-muted' ?>"><?= (int) ($productCounts['low_stock'] ?? 0) ?> low on stock</span>
+            </div>
         </div></div>
     </div>
     <div class="col-md-4">

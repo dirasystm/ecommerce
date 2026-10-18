@@ -1,6 +1,6 @@
 # Waimart Multi-Vendor Upgrade — Phase 1: Inspection, Impact Analysis and Plan
 
-**Date:** 18 October 2026 · **Status:** Phases 1–3 complete (see the "Phase N results" sections at the end); awaiting approval to start Phase 4
+**Date:** 18 October 2026 · **Status:** Phases 1–4 complete (see the "Phase N results" sections at the end); awaiting approval to start Phase 5
 
 This document is for the client and for whoever builds or reviews the upgrade. It records the current system as inspected, what a multi-vendor marketplace changes, the target design, and the phased plan. No code or data has been changed in Phase 1.
 
@@ -260,7 +260,7 @@ Further defaults, stated so you can object:
 - **Data comparison:** 38 untouched tables were identical by `CHECKSUM TABLE`. In the altered tables, the original columns hashed identically row by row.
 - **Defect found and fixed:** the first drill showed the ownership back-fill restamped `products.updated_at` with the migration time. The migration now preserves it, and the rerun matched exactly, including timestamps.
 - **Main database:** the same checks passed on `waimart` against the backup taken just before migrating. All 56 products and all order items are attributed to the Official Store.
-- **Rollback:** `database/rollback/rollback_013_to_010.sql` (see BACKUP_RESTORE.md). Tested on the copy, it restored the identical schema (`SHOW CREATE TABLE` for all 47 tables) and identical data. Its guard refused to run once a third-party seller had a product, before dropping anything.
+- **Rollback:** `database/rollback/rollback_014_to_010.sql` (see BACKUP_RESTORE.md). Tested on the copy, it restored the identical schema (`SHOW CREATE TABLE` for all 47 tables) and identical data. Its guard refused to run once a third-party seller had a product, before dropping anything.
 - **Tests:** new `MarketplaceSchemaTest` (10 tests: platform store uniqueness, slug rules, mandatory seller on products and order items, one seller per user, one open application, commission scope/rate rules, one seller order per seller per order, exactly-once ledger postings, payout constraints, one active payout method, one open dispute).
 - **Full suite:** **273 tests, 1,726 assertions, all passing**, before and after migrating `waimart`.
 - **Live site after migration:** the browser checkout E2E placed WM-C8N854UW, attributed to the Official Store. The accessibility check passed.
@@ -334,3 +334,53 @@ Further defaults, stated so you can object:
 - Hiding a suspended seller's products from the storefront arrives with seller products in Phase 4; today only the Official Store has products.
 - The public `/store/{slug}` pages arrive in Phase 5.
 - Inviting extra team members (manager/staff) to a store isn't built yet; the schema and roles support it.
+
+---
+
+## Phase 4 results (18 October 2026): seller products, moderation, visibility
+
+**One visibility rule for the whole storefront:**
+- **The rule:** a product is listed and purchasable only when it is active, **published** (approved), **and its seller is active**.
+- **Where it lives:** `CatalogueRepository::SELLER_JOIN` / `PUBLIC_PRODUCT` / `PUBLIC_EXPR` define it once. It is used by home-page sections, category/brand/search listings and their counts, the product page, related products, wishlist cards, the cart, add-to-cart and checkout (which re-reads the cart inside the order transaction).
+- **Effects:**
+  - Drafts, pending, rejected and archived products never appear.
+  - Suspending a seller hides all their products at once, and their cart lines become "no longer sold", which blocks checkout.
+  - Reactivation restores them.
+- **Existing records:** the 56 existing Official Store products were already `published` (migration 011) and are unaffected.
+
+**Seller Centre → Products (`/seller/products`):**
+- **Pages:**
+  - list with status tabs (draft, waiting for approval, published, rejected, archived), low-stock warnings and the rejection reason;
+  - create (saved as a draft);
+  - edit: details, options/prices, stock, photos;
+  - submit, archive and restore.
+- **Shared code:** the existing admin catalogue service and field templates are reused, so seller products follow exactly the same validation as admin products.
+- **Ownership:** every action first loads the product **within the current seller**. Another seller's product, or a mix of one's own product id with someone else's variant or image id, gives 404.
+- **Platform-controlled fields:** a seller can never set the owner, the "featured" flag, the URL slug or the moderation state; these are taken from the existing record whatever the request contains.
+- **Categories and brands:** sellers may only choose active ones.
+- **Seller SKUs:** stored as `S{sellerId}-{code}` and shown to the seller without the prefix. Two sellers can use the same code, and a seller cannot discover another seller's codes. Staff cannot create SKUs in that namespace.
+- **Stock:** add, adjust or count, using the existing inventory service. Units reserved for orders can't be removed, and every change goes to the stock ledger with **actor type `seller`** (migration 014, additive).
+- **Roles:** owners and managers edit products. Every store member, including staff, can update stock. Suspended stores are read-only.
+
+**Moderation:**
+- **Setting:** "Require approval before seller products go live" (Admin → Settings → Marketplace), on by default. When off, a submitted product is published immediately.
+- **Submission requirements:** at least one photo, a description and an active default option.
+- **Review after edits:** with moderation on, changing a published product's name, category, brand, descriptions, specifications or photos sends it back for approval. Price, stock and option availability changes apply immediately.
+- **Admin → Marketplace → Product approvals (`products.moderate`, managers):**
+  - queue of waiting products with approve; reject with a reason the seller sees;
+  - "take down" for a published product;
+  - the seller is emailed in each case, and every decision is audited.
+- **Admin product list and editor:** now show the seller and approval status, with filters by seller and approval.
+
+**Tests:**
+- `SellerProductsTest` (12): lifecycle and visibility across the product page, listings and cards; moderation on and off; which edits trigger re-review; rejection, takedown and resubmission; suspension hiding products and blocking the cart; 10 cross-seller attacks, all returning 404; tampered platform fields; SKU namespaces; stock rules and ledger attribution; categories limited to live ones; archive and restore; Official Store unaffected.
+- `SellerProductsHttpTest` (5): end to end with approval; every seller product route rejects another seller's ids, with A's data verified unchanged byte for byte; staff role can update stock but not edit; suspended store hidden from product page and search; moderation permission.
+- `RouteSecurityTest`: 2 new sweeps (seller product changes need owner/manager; moderation needs `products.moderate`).
+- **Full suite: 318 tests, 2,163 assertions, all passing.**
+- **Browser:** 0 serious/critical accessibility issues on 9 seller, admin and public pages; responsive checks passed; screenshots reviewed. Temporary fixtures removed.
+
+**Environment note:** one full run in this phase failed because Windows ran out of virtual memory ("paging file is too small"): a race-test worker couldn't start PHP cleanly. After memory recovered, the full suite passed unchanged, so it was not a code fault. Low free memory on this PC can affect the 16-process race tests.
+
+**Defect found and fixed (from Phase 2):** the rollback instructions in `BACKUP_RESTORE.md` had been corrupted when they were added. A scripting escape turned the backslashes in Windows paths into control characters, so `C:\xampp` became a line break and `\rollback` a carriage return. The section has been rewritten, and every tracked text file was scanned for control characters; none remain.
+- **Rollback script:** renamed `rollback_014_to_010.sql` and now also reverses migration 014.
+- **Re-tested on a copy:** the pre-upgrade backup was migrated through 010–014 and rolled back. The schema and data of all 47 tables were identical.

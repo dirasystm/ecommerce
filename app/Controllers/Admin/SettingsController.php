@@ -17,6 +17,7 @@ final class SettingsController extends AdminController
         foreach (array_keys(SettingsService::FIELDS) as $k) {
             $values[$k] = (string) Settings::get($k, '');
         }
+        $values['product_moderation'] = \Waimart\Services\SellerProductService::moderationRequired() ? '1' : '0';
         return $this->view('settings/edit', ['title' => 'Store settings', 'values' => $values,
             'docModes' => \Waimart\Services\SellerDocumentPolicy::modes()]);
     }

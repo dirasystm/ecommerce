@@ -68,6 +68,25 @@ final class RouteSecurityTest extends TestCase
         }
     }
 
+    public function testSellerProductChangesNeedOwnerOrManagerExceptStock(): void
+    {
+        foreach ($this->routes() as $r) {
+            if ($r['method'] !== 'POST' || !str_starts_with($r['pattern'], '/seller/products') || str_ends_with($r['pattern'], '/stock')) {
+                continue;
+            }
+            $this->assertContains('seller_role:owner,manager', $r['middleware'], "POST {$r['pattern']} must be limited to owners and managers");
+        }
+    }
+
+    public function testProductModerationNeedsModeratePermission(): void
+    {
+        foreach ($this->routes() as $r) {
+            if (str_starts_with($r['pattern'], '/admin/moderation/products')) {
+                $this->assertContains('can:products.moderate', $r['middleware'], "{$r['method']} {$r['pattern']}");
+            }
+        }
+    }
+
     public function testSellerDecisionsNeedManagePermission(): void
     {
         foreach ($this->routes() as $r) {

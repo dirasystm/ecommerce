@@ -9,6 +9,7 @@ use Waimart\Core\Crypto;
 use Waimart\Core\Database;
 use Waimart\Core\Money;
 use Waimart\Core\ValidationException;
+use Waimart\Repositories\CatalogueRepository;
 
 /**
  * Shopping carts (D4). Carts never reserve stock — reservation happens only when checkout
@@ -131,13 +132,14 @@ final class CartService
         $cartId = $this->cartId(false);
         $rows = $cartId === null ? [] : $this->db->all(
             'SELECT ci.variant_id, ci.quantity, v.sku, v.name AS variant_name, v.price, v.compare_at_price, v.is_active AS v_active,
-                    p.id AS product_id, p.name AS product_name, p.slug, p.is_active AS p_active, p.max_per_order,
+                    p.id AS product_id, p.name AS product_name, p.slug, ' . CatalogueRepository::PUBLIC_EXPR . ' AS p_active, p.max_per_order,
                     c.is_active AS c_active, (i.on_hand - i.reserved) AS available, fs.sale_price,
                     (SELECT pi.path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.sort_order, pi.id LIMIT 1) AS image,
                     (SELECT COUNT(*) FROM product_variants v2 WHERE v2.product_id = p.id AND v2.is_active = 1) AS variant_count
                FROM cart_items ci
                JOIN product_variants v ON v.id = ci.variant_id
                JOIN products p ON p.id = v.product_id
+               LEFT JOIN sellers ps ON ps.id = p.seller_id
                JOIN categories c ON c.id = p.category_id
                JOIN inventory i ON i.variant_id = v.id
                LEFT JOIN (' . PricingService::ACTIVE_FLASH_SQL . ') fs ON fs.variant_id = v.id
@@ -280,9 +282,10 @@ final class CartService
     private function variant(int $variantId): ?array
     {
         return $this->db->one(
-            'SELECT v.id, v.is_active, p.is_active AS p_active, c.is_active AS c_active, p.name AS product_name, p.max_per_order,
+            'SELECT v.id, v.is_active, ' . CatalogueRepository::PUBLIC_EXPR . ' AS p_active, c.is_active AS c_active, p.name AS product_name, p.max_per_order,
                     (i.on_hand - i.reserved) AS available
                FROM product_variants v JOIN products p ON p.id = v.product_id
+               LEFT JOIN sellers ps ON ps.id = p.seller_id
                JOIN categories c ON c.id = p.category_id JOIN inventory i ON i.variant_id = v.id
               WHERE v.id = ?',
             [$variantId]

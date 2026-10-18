@@ -33,6 +33,8 @@ final class SettingsService
         'guest_email_required' => ['Require email for guest checkout', 'bool', null, 'Orders'],
         'collection_hold_days' => ['Pickup hold period (days)', 'required|int|gte:1|lte:60', null, 'Orders'],
         'return_window_days' => ['Return window (days)', 'required|int|gte:0|lte:90', null, 'Orders'],
+
+        'product_moderation' => ['Require approval before seller products go live', 'bool', 'If off, products from approved sellers are published as soon as the seller submits them.', 'Marketplace'],
     ];
 
     /** @param array<string,mixed> $in */

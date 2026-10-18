@@ -30,6 +30,7 @@ $nav = [
     ['Marketplace', [
         ['/admin/sellers/applications', 'inbox', 'Seller applications', 'sellers.view'],
         ['/admin/sellers', 'shop-window', 'Sellers', 'sellers.view'],
+        ['/admin/moderation/products', 'clipboard-check', 'Product approvals', 'products.moderate'],
     ]],
     ['Fulfilment', [
         ['/admin/delivery-zones', 'truck', 'Delivery zones', 'delivery.manage'],

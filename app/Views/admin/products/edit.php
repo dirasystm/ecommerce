@@ -12,12 +12,37 @@ $pid = (int) $product['id'];
 <div class="wm-admin-head">
     <h1 class="text-truncate"><?= e($product['name']) ?></h1>
     <div class="d-flex gap-2">
-        <?php if ((int) $product['is_active'] === 1): ?>
+        <?php if ((int) $product['is_active'] === 1 && $product['moderation_status'] === 'published' && $product['seller_status'] === 'active'): ?>
             <a class="btn btn-outline-secondary" href="<?= e(url('/product/' . $product['slug'])) ?>" target="_blank" rel="noopener">View in store <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
         <?php endif; ?>
         <a class="btn btn-outline-secondary" href="<?= e(url('/admin/products')) ?>">All products</a>
     </div>
 </div>
+
+<div class="wm-panel wm-panel-body mb-3 d-flex flex-wrap align-items-center gap-3 small">
+    <span>Seller: <strong><?= e($product['seller_name']) ?></strong><?= (int) $product['seller_is_platform'] ? ' <span class="badge badge-soft-muted">Platform</span>' : '' ?>
+        <?= $product['seller_status'] !== 'active' ? ' <span class="badge badge-soft-danger">Store suspended — product hidden</span>' : '' ?></span>
+    <span>Approval: <?= \Waimart\Services\SellerProductService::badge((string) $product['moderation_status']) ?></span>
+    <?php if ($product['moderation_note']): ?><span class="text-muted">Note: <?= e($product['moderation_note']) ?></span><?php endif; ?>
+</div>
+<?php if (!(int) $product['seller_is_platform'] && Auth::can('products.moderate') && in_array($product['moderation_status'], ['pending', 'published'], true)): ?>
+    <div class="wm-panel wm-panel-body mb-3 d-flex flex-wrap gap-2 align-items-end">
+        <?php if ($product['moderation_status'] === 'pending'): ?>
+            <form method="post" action="<?= e(url('/admin/moderation/products/' . $pid . '/approve')) ?>">
+                <?= csrf_field() ?><button class="btn btn-wm-green" type="submit">Approve &amp; publish</button>
+            </form>
+        <?php endif; ?>
+        <form class="d-flex flex-wrap gap-2 align-items-end" method="post" action="<?= e(url('/admin/moderation/products/' . $pid . '/reject')) ?>" novalidate>
+            <?= csrf_field() ?><input type="hidden" name="back" value="edit">
+            <div>
+                <label class="form-label small mb-1" for="reason"><?= $product['moderation_status'] === 'pending' ? 'Reject' : 'Take down' ?> — reason for the seller</label>
+                <input class="form-control form-control-sm<?= invalid('reason') ?>" id="reason" name="reason" maxlength="500" style="min-width:280px">
+                <?= field_error('reason') ?>
+            </div>
+            <button class="btn btn-sm btn-outline-danger" type="submit"><?= $product['moderation_status'] === 'pending' ? 'Reject' : 'Take down' ?></button>
+        </form>
+    </div>
+<?php endif; ?>
 
 <div class="row g-3">
     <div class="col-xl-8">

@@ -25,7 +25,8 @@ final class ProductRepository
                FROM products p
                JOIN categories c ON c.id = p.category_id AND c.is_active = 1
                LEFT JOIN brands b ON b.id = p.brand_id AND b.is_active = 1
-              WHERE p.slug = ? AND p.is_active = 1',
+               ' . CatalogueRepository::SELLER_JOIN . '
+              WHERE p.slug = ? AND ' . CatalogueRepository::PUBLIC_PRODUCT,
             [$slug]
         );
         if ($p === null) {

@@ -8,6 +8,8 @@
 use Waimart\Services\CatalogueAdminService;
 
 $product ??= null;
+// Seller Centre: the URL slug and the featured flag are platform-controlled, so they are not shown.
+$sellerMode ??= false;
 // Re-submitted values apply only when this product form (or the create form) was the one submitted.
 $mine = in_array(fv("_form", ""), ["product", "new"], true);
 $pv = fn (string $k, string $d) => (string) ($mine ? fv($k, $d) : $d);
@@ -43,12 +45,14 @@ $pi = fn (string $k) => $mine ? invalid($k) : "";
         </select>
         <?= $pe('brand_id') ?>
     </div>
+    <?php if (!$sellerMode): ?>
     <div class="col-md-6">
         <label class="form-label" for="slug">URL slug</label>
         <input class="form-control<?= $pi('slug') ?>" id="slug" name="slug" maxlength="220" value="<?= e($pv('slug', $product['slug'] ?? '')) ?>">
         <div class="form-text">Leave blank to generate from the name.</div>
         <?= $pe('slug') ?>
     </div>
+    <?php endif; ?>
     <div class="col-md-6">
         <label class="form-label" for="max_per_order">Maximum per order</label>
         <input class="form-control<?= $pi('max_per_order') ?>" id="max_per_order" name="max_per_order" type="number" min="1" max="100" required value="<?= e($pv('max_per_order', (string) ($product['max_per_order'] ?? '10'))) ?>">
@@ -75,10 +79,12 @@ $pi = fn (string $k) => $mine ? invalid($k) : "";
 <div class="d-flex flex-wrap gap-4 mb-3">
     <div class="form-check">
         <input class="form-check-input" type="checkbox" id="is_active" name="is_active" value="1" <?= $pc('is_active', $product === null || (int) $product['is_active'] === 1) ?>>
-        <label class="form-check-label" for="is_active">Active (visible in store)</label>
+        <label class="form-check-label" for="is_active"><?= $sellerMode ? 'Listed (shown in the shop once approved)' : 'Active (visible in store)' ?></label>
     </div>
+    <?php if (!$sellerMode): ?>
     <div class="form-check">
         <input class="form-check-input" type="checkbox" id="is_featured" name="is_featured" value="1" <?= $pc('is_featured', (int) ($product['is_featured'] ?? 0) === 1) ?>>
         <label class="form-check-label" for="is_featured">Featured on home page</label>
     </div>
+    <?php endif; ?>
 </div>

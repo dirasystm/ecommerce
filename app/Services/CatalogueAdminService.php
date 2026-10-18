@@ -19,6 +19,15 @@ final class CatalogueAdminService
 {
     private Database $db;
 
+    /** Who changes stock through this service: staff (admin) or seller (Seller Centre). */
+    private string $actorType = 'staff';
+
+    public function actingAs(string $actorType): self
+    {
+        $this->actorType = $actorType === 'seller' ? 'seller' : 'staff';
+        return $this;
+    }
+
     public function __construct(?Database $db = null, private ?InventoryService $inventory = null, private ?ImageService $images = null)
     {
         $this->db = $db ?? App::db();
@@ -92,15 +101,21 @@ final class CatalogueAdminService
      * Creates a product with its default variant and optional opening stock.
      * @param array<string,mixed> $in
      */
-    public function createProduct(array $in, int $actorId): int
+    public function createProduct(array $in, int $actorId, ?int $sellerId = null, string $moderation = 'published'): int
     {
         $product = $this->validateProduct($in, null);
         $variant = $this->validateVariant($in, null);
         $stock = $this->validateOpeningStock($in);
+        // Admin-created products belong to the Waimart Official Store and go live directly;
+        // SellerProductService passes the owning seller and a draft/pending state.
+        $product += [
+            'seller_id' => $sellerId ?? Sellers::platformId($this->db),
+            'moderation_status' => $moderation,
+            'submitted_at' => $moderation === 'pending' ? date('Y-m-d H:i:s') : null,
+        ];
 
         return $this->db->transaction(function () use ($product, $variant, $stock, $actorId) {
-            // Products created in the admin belong to the Waimart Official Store; seller products come in Phase 4.
-            $productId = $this->db->insert('products', $product + ['seller_id' => Sellers::platformId($this->db)]);
+            $productId = $this->db->insert('products', $product);
             $this->insertVariant($productId, $variant + ['is_default' => 1], $stock, $actorId);
             AuditLogger::log('catalogue.product_created', 'product', $productId, null, $product + ['variant' => $variant], $actorId);
             return $productId;
@@ -280,6 +295,10 @@ final class CatalogueAdminService
         if (!preg_match('/^[A-Z0-9][A-Z0-9._-]*$/', $sku)) {
             throw new ValidationException(['sku' => 'SKU may contain letters, numbers, dots, dashes and underscores.']);
         }
+        $unchanged = $variantId !== null && $sku === (string) $this->db->value('SELECT sku FROM product_variants WHERE id = ?', [$variantId]);
+        if ($this->actorType === 'staff' && !$unchanged && preg_match('/^S\d+-/', $sku)) {
+            throw new ValidationException(['sku' => 'SKUs starting with S, a number and a dash are reserved for marketplace sellers.']);
+        }
         if ($this->db->value('SELECT id FROM product_variants WHERE sku = ? AND id <> ?', [$sku, $variantId ?? 0])) {
             throw new ValidationException(['sku' => 'This SKU is already in use.']);
         }
@@ -322,7 +341,7 @@ final class CatalogueAdminService
         if ($openingStock > 0) {
             $this->inventory->lock($variantId);
             $this->inventory->applyChange($variantId, $openingStock, 0, 'receipt', [
-                'actor_type' => 'staff', 'actor_user_id' => $actorId, 'reason' => 'opening', 'note' => 'Opening stock',
+                'actor_type' => $this->actorType, 'actor_user_id' => $actorId, 'reason' => 'opening', 'note' => 'Opening stock',
             ]);
         }
         return $variantId;
