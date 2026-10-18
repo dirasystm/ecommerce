@@ -1,0 +1,279 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Waimart\Services;
+
+use Waimart\Core\App;
+use Waimart\Core\Crypto;
+use Waimart\Core\Database;
+use Waimart\Core\Money;
+use Waimart\Core\Settings;
+use Waimart\Core\ValidationException;
+
+/**
+ * Returns (C7 "do not restore stock automatically", C9 #9).
+ *   requested → approved → received → (inspect each item) → completed
+ *   requested → rejected
+ * Stock goes back ONLY through inspection: "restock" adds the units to on-hand; "write off"
+ * records the units as unsellable. Both are ledger movements recorded exactly once per item.
+ * The refund is a separate staff decision at completion.
+ */
+final class ReturnService
+{
+    public const REASONS = [
+        'damaged' => 'Item arrived damaged',
+        'defective' => 'Item is faulty / does not work',
+        'wrong_item' => 'Wrong item delivered',
+        'not_as_described' => 'Not as described',
+        'changed_mind' => 'Changed my mind',
+        'other' => 'Other',
+    ];
+
+    private Database $db;
+
+    public function __construct(?Database $db = null)
+    {
+        $this->db = $db ?? App::db();
+    }
+
+    /** Returnable items with the quantity still returnable. @return list<array<string,mixed>> */
+    public function returnableItems(array $order): array
+    {
+        if (!$this->eligible($order)) {
+            return [];
+        }
+        $rows = $this->db->all('SELECT * FROM order_items WHERE order_id = ? ORDER BY id', [$order['id']]);
+        $out = [];
+        foreach ($rows as $r) {
+            $left = (int) $r['fulfilled_qty'] - (int) $r['returned_qty'];
+            if ($left > 0) {
+                $out[] = $r + ['returnable' => $left];
+            }
+        }
+        return $out;
+    }
+
+    /** Within the return window and handed over, with no open return. */
+    public function eligible(array $order): bool
+    {
+        if (!in_array($order['status'], ['delivered', 'collected'], true) || $order['completed_at'] === null) {
+            return false;
+        }
+        $deadline = strtotime((string) $order['completed_at']) + Settings::int('return_window_days', 7) * 86400;
+        return time() <= $deadline
+            && !$this->db->value("SELECT 1 FROM return_requests WHERE order_id = ? AND status IN ('requested','approved','received')", [$order['id']]);
+    }
+
+    /**
+     * @param array<int|string,mixed> $quantities order_item_id => qty
+     * @return array<string,mixed> the return request
+     */
+    public function request(int $orderId, array $quantities, string $reason, ?string $details, ?int $userId): array
+    {
+        if (!isset(self::REASONS[$reason])) {
+            throw new ValidationException(['reason' => 'Choose a reason for the return.']);
+        }
+        if ($reason === 'other' && trim((string) $details) === '') {
+            throw new ValidationException(['details' => 'Please tell us more about the problem.']);
+        }
+        $ret = $this->db->transaction(function () use ($orderId, $quantities, $reason, $details, $userId) {
+            $order = $this->db->one('SELECT * FROM orders WHERE id = ? FOR UPDATE', [$orderId]) ?? throw ValidationException::withMessage('Order not found.');
+            if (!$this->eligible($order)) {
+                throw ValidationException::withMessage('This order can no longer be returned online (the return window may have passed). Please contact customer care.');
+            }
+            $returnable = array_column($this->returnableItems($order), null, 'id');
+            $lines = [];
+            foreach ($quantities as $itemId => $qty) {
+                $qty = (int) $qty;
+                if ($qty <= 0) {
+                    continue;
+                }
+                if (!isset($returnable[(int) $itemId]) || $qty > (int) $returnable[(int) $itemId]['returnable']) {
+                    throw new ValidationException(['items' => 'Choose quantities up to what you received.']);
+                }
+                $lines[(int) $itemId] = $qty;
+            }
+            if (!$lines) {
+                throw new ValidationException(['items' => 'Choose at least one item to return.']);
+            }
+            $returnId = $this->db->insert('return_requests', [
+                'return_number' => $this->newNumber(), 'order_id' => $orderId, 'user_id' => $userId,
+                'reason' => $reason, 'details' => trim((string) $details) !== '' ? mb_substr(trim((string) $details), 0, 1000) : null,
+            ]);
+            foreach ($lines as $itemId => $qty) {
+                $this->db->insert('return_items', ['return_id' => $returnId, 'order_item_id' => $itemId, 'quantity' => $qty, 'note' => null]);
+            }
+            (new OrderWorkflow($this->db))->transition($orderId, 'return_requested', ['type' => 'customer', 'id' => $userId], 'Return requested: ' . self::REASONS[$reason]);
+            return (array) $this->db->one('SELECT * FROM return_requests WHERE id = ?', [$returnId]);
+        });
+        $this->notify((int) $ret['order_id'], 'return_requested', "We have received your return request {$ret['return_number']}. Our team will review it and let you know the next steps.");
+        return $ret;
+    }
+
+    public function approve(int $returnId, int $staffId, ?string $note): void
+    {
+        $r = $this->move($returnId, 'requested', 'approved', $staffId, $note, ['decided_by' => $staffId, 'decided_at' => date('Y-m-d H:i:s'), 'decision_note' => $note]);
+        $this->notify((int) $r['order_id'], 'return_approved', "Your return {$r['return_number']} has been approved. Please bring or send the item(s) back as instructed by our team." . ($note ? " Note: $note" : ''));
+    }
+
+    public function reject(int $returnId, int $staffId, string $note): void
+    {
+        if (mb_strlen(trim($note)) < 3) {
+            throw new ValidationException(['decision_note' => 'Explain why the return is rejected (the customer will see this).']);
+        }
+        $r = $this->db->transaction(function () use ($returnId, $staffId, $note) {
+            $r = $this->move($returnId, 'requested', 'rejected', $staffId, $note, ['decided_by' => $staffId, 'decided_at' => date('Y-m-d H:i:s'), 'decision_note' => $note]);
+            $this->restoreOrderStatus((int) $r['order_id'], $staffId, 'Return rejected');
+            return $r;
+        });
+        $this->notify((int) $r['order_id'], 'return_rejected', "Your return {$r['return_number']} could not be accepted: $note");
+    }
+
+    public function receive(int $returnId, int $staffId): void
+    {
+        $this->move($returnId, 'approved', 'received', $staffId, null, ['received_by' => $staffId, 'received_at' => date('Y-m-d H:i:s')]);
+    }
+
+    /**
+     * Inspects one returned line exactly once. restock → on-hand += qty; write_off → recorded, no stock.
+     * @param 'restock'|'write_off' $outcome
+     */
+    public function inspect(int $returnId, int $returnItemId, string $outcome, ?string $note, int $staffId): void
+    {
+        if (!in_array($outcome, ['restock', 'write_off'], true)) {
+            throw new ValidationException(['outcome' => 'Choose restock or write off.']);
+        }
+        $this->db->transaction(function () use ($returnId, $returnItemId, $outcome, $note, $staffId) {
+            $r = $this->db->one('SELECT * FROM return_requests WHERE id = ? FOR UPDATE', [$returnId]) ?? throw ValidationException::withMessage('Return not found.');
+            if ($r['status'] !== 'received') {
+                throw ValidationException::withMessage('Items can be inspected only after the return has been received.');
+            }
+            $ri = $this->db->one(
+                'SELECT ri.*, oi.variant_id, oi.order_id FROM return_items ri JOIN order_items oi ON oi.id = ri.order_item_id WHERE ri.id = ? AND ri.return_id = ? FOR UPDATE',
+                [$returnItemId, $returnId]
+            ) ?? throw ValidationException::withMessage('Item not found.');
+            // Exactly once: guarded update (plus UNIQUE(return_item_id, movement_type) on the ledger).
+            if ($this->db->exec("UPDATE return_items SET inspection = ?, inspected_by = ?, inspected_at = NOW(), note = ? WHERE id = ? AND inspection = 'pending'",
+                [$outcome, $staffId, $note !== null && $note !== '' ? mb_substr($note, 0, 500) : null, $returnItemId]) !== 1) {
+                throw ValidationException::withMessage('This item has already been inspected.');
+            }
+            $inv = new InventoryService($this->db);
+            $inv->lock((int) $ri['variant_id']);
+            $qty = (int) $ri['quantity'];
+            $inv->applyChange((int) $ri['variant_id'], $outcome === 'restock' ? $qty : 0, 0, $outcome === 'restock' ? 'return_restock' : 'return_writeoff', [
+                'actor_type' => 'staff', 'actor_user_id' => $staffId, 'return_item_id' => $returnItemId, 'order_id' => (int) $ri['order_id'],
+                'reason' => $outcome === 'restock' ? 'return_passed' : 'return_failed', 'note' => $note,
+            ]);
+            $this->db->exec('UPDATE order_items SET returned_qty = returned_qty + ? WHERE id = ?', [$qty, $ri['order_item_id']]);
+            AuditLogger::log('return.item_inspected', 'return', $returnId, null, ['return_item_id' => $returnItemId, 'outcome' => $outcome, 'qty' => $qty, 'note' => $note], $staffId);
+        });
+    }
+
+    /** Closes a fully inspected return and records the refund decision. */
+    public function complete(int $returnId, int $staffId, string $refundAmount, ?string $note): void
+    {
+        if (!preg_match('/^\d{1,10}(\.\d{1,2})?$/', trim($refundAmount))) {
+            throw new ValidationException(['refund_amount' => 'Enter the refund amount (0 for no refund).']);
+        }
+        $amount = Money::normalize($refundAmount);
+        $r = $this->db->transaction(function () use ($returnId, $staffId, $amount, $note) {
+            $r = $this->db->one('SELECT * FROM return_requests WHERE id = ? FOR UPDATE', [$returnId]) ?? throw ValidationException::withMessage('Return not found.');
+            if ($r['status'] !== 'received') {
+                throw ValidationException::withMessage('Only a received return can be completed.');
+            }
+            if ($this->db->value("SELECT 1 FROM return_items WHERE return_id = ? AND inspection = 'pending'", [$returnId])) {
+                throw ValidationException::withMessage('Inspect every item before completing the return.');
+            }
+            $max = $this->maxRefund($returnId);
+            if (Money::cmp($amount, $max) > 0) {
+                throw new ValidationException(['refund_amount' => 'The refund cannot exceed ' . Money::format($max) . ' (the value of the returned items).']);
+            }
+            if (Money::isZero($amount) && trim((string) $note) === '') {
+                throw new ValidationException(['completion_note' => 'Explain why no refund is given (the customer will see this).']);
+            }
+            $this->db->exec("UPDATE return_requests SET status = 'completed', completed_at = NOW(), refund_amount = ?, completion_note = ? WHERE id = ?",
+                [$amount, $note !== null && $note !== '' ? mb_substr($note, 0, 500) : null, $returnId]);
+            if (!Money::isZero($amount)) {
+                $this->db->insert('refunds', ['order_id' => $r['order_id'], 'return_id' => $returnId, 'amount' => $amount,
+                    'reason' => 'Return ' . $r['return_number'], 'created_by' => $staffId]);
+                $this->db->exec("UPDATE orders SET payment_status = 'refund_due' WHERE id = ?", [$r['order_id']]);
+            }
+            $allBack = !(bool) $this->db->value('SELECT 1 FROM order_items WHERE order_id = ? AND returned_qty < quantity', [$r['order_id']]);
+            if ($allBack) {
+                (new OrderWorkflow($this->db))->transition((int) $r['order_id'], 'returned', ['type' => 'staff', 'id' => $staffId], 'Return ' . $r['return_number'] . ' completed');
+            } else {
+                $this->restoreOrderStatus((int) $r['order_id'], $staffId, 'Partial return ' . $r['return_number'] . ' completed');
+            }
+            AuditLogger::log('return.completed', 'return', $returnId, ['status' => 'received'], ['status' => 'completed', 'refund' => $amount, 'note' => $note], $staffId);
+            return $r;
+        });
+        $msg = "Your return {$r['return_number']} has been completed. "
+            . (Money::isZero($amount) ? 'No refund is due' . ($note ? ": $note" : '.') : 'A refund of ' . Money::format($amount) . ' has been approved and our team will send it to you.');
+        $this->notify((int) $r['order_id'], 'return_completed', $msg);
+    }
+
+    /** Value of the units on this return at the price paid. */
+    public function maxRefund(int $returnId): string
+    {
+        return (string) $this->db->value(
+            'SELECT COALESCE(SUM(ri.quantity * oi.unit_price), 0) FROM return_items ri JOIN order_items oi ON oi.id = ri.order_item_id WHERE ri.return_id = ?',
+            [$returnId]
+        );
+    }
+
+    /** @param array<string,mixed> $extra @return array<string,mixed> */
+    private function move(int $returnId, string $from, string $to, int $staffId, ?string $note, array $extra): array
+    {
+        return $this->db->transaction(function () use ($returnId, $from, $to, $staffId, $note, $extra) {
+            $r = $this->db->one('SELECT * FROM return_requests WHERE id = ? FOR UPDATE', [$returnId]) ?? throw ValidationException::withMessage('Return not found.');
+            if ($r['status'] !== $from) {
+                throw ValidationException::withMessage("This return is {$r['status']}, so it cannot be marked $to.");
+            }
+            $sets = ['status = ?'];
+            $params = [$to];
+            foreach ($extra as $k => $v) {
+                $sets[] = "`$k` = ?";
+                $params[] = $v;
+            }
+            $params[] = $returnId;
+            $this->db->exec('UPDATE return_requests SET ' . implode(', ', $sets) . ' WHERE id = ?', $params);
+            AuditLogger::log("return.$to", 'return', $returnId, ['status' => $from], ['status' => $to, 'note' => $note], $staffId);
+            return $r;
+        });
+    }
+
+    private function restoreOrderStatus(int $orderId, int $staffId, string $note): void
+    {
+        $method = (string) $this->db->value('SELECT fulfilment_method FROM orders WHERE id = ?', [$orderId]);
+        (new OrderWorkflow($this->db))->transition($orderId, $method === 'pickup' ? 'collected' : 'delivered', ['type' => 'staff', 'id' => $staffId], $note);
+    }
+
+    private function newNumber(): string
+    {
+        for ($i = 0; $i < 10; $i++) {
+            $n = 'RT-' . Crypto::code(8);
+            if (!$this->db->value('SELECT 1 FROM return_requests WHERE return_number = ?', [$n])) {
+                return $n;
+            }
+        }
+        throw new \RuntimeException('Could not allocate a return number.');
+    }
+
+    private function notify(int $orderId, string $template, string $text): void
+    {
+        try {
+            $o = $this->db->one('SELECT o.*, u.notify_email, u.notify_sms FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?', [$orderId]);
+            $n = new NotificationService();
+            $ctx = ['order_id' => $orderId, 'user_id' => $o['user_id'] ? (int) $o['user_id'] : null];
+            if ($o['customer_email'] && ($o['user_id'] === null || (int) $o['notify_email'] === 1)) {
+                $n->email((string) $o['customer_email'], "Order {$o['order_number']}: return update", "Hello {$o['customer_name']},\n\n$text\n\nWaimart", $template, $ctx);
+            }
+            if ($o['user_id'] === null || (int) $o['notify_sms'] === 1) {
+                $n->sms((string) $o['customer_phone'], "Waimart: $text", $template, $ctx);
+            }
+        } catch (\Throwable $e) {
+            \Waimart\Core\Logger::error('Return notification failed', ['order_id' => $orderId, 'error' => $e->getMessage()]);
+        }
+    }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "waimart-browser-tests",
+  "private": true,
+  "description": "Responsive screenshots and layout checks using the locally installed Microsoft Edge.",
+  "type": "module",
+  "scripts": {
+    "check": "node responsive.mjs"
+  },
+  "devDependencies": {
+    "axe-core": "4.13.0",
+    "puppeteer-core": "25.12.0"
+  }
+}

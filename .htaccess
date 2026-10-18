@@ -1,0 +1,11 @@
+# Waimart — project root. Only public/ is served; everything else is denied.
+Options -Indexes
+RewriteEngine On
+
+# Block direct access to source, config, data and tooling.
+RewriteRule ^(\.git|\.env|app|bin|config|database|docs|routes|storage|tests|vendor)(/|$) - [F,L]
+RewriteRule ^(composer\.(json|lock)|bootstrap\.php|phpunit\.xml.*|.*\.md)$ - [F,L]
+
+# Route everything else into public/.
+RewriteCond %{REQUEST_URI} !/public/
+RewriteRule ^(.*)$ public/$1 [L]

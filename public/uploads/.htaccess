@@ -1,0 +1,14 @@
+# Uploaded media: never execute anything here.
+Options -Indexes -ExecCGI
+RemoveHandler .php .phtml .phar .php5 .php7 .php8 .pl .py .cgi .sh
+<FilesMatch "\.(php\d?|phtml|phar|pl|py|cgi|sh|html?|js)$">
+    Require all denied
+</FilesMatch>
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+<IfModule mod_headers.c>
+    Header set X-Content-Type-Options "nosniff"
+    # If an SVG is opened directly, it cannot run scripts.
+    Header set Content-Security-Policy "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; sandbox"
+</IfModule>

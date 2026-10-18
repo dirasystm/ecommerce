@@ -1,0 +1,13 @@
+/vendor/
+/config/config.local.php
+/storage/logs/*
+/storage/backups/*
+/storage/uploads/*
+/storage/cache/*
+!/storage/**/.gitkeep
+!/storage/**/.htaccess
+/.phpunit.cache/
+/tests/Browser/node_modules/
+/tests/Browser/screenshots/
+/public/uploads/products/*
+!/public/uploads/.htaccess

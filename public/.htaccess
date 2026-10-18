@@ -1,0 +1,12 @@
+Options -Indexes
+RewriteEngine On
+
+# Serve real files (assets) directly; send everything else to the front controller.
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^ index.php [L,QSA]
+
+<IfModule mod_headers.c>
+    <FilesMatch "\.(css|js|png|jpe?g|webp|svg|woff2?)$">
+        Header set Cache-Control "public, max-age=604800"
+    </FilesMatch>
+</IfModule>
