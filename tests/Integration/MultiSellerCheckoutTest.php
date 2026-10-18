@@ -207,7 +207,8 @@ final class MultiSellerCheckoutTest extends DbTestCase
         $staff = $this->staffUser();
         $order = (new OrderWorkflow($this->db))->transition((int) $o['id'], 'confirmed', ['type' => 'staff', 'id' => $staff], 'COD confirmed');
         \Waimart\Services\OrderNotifier::statusChanged($order);
-        $this->assertSame(['accepted'], array_values(array_unique(array_column($this->subOrders((int) $o['id']), 'status'))));
+        // Phase 7: the marketplace seller accepts their own part; Waimart's part is accepted on confirmation.
+        $this->assertSame(['pending_acceptance', 'accepted'], array_column($this->subOrders((int) $o['id']), 'status'));
         $mail = $this->db->all("SELECT recipient, subject FROM notifications WHERE template = 'seller_order_confirmed'");
         $this->assertCount(1, $mail, 'only the marketplace seller is emailed, not the Official Store');
         $this->assertSame('owner-b@example.com', $mail[0]['recipient']);

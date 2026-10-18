@@ -1,5 +1,5 @@
 <?php
-/** @var array<string,mixed> $seller @var array<string,mixed>|null $payout @var array<string,int> $productCounts @var list<array{0:string,1:bool,2:?string}> $checklist */
+/** @var array<string,mixed> $seller @var array<string,mixed>|null $payout @var array<string,int> $productCounts @var array<string,int> $orderCounts @var list<array{0:string,1:bool,2:?string}> $checklist */
 $done = count(array_filter($checklist, fn ($c) => $c[1]));
 ?>
 <div class="wm-admin-head">
@@ -34,6 +34,20 @@ $done = count(array_filter($checklist, fn ($c) => $c[1]));
         </div></div>
     </div>
 </div>
+
+<section class="wm-panel mb-3">
+    <div class="wm-panel-head">Orders</div>
+    <div class="wm-panel-body row g-3 text-center">
+        <?php foreach (['new' => 'New — accept or decline', 'preparing' => 'Being prepared', 'handover' => 'Waiting for Waimart pickup', 'with_waimart' => 'With Waimart', 'completed' => 'Completed'] as $k => $label): ?>
+            <div class="col-6 col-md">
+                <a class="d-block text-decoration-none" href="<?= e(url('/seller/orders', ['tab' => $k])) ?>">
+                    <div class="fs-4 fw-bold <?= $k === 'new' && $orderCounts[$k] > 0 ? 'text-danger' : 'text-body' ?>"><?= (int) $orderCounts[$k] ?></div>
+                    <div class="small text-muted"><?= e($label) ?></div>
+                </a>
+            </div>
+        <?php endforeach; ?>
+    </div>
+</section>
 
 <section class="wm-panel">
     <div class="wm-panel-head">Store setup (<?= $done ?> of <?= count($checklist) ?> done)</div>

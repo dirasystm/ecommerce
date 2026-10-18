@@ -57,7 +57,10 @@ final class CollectionService
             'SELECT f.*, o.status, o.fulfilment_method FROM order_fulfilment f JOIN orders o ON o.id = f.order_id WHERE f.order_id = ?',
             [$orderId]
         ) ?? throw ValidationException::withMessage('Order not found.');
-        if ($f['fulfilment_method'] !== 'pickup' || $f['status'] !== 'ready_for_collection') {
+        $marketplace = SellerOrderService::hasMarketplaceSeller($orderId, $this->db);
+        $readyParts = $marketplace ? array_map('intval', array_column($this->db->all(
+            "SELECT id FROM seller_orders WHERE order_id = ? AND status = 'ready_for_collection' ORDER BY id", [$orderId]), 'id')) : [];
+        if ($f['fulfilment_method'] !== 'pickup' || ($marketplace ? $readyParts === [] : $f['status'] !== 'ready_for_collection')) {
             throw ValidationException::withMessage('This order is not ready for collection.');
         }
         $normalized = strtoupper(preg_replace('/[\s-]+/', '', $code) ?? '');
@@ -72,6 +75,16 @@ final class CollectionService
             throw new ValidationException(['code' => 'That collection code is not valid for this order.']);
         }
 
+        if ($marketplace) {
+            // Hand over every part that is ready now; the code stays valid for parts still on their way.
+            foreach ($readyParts as $partId) {
+                (new SellerOrderWorkflow($this->db))->markCollectionVerified()->transition($partId, 'collected', ['type' => 'staff', 'id' => $staffId],
+                    ['note' => 'Collected — code verified, ID checked' . ($note ? ': ' . $note : '')]);
+            }
+            $rl->clear('collect-order|' . $orderId);
+            AuditLogger::log('collection.parts_collected', 'order', $orderId, null, ['parts' => $readyParts], $staffId);
+            return (array) $this->db->one('SELECT * FROM orders WHERE id = ?', [$orderId]);
+        }
         $order = (new OrderWorkflow($this->db))->markCollectionVerified()->transition(
             $orderId, 'collected', ['type' => 'staff', 'id' => $staffId],
             'Collected — code verified, ID checked' . ($note ? ': ' . $note : ''),
@@ -87,7 +100,7 @@ final class CollectionService
     {
         $order = $this->db->transaction(function () use ($orderId, $staffId) {
             $o = $this->db->one('SELECT * FROM orders WHERE id = ? FOR UPDATE', [$orderId]) ?? throw ValidationException::withMessage('Order not found.');
-            if ($o['status'] !== 'ready_for_collection') {
+            if ($o['status'] !== 'ready_for_collection' && !self::anyPartReady($orderId)) {
                 throw ValidationException::withMessage('Codes can only be re-issued while an order is ready for collection.');
             }
             $code = Crypto::code(8);
@@ -103,10 +116,16 @@ final class CollectionService
         return $order;
     }
 
+    /** A marketplace order with at least one part waiting at the pickup station. */
+    public static function anyPartReady(int $orderId): bool
+    {
+        return (bool) App::db()->value("SELECT 1 FROM seller_orders WHERE order_id = ? AND status = 'ready_for_collection' LIMIT 1", [$orderId]);
+    }
+
     /** The plain code for display to an authorised viewer, or null when not applicable. */
     public static function codeFor(array $order): ?string
     {
-        if (($order['status'] ?? '') !== 'ready_for_collection') {
+        if (($order['status'] ?? '') !== 'ready_for_collection' && !self::anyPartReady((int) ($order['id'] ?? 0))) {
             return null;
         }
         $f = App::db()->one('SELECT collection_code_enc, collection_code_status FROM order_fulfilment WHERE order_id = ?', [$order['id']]);

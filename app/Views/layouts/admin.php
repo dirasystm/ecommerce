@@ -13,6 +13,7 @@ $nav = [
     ]],
     ['Sales', [
         ['/admin/orders', 'receipt', 'Orders', 'orders.view'],
+        ['/admin/seller-orders', 'diagram-2', 'Seller orders', 'orders.view'],
         ['/admin/customers', 'people', 'Customers', 'customers.view'],
         ['/admin/collections', 'upc-scan', 'Collection desk', 'orders.collect'],
     ]],

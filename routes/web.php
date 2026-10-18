@@ -125,6 +125,10 @@ $router->group(['prefix' => '/seller', 'middleware' => ['seller']], function ($r
     });
     // Stock may be updated by every store member, including staff.
     $r->post('/products/{id:\d+}/variants/{vid:\d+}/stock', [Seller\ProductController::class, 'stock']);
+    $r->get('/orders', [Seller\OrderController::class, 'index']);
+    $r->get('/orders/{id:\d+}', [Seller\OrderController::class, 'show']);
+    // Accept/decline need owner or manager (checked in the controller); any member may mark preparing/packed.
+    $r->post('/orders/{id:\d+}/status', [Seller\OrderController::class, 'transition'], ['throttle:120,60']);
     $r->get('/notifications', [Seller\ProfileController::class, 'notifications']);
     $r->post('/notifications', [Seller\ProfileController::class, 'saveNotifications']);
 });
@@ -170,6 +174,9 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     });
 
     $r->get('/orders', [Admin\OrderController::class, 'index'], ['can:orders.view']);
+    $r->get('/seller-orders', [Admin\OrderController::class, 'sellerOrders'], ['can:orders.view']);
+    // The step-specific permission (orders.manage / deliver / cancel) is checked in the controller.
+    $r->post('/seller-orders/{id:\d+}/status', [Admin\OrderController::class, 'sellerOrderTransition'], ['can:orders.view']);
     $r->get('/orders/{id:\d+}', [Admin\OrderController::class, 'show'], ['can:orders.view']);
     $r->post('/orders/{id:\d+}/status', [Admin\OrderController::class, 'transition'], ['can:orders.view']);
 

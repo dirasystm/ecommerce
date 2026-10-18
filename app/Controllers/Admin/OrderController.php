@@ -72,6 +72,52 @@ final class OrderController extends AdminController
         return $this->view('orders/index', compact('rows', 'total', 'page', 'pages', 'counts', 'status') + ['title' => 'Orders']);
     }
 
+    /** Staff step on one seller's part of an order (hand-over, dispatch, delivery, pickup readiness, part cancellation). */
+    public function sellerOrderTransition(Request $req): Response
+    {
+        $id = $this->intParam($req, 'id');
+        $to = (string) $req->input('to', '');
+        \Waimart\Core\Auth::authorize(match ($to) {
+            'dispatched', 'out_for_delivery', 'delivered' => 'orders.deliver',
+            'cancelled' => 'orders.cancel',
+            default => 'orders.manage',    // hand-over, ready for collection, the Official Store's own accept/prepare/pack
+        });
+        $so = (new \Waimart\Services\SellerOrderWorkflow())->transition($id, $to, ['type' => 'staff', 'id' => $this->actor()], [
+            'reason' => (string) $req->input('reason', ''), 'note' => (string) $req->input('note', ''),
+            'tracking_reference' => (string) $req->input('tracking_reference', ''),
+        ]);
+        return $this->success('Updated ' . $so['sub_number'] . ': ' . strtolower(\Waimart\Services\OrderPresenter::sellerOrderStatus((string) $so['status'])) . '.',
+            '/admin/orders/' . $so['order_id']);
+    }
+
+    /** All sellers' parts that need Waimart's attention (oversight). */
+    public function sellerOrders(Request $req): Response
+    {
+        $db = App::db();
+        $status = (string) ($req->query['status'] ?? 'packed');
+        $statuses = array_keys(\Waimart\Services\OrderPresenter::SELLER_ORDER_LABELS);
+        $status = in_array($status, $statuses, true) ? $status : 'packed';
+        $params = [$status];
+        $where = 'so.status = ? AND o.confirmed_at IS NOT NULL';
+        $seller = (string) ($req->query['seller'] ?? '');
+        if (ctype_digit($seller)) {
+            $where .= ' AND so.seller_id = ?';
+            $params[] = (int) $seller;
+        }
+        return $this->view('orders/seller-orders', [
+            'title' => 'Seller orders', 'status' => $status,
+            'counts' => array_map('intval', array_column($db->all(
+                'SELECT so.status, COUNT(*) AS n FROM seller_orders so JOIN orders o ON o.id = so.order_id WHERE o.confirmed_at IS NOT NULL GROUP BY so.status'), 'n', 'status')),
+            'rows' => $db->all(
+                "SELECT so.id, so.order_id, so.sub_number, so.status, so.items_subtotal, so.updated_at, so.dispatch_note, s.name AS seller_name, s.id AS seller_id,
+                        o.fulfilment_method, o.order_number, f.pickup_name, f.town, f.county_name
+                   FROM seller_orders so JOIN orders o ON o.id = so.order_id JOIN sellers s ON s.id = so.seller_id
+                   LEFT JOIN order_fulfilment f ON f.order_id = o.id
+                  WHERE $where ORDER BY so.updated_at LIMIT 300", $params),
+            'sellers' => $db->all('SELECT id, name FROM sellers ORDER BY is_platform DESC, name'),
+        ]);
+    }
+
     public function show(Request $req): Response
     {
         $db = App::db();
@@ -96,9 +142,24 @@ final class OrderController extends AdminController
                 // M-Pesa orders are confirmed through payment verification (Phase 9), not this button.
                 && !($to === 'confirmed' && $order['payment_method'] !== 'cod')
         ));
+        // Orders with marketplace sellers: fulfilment happens per seller part, so order-level fulfilment buttons go.
+        $marketplace = \Waimart\Services\SellerOrderService::hasMarketplaceSeller((int) $order['id'], $db);
+        $partActions = [];
+        if ($marketplace) {
+            $actions = array_values(array_intersect($actions, ['confirmed', 'cancelled']));
+            $wf = new \Waimart\Services\SellerOrderWorkflow($db);
+            foreach ($details['groups'] as $g) {
+                $partActions[(int) $g['id']] = array_values(array_filter($wf->allowedNext($g, false), fn ($to) => Auth::can(match ($to) {
+                    'dispatched', 'out_for_delivery', 'delivered' => 'orders.deliver',
+                    'cancelled' => 'orders.cancel',
+                    'collected' => 'orders.collect',
+                    default => 'orders.manage',
+                }) && $to !== 'collected'));   // collection happens at the collection desk (code check)
+            }
+        }
         return $this->view('orders/show', [
             'title' => 'Order ' . $order['order_number'], 'order' => $details, 'reservations' => $reservations,
-            'movements' => $movements, 'actions' => $actions,
+            'movements' => $movements, 'actions' => $actions, 'marketplace' => $marketplace, 'partActions' => $partActions,
         ]);
     }
 

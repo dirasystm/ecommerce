@@ -115,14 +115,14 @@ final class ReservationService
      * @param 'released'|'expired' $as
      * @return int number of reservations released by THIS call
      */
-    public function releaseForOrder(int $orderId, string $as, string $reason, string $actorType, ?int $actorId = null): int
+    public function releaseForOrder(int $orderId, string $as, string $reason, string $actorType, ?int $actorId = null, ?int $sellerOrderId = null): int
     {
         $this->assertInTransaction();
         if (!in_array($as, ['released', 'expired'], true)) {
             throw new \InvalidArgumentException('Invalid release state.');
         }
         $count = 0;
-        foreach ($this->activeFor($orderId) as $r) {
+        foreach ($this->activeFor($orderId, $sellerOrderId) as $r) {
             $this->inventory->lock((int) $r['variant_id']);                      // ascending variant order
             $changed = $this->db->exec(
                 "UPDATE stock_reservations SET status = ?, released_at = NOW(), release_reason = ? WHERE id = ? AND status = 'active'",
@@ -146,11 +146,13 @@ final class ReservationService
      * reserved −= qty for every reservation, exactly once. Refuses unless EVERY order item has an
      * active reservation (expired / released / already-consumed stock is never consumed).
      */
-    public function consumeForOrder(int $orderId, string $actorType, ?int $actorId, string $reason): int
+    public function consumeForOrder(int $orderId, string $actorType, ?int $actorId, string $reason, ?int $sellerOrderId = null): int
     {
         $this->assertInTransaction();
-        $active = $this->activeFor($orderId);
-        $items = (int) $this->db->value('SELECT COUNT(*) FROM order_items WHERE order_id = ?', [$orderId]);
+        $active = $this->activeFor($orderId, $sellerOrderId);
+        $items = $sellerOrderId === null
+            ? (int) $this->db->value('SELECT COUNT(*) FROM order_items WHERE order_id = ?', [$orderId])
+            : (int) $this->db->value('SELECT COUNT(*) FROM order_items WHERE order_id = ? AND seller_order_id = ?', [$orderId, $sellerOrderId]);
         if ($items === 0 || count($active) !== $items) {
             throw new ReservationStateException(
                 'This order no longer has reserved stock for every item (it may have expired, been released or already been handed over).'
@@ -191,12 +193,31 @@ final class ReservationService
     }
 
     /** @return list<array<string,mixed>> active reservations, locked, in ascending variant order */
-    private function activeFor(int $orderId): array
+    private function activeFor(int $orderId, ?int $sellerOrderId = null): array
     {
+        if ($sellerOrderId !== null) {
+            return $this->db->all(
+                "SELECT r.* FROM stock_reservations r JOIN order_items oi ON oi.id = r.order_item_id
+                  WHERE r.order_id = ? AND oi.seller_order_id = ? AND r.status = 'active' ORDER BY r.variant_id, r.id FOR UPDATE",
+                [$orderId, $sellerOrderId]
+            );
+        }
         return $this->db->all(
             "SELECT * FROM stock_reservations WHERE order_id = ? AND status = 'active' ORDER BY variant_id, id FOR UPDATE",
             [$orderId]
         );
+    }
+
+    /** Releases only one seller sub-order's reservations (seller rejection / part cancellation), exactly once each. */
+    public function releaseForSellerOrder(int $orderId, int $sellerOrderId, string $reason, string $actorType, ?int $actorId = null): int
+    {
+        return $this->releaseForOrder($orderId, 'released', $reason, $actorType, $actorId, $sellerOrderId);
+    }
+
+    /** Consumes one seller sub-order's reservations (hand-over / dispatch / collection of that part). */
+    public function consumeForSellerOrder(int $orderId, int $sellerOrderId, string $actorType, ?int $actorId, string $reason): int
+    {
+        return $this->consumeForOrder($orderId, $actorType, $actorId, $reason, $sellerOrderId);
     }
 
     /** Earliest active expiry for an order (null when held until fulfilment or none active). */

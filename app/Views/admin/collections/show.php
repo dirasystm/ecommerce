@@ -2,7 +2,8 @@
 use Waimart\Services\OrderPresenter;
 
 /** @var array<string,mixed> $order @var list<array<string,mixed>> $items @var bool $canReissue */
-$ready = $order['status'] === 'ready_for_collection';
+$ready = $order['status'] === 'ready_for_collection' || in_array('ready_for_collection', array_column($items, 'part_status'), true);
+$multi = count(array_unique(array_column($items, 'sub_number'))) > 1;
 ?>
 <div class="wm-admin-head">
     <div>
@@ -56,7 +57,10 @@ $ready = $order['status'] === 'ready_for_collection';
             <div class="wm-panel-head">Items to hand over</div>
             <ul class="list-group list-group-flush">
                 <?php foreach ($items as $it): ?>
-                    <li class="list-group-item d-flex justify-content-between"><span><?= e($it['product_name']) ?><?= $it['variant_name'] !== 'Default' ? ' · ' . e($it['variant_name']) : '' ?> <code class="small"><?= e($it['sku']) ?></code></span><strong>× <?= (int) $it['quantity'] ?></strong></li>
+                    <?php $here = in_array($it['part_status'], ['ready_for_collection', 'collected'], true) || !$multi; ?>
+                    <li class="list-group-item d-flex justify-content-between gap-2"><span><?= e($it['product_name']) ?><?= $it['variant_name'] !== 'Default' ? ' · ' . e($it['variant_name']) : '' ?> <code class="small"><?= e($it['sku']) ?></code>
+                        <?php if ($multi): ?><span class="d-block small text-muted"><?= e($it['seller_name']) ?> · <?= e(\Waimart\Services\OrderPresenter::sellerOrderStatus((string) $it['part_status'])) ?><?= $here ? '' : ' — not at the station yet' ?></span><?php endif; ?></span>
+                        <strong class="<?= $here ? '' : 'text-muted' ?>">× <?= (int) $it['quantity'] ?></strong></li>
                 <?php endforeach; ?>
             </ul>
         </div>

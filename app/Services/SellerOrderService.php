@@ -117,8 +117,17 @@ final class SellerOrderService
         if ($to === null) {
             return;    // return_requested / returned are handled per seller order in Phase 9
         }
-        foreach ($this->db->all("SELECT id, status FROM seller_orders WHERE order_id = ? AND status NOT IN ('cancelled','rejected') FOR UPDATE", [$orderId]) as $so) {
+        $rows = $this->db->all(
+            "SELECT so.id, so.status, s.is_platform FROM seller_orders so JOIN sellers s ON s.id = so.seller_id
+              WHERE so.order_id = ? AND so.status NOT IN ('cancelled','rejected') FOR UPDATE",
+            [$orderId]
+        );
+        foreach ($rows as $so) {
             if ($so['status'] === $to) {
+                continue;
+            }
+            // On confirmation only Waimart's own part is accepted automatically; marketplace sellers accept theirs.
+            if ($parentStatus === 'confirmed' && !(int) $so['is_platform']) {
                 continue;
             }
             $sets = ['status = ?'];
@@ -135,6 +144,28 @@ final class SellerOrderService
                 'actor_type' => $actor['type'], 'actor_user_id' => $actor['id'] ?? null, 'note' => 'Order ' . str_replace('_', ' ', $parentStatus),
             ]);
         }
+    }
+
+    /**
+     * What the customer still owes/pays for the order: the order total minus parts that were declined or cancelled
+     * (their merchandise less their discount share). Delivery fee stays unless the whole order is cancelled.
+     */
+    public static function amountDue(array $order, ?Database $db = null): string
+    {
+        $withdrawn = (string) ($db ?? App::db())->value(
+            "SELECT COALESCE(SUM(items_subtotal - discount_share), 0) FROM seller_orders WHERE order_id = ? AND status IN ('rejected','cancelled')",
+            [$order['id']]
+        );
+        return in_array($order['status'], ['cancelled', 'expired'], true) ? '0.00' : Money::sub((string) $order['grand_total'], $withdrawn);
+    }
+
+    /** Does the order contain a marketplace (non-platform) seller's part? Such orders are fulfilled per sub-order. */
+    public static function hasMarketplaceSeller(int $orderId, ?Database $db = null): bool
+    {
+        return (bool) ($db ?? App::db())->value(
+            'SELECT 1 FROM seller_orders so JOIN sellers s ON s.id = so.seller_id WHERE so.order_id = ? AND s.is_platform = 0 LIMIT 1',
+            [$orderId]
+        );
     }
 
     /** Emails each marketplace seller that a confirmed order is waiting for them (after commit). */
@@ -154,6 +185,86 @@ final class SellerOrderService
                 . 'Open it in the Seller Centre: ' . config('app.url') . "/seller\n\n— Waimart Seller Support",
                 'seller_order_confirmed', ['user_id' => (int) $r['user_id']]);
         }
+    }
+
+    /** Seller Centre tabs: which part statuses each tab shows. */
+    public const SELLER_TABS = [
+        'new' => ['pending_acceptance'],
+        'preparing' => ['accepted', 'processing'],
+        'handover' => ['packed'],
+        'with_waimart' => ['handed_over', 'dispatched', 'out_for_delivery', 'ready_for_collection'],
+        'completed' => ['delivered', 'collected'],
+        'cancelled' => ['cancelled', 'rejected'],
+    ];
+
+    /**
+     * A seller's parts of CONFIRMED orders only (unpaid/unconfirmed orders are not shown to sellers).
+     * @return list<array<string,mixed>>
+     */
+    public function forSeller(int $sellerId, ?string $tab = null, int $limit = 200): array
+    {
+        $params = [$sellerId];
+        $where = 'so.seller_id = ? AND o.confirmed_at IS NOT NULL';
+        if ($tab !== null && isset(self::SELLER_TABS[$tab])) {
+            $where .= ' AND so.status IN (' . implode(',', array_fill(0, count(self::SELLER_TABS[$tab]), '?')) . ')';
+            array_push($params, ...self::SELLER_TABS[$tab]);
+        }
+        return $this->db->all(
+            "SELECT so.id, so.sub_number, so.status, so.items_subtotal, so.commission_total, so.seller_net, so.created_at, o.confirmed_at,
+                    o.fulfilment_method, (SELECT SUM(quantity) FROM order_items oi WHERE oi.seller_order_id = so.id) AS units
+               FROM seller_orders so JOIN orders o ON o.id = so.order_id
+              WHERE $where ORDER BY o.confirmed_at DESC, so.id DESC LIMIT " . max(1, min(500, $limit)),
+            $params
+        );
+    }
+
+    /** @return array<string,int> tab => count for the seller's confirmed parts */
+    public function sellerCounts(int $sellerId): array
+    {
+        $byStatus = array_map('intval', array_column($this->db->all(
+            'SELECT so.status, COUNT(*) AS n FROM seller_orders so JOIN orders o ON o.id = so.order_id
+              WHERE so.seller_id = ? AND o.confirmed_at IS NOT NULL GROUP BY so.status', [$sellerId]), 'n', 'status'));
+        $out = [];
+        foreach (self::SELLER_TABS as $tab => $statuses) {
+            $out[$tab] = array_sum(array_map(fn ($s) => $byStatus[$s] ?? 0, $statuses));
+        }
+        return $out;
+    }
+
+    /**
+     * One of this seller's parts with what the seller needs to fulfil it — never the customer's phone, email or
+     * address (Waimart delivers). Another seller's part, or an unconfirmed order, is null (callers answer 404).
+     * @return array<string,mixed>|null
+     */
+    public function sellerView(int $sellerId, int $sellerOrderId): ?array
+    {
+        $so = $this->db->one(
+            "SELECT so.*, o.order_number, o.fulfilment_method, o.confirmed_at, o.status AS order_status,
+                    SUBSTRING_INDEX(o.customer_name, ' ', 1) AS customer_first_name,
+                    f.pickup_name, f.pickup_town, f.town AS delivery_town, f.county_name AS delivery_county
+               FROM seller_orders so JOIN orders o ON o.id = so.order_id LEFT JOIN order_fulfilment f ON f.order_id = o.id
+              WHERE so.id = ? AND so.seller_id = ? AND o.confirmed_at IS NOT NULL",
+            [$sellerOrderId, $sellerId]
+        );
+        if ($so === null) {
+            return null;
+        }
+        $so['items'] = $this->db->all(
+            'SELECT product_id, product_name, variant_name, sku, image_path, unit_price, quantity, line_total, commission_rate, commission_amount, seller_net_amount
+               FROM order_items WHERE seller_order_id = ? ORDER BY id',
+            [$sellerOrderId]
+        );
+        $so['history'] = $this->history($sellerOrderId);
+        return $so;
+    }
+
+    /** @return list<array<string,mixed>> */
+    public function history(int $sellerOrderId): array
+    {
+        return $this->db->all(
+            'SELECT h.from_status, h.to_status, h.actor_type, h.note, h.created_at FROM seller_order_history h WHERE h.seller_order_id = ? ORDER BY h.id',
+            [$sellerOrderId]
+        );
     }
 
     /** @return list<array<string,mixed>> seller groups of an order with their items, for customer and admin views */

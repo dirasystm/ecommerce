@@ -19,6 +19,7 @@ final class DashboardController extends SellerController
         return $this->view('dashboard', [
             'title' => 'Seller Centre',
             'payout' => $payout,
+            'orderCounts' => (new \Waimart\Services\SellerOrderService($db))->sellerCounts($this->sellerId()),
             'productCounts' => (new \Waimart\Services\SellerProductService($db))->counts($this->sellerId()),
             // Store setup checklist: real state only, no placeholder figures.
             'checklist' => [

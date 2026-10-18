@@ -42,19 +42,21 @@ final class CodService
             if ($this->db->value('SELECT 1 FROM cod_collections WHERE order_id = ?', [$orderId])) {
                 throw ValidationException::withMessage('Cash for this order has already been recorded.');
             }
-            $mismatch = Money::cmp($collected, (string) $o['grand_total']) !== 0;
+            // Parts a seller declined or that were cancelled are not paid for.
+            $expected = SellerOrderService::amountDue($o, $this->db);
+            $mismatch = Money::cmp($collected, $expected) !== 0;
             if ($mismatch && trim((string) $note) === '') {
                 throw new ValidationException(['note' => sprintf(
-                    'Collected %s differs from the expected %s. Explain the difference.', Money::format($collected), Money::format((string) $o['grand_total'])
+                    'Collected %s differs from the expected %s. Explain the difference.', Money::format($collected), Money::format($expected)
                 )]);
             }
             $this->db->insert('cod_collections', [
-                'order_id' => $orderId, 'amount_expected' => $o['grand_total'], 'amount_collected' => $collected,
+                'order_id' => $orderId, 'amount_expected' => $expected, 'amount_collected' => $collected,
                 'collected_by' => $staffId, 'note' => $note !== null && $note !== '' ? mb_substr($note, 0, 500) : null,
             ]);
             $this->db->exec("UPDATE orders SET payment_status = 'cod_collected' WHERE id = ?", [$orderId]);
             AuditLogger::log('cod.collected', 'order', $orderId, ['payment_status' => $o['payment_status']],
-                ['payment_status' => 'cod_collected', 'expected' => $o['grand_total'], 'collected' => $collected, 'note' => $note], $staffId);
+                ['payment_status' => 'cod_collected', 'expected' => $expected, 'collected' => $collected, 'note' => $note], $staffId);
             return (array) $this->db->one('SELECT * FROM orders WHERE id = ?', [$orderId]);
         });
     }

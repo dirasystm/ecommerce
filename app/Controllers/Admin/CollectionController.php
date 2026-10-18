@@ -21,7 +21,8 @@ final class CollectionController extends AdminController
     public function index(Request $req): Response
     {
         $db = App::db();
-        $where = ["o.status = 'ready_for_collection'"];
+        // Whole orders ready, or marketplace orders with at least one seller's part waiting at the station.
+        $where = ["(o.status = 'ready_for_collection' OR EXISTS (SELECT 1 FROM seller_orders so WHERE so.order_id = o.id AND so.status = 'ready_for_collection'))"];
         $params = [];
         $point = (string) ($req->query['point'] ?? '');
         if (ctype_digit($point)) {
@@ -57,7 +58,13 @@ final class CollectionController extends AdminController
                FROM orders o JOIN order_fulfilment f ON f.order_id = o.id WHERE o.id = ? AND o.fulfilment_method = 'pickup'",
             [$id]
         ) ?? throw HttpException::notFound();
-        $items = $db->all('SELECT product_name, variant_name, quantity, sku FROM order_items WHERE order_id = ?', [$id]);
+        // Each item with the state of its seller part, so staff hand over only what is ready.
+        $items = $db->all(
+            'SELECT oi.product_name, oi.variant_name, oi.quantity, oi.sku, so.status AS part_status, so.sub_number, s.name AS seller_name
+               FROM order_items oi JOIN seller_orders so ON so.id = oi.seller_order_id JOIN sellers s ON s.id = so.seller_id
+              WHERE oi.order_id = ? ORDER BY so.id, oi.id',
+            [$id]
+        );
         return $this->view('collections/show', [
             'title' => 'Collect ' . $order['order_number'], 'order' => $order, 'items' => $items,
             'canReissue' => Auth::can('orders.manage'),
@@ -71,10 +78,11 @@ final class CollectionController extends AdminController
             $id, (string) $req->input('code', ''), $this->actor(), (string) $req->input('id_checked', '') === '1',
             trim((string) $req->input('note', '')) ?: null
         );
-        $cod = $order['payment_method'] === 'cod'
-            ? ' This is a cash-on-delivery order: collect ' . \Waimart\Core\Money::format((string) $order['grand_total']) . ' in cash from the customer.'
+        $cod = $order['payment_method'] === 'cod' && $order['status'] === 'collected'
+            ? ' This is a cash-on-delivery order: collect ' . \Waimart\Core\Money::format(\Waimart\Services\SellerOrderService::amountDue($order)) . ' in cash from the customer.'
             : '';
-        return $this->success("Order {$order['order_number']} collected. Stock has been deducted.$cod", '/admin/collections');
+        $what = $order['status'] === 'collected' ? "Order {$order['order_number']} collected." : "The ready parts of order {$order['order_number']} were collected; the code stays valid for the rest.";
+        return $this->success("$what Stock has been deducted.$cod", '/admin/collections');
     }
 
     public function reissue(Request $req): Response

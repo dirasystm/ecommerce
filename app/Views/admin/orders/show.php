@@ -101,6 +101,37 @@ $labels = ['confirmed' => 'Confirm order', 'processing' => 'Start processing', '
                 <?php endforeach; ?>
                 </tbody>
             </table></div>
+            <?php if (!empty($marketplace)): ?>
+                <div class="wm-panel-body border-top">
+                    <p class="small mb-2"><strong>Fulfilment by part.</strong> Sellers accept, prepare and pack their items; Waimart confirms receipt (hand-over), then dispatches and delivers, or makes them ready at the pickup station. The order status follows the least advanced part.</p>
+                    <?php $labels = ['accepted' => 'Accept (Official Store)', 'processing' => 'Start preparing', 'packed' => 'Mark packed', 'handed_over' => 'Received from seller',
+                        'dispatched' => 'Dispatch', 'out_for_delivery' => 'Out for delivery', 'delivered' => 'Mark delivered', 'ready_for_collection' => 'Ready at pickup station']; ?>
+                    <?php foreach ($order['groups'] as $g): $acts = $partActions[(int) $g['id']] ?? []; if (!$acts) { continue; } ?>
+                        <div class="d-flex flex-wrap align-items-end gap-2 mb-2">
+                            <span class="small fw-semibold me-1"><?= e($g['sub_number']) ?> · <?= e($g['seller_name']) ?>:</span>
+                            <?php foreach ($acts as $to): if ($to === 'cancelled') { continue; } ?>
+                                <form class="d-flex align-items-end gap-1" method="post" action="<?= e(url('/admin/seller-orders/' . $g['id'] . '/status')) ?>">
+                                    <?= csrf_field() ?><input type="hidden" name="to" value="<?= e($to) ?>">
+                                    <?php if ($to === 'dispatched'): ?>
+                                        <label class="visually-hidden" for="tr<?= (int) $g['id'] ?>">Delivery reference for <?= e($g['sub_number']) ?></label>
+                                        <input class="form-control form-control-sm" id="tr<?= (int) $g['id'] ?>" name="tracking_reference" maxlength="80" placeholder="Delivery reference (optional)" style="width:200px">
+                                    <?php endif; ?>
+                                    <button class="btn btn-sm btn-wm-green" type="submit"><?= e($labels[$to] ?? $to) ?></button>
+                                </form>
+                            <?php endforeach; ?>
+                            <?php if (in_array('cancelled', $acts, true)): ?>
+                                <details><summary class="small text-danger">Cancel this part…</summary>
+                                    <form class="d-flex align-items-end gap-1 mt-1" method="post" action="<?= e(url('/admin/seller-orders/' . $g['id'] . '/status')) ?>" data-confirm="Cancel this seller's part? Its items are released and, if paid, a refund is recorded." novalidate>
+                                        <?= csrf_field() ?><input type="hidden" name="to" value="cancelled">
+                                        <label class="visually-hidden" for="cr<?= (int) $g['id'] ?>">Reason for cancelling <?= e($g['sub_number']) ?></label>
+                                        <input class="form-control form-control-sm" id="cr<?= (int) $g['id'] ?>" name="reason" maxlength="500" placeholder="Reason (customer sees it)" style="width:240px">
+                                        <button class="btn btn-sm btn-outline-danger" type="submit">Cancel part</button>
+                                    </form></details>
+                            <?php endif; ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
             <div class="wm-panel-body small text-muted pt-2">Commission is fixed at the rate in force when the order was placed. Delivery fees belong to Waimart. Coupon discounts are funded by Waimart and do not reduce seller net.</div>
         </section>
 

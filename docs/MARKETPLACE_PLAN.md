@@ -1,6 +1,6 @@
 # Waimart Multi-Vendor Upgrade — Phase 1: Inspection, Impact Analysis and Plan
 
-**Date:** 18 October 2026 · **Status:** Phases 1–6 complete (see the "Phase N results" sections at the end); awaiting approval to start Phase 7
+**Date:** 18 October 2026 · **Status:** Phases 1–7 complete (see the "Phase N results" sections at the end); awaiting approval to start Phase 8
 
 This document is for the client and for whoever builds or reviews the upgrade. It records the current system as inspected, what a multi-vendor marketplace changes, the target design, and the phased plan. No code or data has been changed in Phase 1.
 
@@ -477,3 +477,61 @@ Changing commission rules later never changes placed orders (tested).
   - mixed-seller cart and checkout, a seller's order tracking page and the admin order page: accessibility and responsive checks passed;
   - storefront accessibility and responsive regression, plus the checkout E2E flow, passed;
   - screenshots reviewed; fixtures and the fixture order removed.
+
+---
+
+## Phase 7 results (18 October 2026): seller fulfilment and multi-seller delivery/pickup
+
+**Which orders use the new flow:** orders with at least one marketplace seller are fulfilled **per seller part**. Official-Store-only orders keep the order-level flow exactly as before; all their existing tests still pass.
+
+**The flow of one part (`SellerOrderWorkflow`):**
+- **Seller steps:** `pending_acceptance` → `accepted` → `processing` → `packed` (with an optional note for Waimart). A seller may instead **decline** with a reason the customer sees.
+  - Sellers can act only once the order is **confirmed** (M-Pesa verified or COD confirmed).
+  - Accepting and declining need an owner or manager; any store member may prepare and pack.
+  - Suspended stores are read-only.
+- **Waimart steps:** `handed_over` (Waimart receives the parcel), then:
+  - home delivery: `dispatched` (with an optional delivery reference) → `out_for_delivery` → `delivered`;
+  - pickup: `ready_for_collection` → `collected`, checked with the customer's code at the desk.
+
+  The Official Store's own part skips hand-over. Each staff step needs its permission: hand-over and ready need `orders.manage`, dispatch and delivery need `orders.deliver`, part cancellation needs `orders.cancel`.
+- **Nobody can act for someone else:** a seller can never act on another seller's part or the Official Store's (404), nor do Waimart's steps. Staff cannot accept or pack on behalf of a marketplace seller; they can cancel the part instead.
+
+**When stock leaves a seller's inventory:**
+- marketplace seller: at **hand-over** to Waimart;
+- Official Store: at **dispatch** or **collection**, as before.
+
+Both use the same exactly-once consumption, now scoped to one part (`consumeForSellerOrder`). Each part's items get `fulfilled_qty`.
+
+**The overall order follows its parts:**
+- The order shows the **least advanced** active part: confirmed → processing → packed → dispatched / ready → out for delivery → delivered / collected.
+- It is **delivered or collected only when every part is**; `completed_at` is set then.
+- The customer gets a message for each part dispatched or ready, plus the usual order-level messages.
+
+**Declined or cancelled parts:**
+- Only that part's reservations are released.
+- **If the customer already paid** (M-Pesa verified), a refund obligation for that part (merchandise less its discount share) is recorded against the part, and the order's payment status becomes "refund due".
+- **If nothing was paid** (COD), the amount due simply drops: the collection desk and COD recording use `SellerOrderService::amountDue`.
+- If every part is declined or cancelled, the order is cancelled automatically. The order-level refund now covers only what isn't already owed through part refunds, so **refunds total exactly what was paid** (tested).
+
+**Cancellation limits:**
+- Once any part has left a seller's stock, the whole order can't be cancelled; staff cancel the remaining parts instead.
+- Official-Store orders keep their previous rule: cancellable until dispatch or collection, including while ready for collection.
+
+**Pickup in parts:**
+- **One collection code per order**, sent with the first part that is ready and re-used for later parts.
+- At the desk, the code hands over **every part that is ready now**. The code stays valid until the last part is collected, then becomes "used".
+- The collection desk lists orders with any part ready and shows which items are at the station.
+- **Known limitation:** COD cash for a pickup order collected in several visits is recorded once, when the last part is collected.
+
+**New pages:**
+- **Seller Centre → Orders:** tabs New / Preparing / Ready to hand over / With Waimart / Completed / Cancelled, with counts on the dashboard. The order page has accept, prepare, pack and decline actions, and shows the seller's items with commission and "you earn". It shows **only the customer's first name and the delivery town or pickup station — never phone, email or address**, because Waimart delivers.
+- **Admin order page:** per-part action buttons for marketplace orders. Order-level fulfilment buttons are hidden for them, leaving confirm and cancel.
+- **Admin → Seller orders:** every seller's parts by status and seller, e.g. "Packed", waiting for Waimart to receive.
+
+**Found and fixed during testing:** my first version of the "no whole-order cancel after hand-over" guard also blocked cancelling an Official-Store order that was ready for collection, which was allowed before. The guard now checks precisely whether any stock has actually left a seller (a consumed reservation).
+
+**Tests:**
+- `SellerFulfilmentTest` (8): full delivery journey with stock at each step and the parent roll-up (packed → dispatched → out for delivery → delivered only when all parts are); who may do what (other seller and Official Store parts 404, staff can't accept for a seller, hand-over before dispatch, order-level fulfilment refused); no seller action before confirmation; declined paid part refunded, then cancelling the rest refunds exactly the total; COD amount drops and is enforced at recording; partial pickup with one code (wrong code refused, stored messages never contain the code); whole-order cancel blocked after hand-over while parts can be cancelled; seller view excludes customer contacts.
+- `SellerFulfilmentHttpTest` (4): seller works through an order and sees no phone, email, surname or address; other sellers and unconfirmed orders 404; staff member can prepare but not accept or decline; suspended store read-only; admin steps need the right permission; sellers can't reach admin endpoints.
+- **Full suite: 349 tests, 2,416 assertions, all passing.**
+- **Browser:** 0 serious/critical accessibility issues on the seller dashboard, orders list and order page, the admin order page with part actions, Seller orders and the collection desk. Responsive checks passed; screenshots reviewed; fixtures removed.

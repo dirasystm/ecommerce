@@ -79,7 +79,12 @@ final class OrderWorkflow
             if ($from === $to) {
                 throw ValidationException::withMessage('This order is already ' . strtolower(OrderPresenter::status($to)) . '.');
             }
-            if ($to === 'cancelled' && in_array($from, self::HANDED_OVER, true)) {
+            // Goods that have left a seller's stock (a marketplace part handed over to Waimart) cannot be "un-sold" by
+        // cancelling the whole order; the remaining parts are cancelled individually instead.
+        if ($to === 'cancelled' && $this->db->value("SELECT 1 FROM stock_reservations WHERE order_id = ? AND status = 'consumed' LIMIT 1", [$orderId])) {
+            throw ValidationException::withMessage('Part of this order has already been handed over, so the whole order cannot be cancelled. Cancel the remaining parts individually, or use the returns process.');
+        }
+        if ($to === 'cancelled' && in_array($from, self::HANDED_OVER, true)) {
                 throw ValidationException::withMessage('This order has already been handed over, so it cannot be cancelled. Please use the returns process.');
             }
             if (!in_array($to, self::allowedTargets($order), true)) {
@@ -133,6 +138,12 @@ final class OrderWorkflow
         if (in_array($to, ['dispatched', 'collected', 'delivered', 'ready_for_collection', 'packed', 'processing'], true)
             && $actor['type'] !== 'staff') {
             throw ValidationException::withMessage('Only authorised staff can update fulfilment.');
+        }
+        // Orders with marketplace sellers are fulfilled per seller sub-order (SellerOrderWorkflow); the order's own
+        // status follows from them. Returning to delivered/collected after a return request is not fulfilment.
+        if (in_array($to, ['processing', 'packed', 'dispatched', 'out_for_delivery', 'delivered', 'ready_for_collection', 'collected'], true)
+            && $o['status'] !== 'return_requested' && SellerOrderService::hasMarketplaceSeller((int) $o['id'], $this->db)) {
+            throw ValidationException::withMessage('This order includes marketplace sellers, so each seller\'s part is updated separately below.');
         }
         // B4: "ready" never implies "collected" — collection requires the customer's code to have been
         // verified by CollectionService, which is the only caller that sets this flag.
@@ -201,13 +212,18 @@ final class OrderWorkflow
                 $sets[] = 'cancelled_at = NOW()';
                 $sets[] = 'cancel_reason = ?';
                 $params[] = mb_substr($reason, 0, 255);
-                // Money already verified must be returned: record the obligation (A6, C5).
-                if ($o['payment_status'] === 'verified') {
+                // Money already verified must be returned: record the obligation (A6, C5) — minus anything
+                // already owed through earlier part-refunds (a seller rejected or a part was cancelled).
+                if (in_array($o['payment_status'], ['verified', 'refund_due'], true)) {
+                    $owed = (string) $this->db->value("SELECT COALESCE(SUM(amount), 0) FROM refunds WHERE order_id = ? AND status <> 'cancelled' AND return_id IS NULL", [$id]);
+                    $remaining = \Waimart\Core\Money::sub((string) $o['grand_total'], $owed);
                     $sets[] = "payment_status = 'refund_due'";
-                    $this->db->insert('refunds', [
-                        'order_id' => $id, 'amount' => $o['grand_total'], 'reason' => 'Order cancelled: ' . mb_substr($reason, 0, 200),
-                        'created_by' => $actorId,
-                    ]);
+                    if (\Waimart\Core\Money::cmp($remaining, '0') > 0) {
+                        $this->db->insert('refunds', [
+                            'order_id' => $id, 'amount' => $remaining, 'reason' => 'Order cancelled: ' . mb_substr($reason, 0, 200),
+                            'created_by' => $actorId,
+                        ]);
+                    }
                 }
                 $this->db->exec("UPDATE order_fulfilment SET collection_code_status = 'invalidated' WHERE order_id = ? AND collection_code_status = 'active'", [$id]);
                 break;
