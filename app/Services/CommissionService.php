@@ -53,7 +53,7 @@ final class CommissionService
                 throw new \Waimart\Core\ValidationException(['target_id' => 'Choose a ' . ($scope === 'seller' ? 'seller' : 'category') . '.']);
             }
             if ($scope === 'seller' && $targetId === Sellers::platformId($this->db)) {
-                throw new \Waimart\Core\ValidationException(['target_id' => 'The Waimart Official Store sells its own stock and pays no commission.']);
+                throw new \Waimart\Core\ValidationException(['target_id' => 'The ' . brand_name() . ' Official Store sells its own stock and pays no commission.']);
             }
         }
         $id = $this->db->transaction(function () use ($scope, $targetId, $rate, $note, $staffId) {
@@ -89,7 +89,7 @@ final class CommissionService
             throw \Waimart\Core\ValidationException::withMessage('The default rate cannot be removed — set a new rate instead.');
         }
         if ($r['scope'] === 'seller' && (int) $r['seller_id'] === Sellers::platformId($this->db)) {
-            throw \Waimart\Core\ValidationException::withMessage('The Waimart Official Store rate (0%) is fixed: it sells its own stock.');
+            throw \Waimart\Core\ValidationException::withMessage('The ' . brand_name() . ' Official Store rate (0%) is fixed: it sells its own stock.');
         }
         $this->db->exec('UPDATE commission_rules SET is_active = 0, deactivated_by = ?, deactivated_at = NOW() WHERE id = ? AND is_active = 1', [$staffId, $ruleId]);
         AuditLogger::log('commission.rule_retired', 'commission_rule', $ruleId, ['rate' => $r['rate'], 'scope' => $r['scope']], null, $staffId);

@@ -34,6 +34,7 @@ final class SettingsService
         'delivery' => ['Delivery', 'Which fulfilment options are offered, free delivery and the notes customers see at checkout.', 'truck', false],
         'marketplace' => ['Marketplace', 'Seller products, payouts and onboarding documents.', 'shop-window', false],
         'email' => ['Email & SMS', 'Who emails come from and how they are sent.', 'envelope', true],
+        'security' => ['Security', 'Sign-in rules for staff accounts. Roles and permissions are under Staff & roles.', 'shield-lock', true],
         'maintenance' => ['Maintenance & announcement', 'Temporarily close the shop, or show a message across the top of every page.', 'megaphone', false],
     ];
 
@@ -107,6 +108,8 @@ final class SettingsService
         'smtp_port' => ['Port', 'required|int|gte:1|lte:65535', null, 'email', 'number'],
         'smtp_encryption' => ['Encryption', 'required|in:tls,ssl,none', null, 'email', 'select'],
         'smtp_username' => ['Username', 'nullable|max:190', 'Usually the sender email. The password is stored encrypted, below.', 'email', 'text'],
+
+        'staff_mfa_required' => ['Require two-step sign-in for all staff', 'bool', 'Staff without it are asked to set it up (with an authenticator app) before they can use the admin. Customers are not affected.', 'security', 'checkbox'],
 
         'maintenance_mode' => ['Close the shop for maintenance', 'bool', 'Customers see the message below instead of the shop. Staff and sellers can still sign in and work; staff also see the shop as normal.', 'maintenance', 'checkbox'],
         'maintenance_message' => ['Maintenance message', 'nullable|max:500', 'e.g. "We are updating the shop and will be back by 10 am."', 'maintenance', 'textarea'],

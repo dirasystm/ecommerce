@@ -58,8 +58,11 @@ $nav = [
         ['/admin/messages', 'chat-square-text', 'Messages', 'messages.manage'],
     ]],
     ['System', [
-        ['/admin/staff', 'person-badge', 'Staff & roles', 'users.manage'],
+        ['/admin/staff', 'person-badge', 'Staff', 'users.manage'],
+        ['/admin/roles', 'shield-check', 'Roles & permissions', 'roles.manage'],
         ['/admin/audit', 'journal-text', 'Audit log', 'audit.view'],
+        ['/admin/audit/sign-ins', 'door-open', 'Sign-in activity', 'audit.view'],
+        ['/admin/account', 'person-gear', 'My account', null],   // every staff member
         ['/admin/settings', 'gear', 'Settings', 'settings.manage'],
     ]],
 ];
@@ -82,7 +85,7 @@ $active = function (string $href) use ($path, $allHrefs): bool {
 $renderNav = function () use ($nav, $active): string {
     ob_start();
     foreach ($nav as [$group, $items]) {
-        $visible = array_filter($items, fn ($i) => Auth::can($i[3]));
+        $visible = array_filter($items, fn ($i) => $i[3] === null || Auth::can($i[3]));
         if (!$visible) {
             continue;
         } ?>
@@ -119,7 +122,7 @@ $renderNav = function () use ($nav, $active): string {
     </a>
     <div class="ms-auto d-flex align-items-center gap-3">
         <a class="text-white small d-none d-sm-inline" href="<?= e(url('/')) ?>" target="_blank" rel="noopener">View store <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
-        <span class="text-white small d-none d-md-inline"><i class="bi bi-person-circle" aria-hidden="true"></i> <?= e(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')) ?></span>
+        <a class="text-white small d-none d-md-inline text-decoration-none" href="<?= e(url('/admin/account')) ?>" title="My account: password and two-step sign-in"><i class="bi bi-person-circle" aria-hidden="true"></i> <?= e(($user['first_name'] ?? '') . ' ' . ($user['last_name'] ?? '')) ?></a>
         <form action="<?= e(url('/logout')) ?>" method="post" class="m-0">
             <?= csrf_field() ?>
             <button class="btn btn-sm btn-light" type="submit">Sign out</button>

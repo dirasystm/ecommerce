@@ -22,10 +22,12 @@ final class Auth
             self::$user = $id > 0
                 ? App::db()->one("SELECT * FROM users WHERE id = ? AND status = 'active'", [$id])
                 : null;
-            // A password change invalidates sessions that authenticated before it.
-            if (self::$user !== null && self::$user['password_changed_at'] !== null
-                && strtotime((string) self::$user['password_changed_at']) > (int) Session::get('auth_at', 0)) {
-                self::$user = null;
+            // A password change, or "sign out everywhere", invalidates sessions that authenticated before it.
+            $authAt = (int) Session::get('auth_at', 0);
+            foreach (['password_changed_at', 'sessions_revoked_at'] as $col) {
+                if (self::$user !== null && ($at = self::$user[$col] ?? null) !== null && strtotime((string) $at) > $authAt) {
+                    self::$user = null;
+                }
             }
             if ($id > 0 && self::$user === null) {
                 Session::forget('user_id');
@@ -110,10 +112,12 @@ final class Auth
                JOIN permissions p ON p.id = rp.permission_id
               WHERE ur.user_id = ?
              UNION
+             SELECT p.slug FROM user_permissions up JOIN permissions p ON p.id = up.permission_id WHERE up.user_id = ?
+             UNION
              SELECT p.slug FROM permissions p
               WHERE EXISTS (SELECT 1 FROM user_roles ur JOIN roles r ON r.id = ur.role_id
                              WHERE ur.user_id = ? AND r.slug = 'super_admin')",
-            [$userId, $userId]
+            [$userId, $userId, $userId]
         );
         return array_column($rows, 'slug');
     }

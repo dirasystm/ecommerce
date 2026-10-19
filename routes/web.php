@@ -153,6 +153,9 @@ use Waimart\Controllers\Admin;
 
 $router->get('/admin/login', [Admin\AuthController::class, 'form'], [], 'admin.login');
 $router->post('/admin/login', [Admin\AuthController::class, 'login'], ['throttle:20,300']);
+// Second step of signing in, for accounts with two-step sign-in (Basemall Stage 5).
+$router->get('/admin/login/two-step', [Admin\AuthController::class, 'verifyForm']);
+$router->post('/admin/login/two-step', [Admin\AuthController::class, 'verify'], ['throttle:20,300']);
 $router->post('/logout', [Admin\AuthController::class, 'logout'], [], 'logout');
 
 $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) {
@@ -243,8 +246,8 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     $r->get('/settings/transfer', [Admin\SettingsController::class, 'transfer'], ['can:settings.manage']);
     $r->get('/settings/export', [Admin\SettingsController::class, 'export'], ['can:settings.manage', 'throttle:30,3600']);
     $r->post('/settings/import', [Admin\SettingsController::class, 'import'], ['can:settings.manage', 'throttle:10,3600']);
-    $r->get('/settings/{group:general|contact|social|seo|checkout|orders|payments|delivery|marketplace|email|maintenance}', [Admin\SettingsController::class, 'group'], ['can:settings.manage']);
-    $r->post('/settings/{group:general|contact|social|seo|checkout|orders|payments|delivery|marketplace|email|maintenance}', [Admin\SettingsController::class, 'saveGroup'], ['can:settings.manage']);
+    $r->get('/settings/{group:general|contact|social|seo|checkout|orders|payments|delivery|marketplace|email|security|maintenance}', [Admin\SettingsController::class, 'group'], ['can:settings.manage']);
+    $r->post('/settings/{group:general|contact|social|seo|checkout|orders|payments|delivery|marketplace|email|security|maintenance}', [Admin\SettingsController::class, 'saveGroup'], ['can:settings.manage']);
     $r->post('/settings/email/password', [Admin\SettingsController::class, 'smtpPassword'], ['can:settings.manage', 'can:secrets.manage', 'throttle:20,3600']);
     $r->post('/settings/email/test', [Admin\SettingsController::class, 'testEmail'], ['can:settings.manage', 'throttle:10,3600']);
     $r->get('/settings/branding', [Admin\BrandingController::class, 'edit'], ['can:settings.manage']);
@@ -260,6 +263,25 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
 
     $r->get('/reports', [Admin\ReportController::class, 'index'], ['can:reports.view']);
     $r->get('/audit', [Admin\AuditController::class, 'index'], ['can:audit.view']);
+    $r->get('/audit/sign-ins', [Admin\AuditController::class, 'signIns'], ['can:audit.view']);
+    // Roles and the permission matrix (Basemall Stage 5).
+    $r->group(['middleware' => ['can:roles.manage']], function ($r) {
+        $r->get('/roles', [Admin\RoleController::class, 'index']);
+        $r->get('/roles/new', [Admin\RoleController::class, 'create']);
+        $r->post('/roles', [Admin\RoleController::class, 'store']);
+        $r->get('/roles/{id:\d+}', [Admin\RoleController::class, 'edit']);
+        $r->post('/roles/{id:\d+}', [Admin\RoleController::class, 'update']);
+        $r->post('/roles/{id:\d+}/delete', [Admin\RoleController::class, 'delete']);
+    });
+    // Every staff member's own account: password, two-step sign-in, sessions.
+    $r->get('/account', [Admin\AccountController::class, 'show']);
+    $r->post('/account/password', [Admin\AccountController::class, 'password'], ['throttle:10,900']);
+    $r->post('/account/two-step/start', [Admin\AccountController::class, 'mfaStart']);
+    $r->post('/account/two-step/cancel', [Admin\AccountController::class, 'mfaCancel']);
+    $r->post('/account/two-step', [Admin\AccountController::class, 'mfaEnable'], ['throttle:10,900']);
+    $r->post('/account/two-step/disable', [Admin\AccountController::class, 'mfaDisable'], ['throttle:10,900']);
+    $r->post('/account/two-step/recovery-codes', [Admin\AccountController::class, 'recoveryCodes'], ['throttle:10,900']);
+    $r->post('/account/sessions', [Admin\AccountController::class, 'signOutOthers']);
     $r->group(['middleware' => ['can:users.manage']], function ($r) {
         $r->get('/staff', [Admin\StaffController::class, 'index']);
         $r->get('/staff/new', [Admin\StaffController::class, 'create']);
@@ -268,6 +290,8 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
         $r->post('/staff/{id:\d+}/roles', [Admin\StaffController::class, 'updateRoles']);
         $r->post('/staff/{id:\d+}/status', [Admin\StaffController::class, 'status']);
         $r->post('/staff/{id:\d+}/revoke', [Admin\StaffController::class, 'revoke']);
+        $r->post('/staff/{id:\d+}/permissions', [Admin\StaffController::class, 'updateGrants']);
+        $r->post('/staff/{id:\d+}/security', [Admin\StaffController::class, 'security'], ['throttle:30,3600']);
     });
     $r->get('/customers', [Admin\StaffController::class, 'customers'], ['can:customers.view']);
     $r->get('/customers/{id:\d+}', [Admin\StaffController::class, 'customer'], ['can:customers.view']);

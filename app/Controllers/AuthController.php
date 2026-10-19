@@ -25,6 +25,9 @@ final class AuthController extends Controller
         $guestToken = CartService::current()->guestToken();
         $user = (new AuthService())->attempt((string) ($req->input('login', '') ?: $req->input('email', '')),   // email or phone; 'email' kept for older forms
             (string) ($req->post['password'] ?? ''), $req->ip());
+        if (!empty($user['mfa_required'])) {
+            return Response::redirect('/admin/login/two-step');   // two-step sign-in is on for this (staff) account
+        }
         return $this->afterSignIn((int) $user['id'], $guestToken, 'Welcome back, ' . $user['first_name'] . '!');
     }
 

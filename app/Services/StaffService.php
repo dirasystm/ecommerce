@@ -12,8 +12,9 @@ use Waimart\Core\Validator;
 
 /**
  * Staff accounts and roles (users.manage). Safeguards:
- *   - nobody changes their own roles or suspends themselves;
- *   - only a super admin can grant or revoke super admin;
+ *   - nobody changes their own roles or permissions, or suspends themselves;
+ *   - only a super admin can grant or revoke super admin, or manage another super admin's account;
+ *   - you can only give roles and permissions whose permissions you hold yourself (no escalation through others);
  *   - the last active super admin can never be removed or suspended;
  *   - new staff set their own password via an emailed link (no passwords are handed out).
  */
@@ -37,6 +38,7 @@ final class StaffService
     {
         Validator::validate($in, ['first_name' => 'required|max:80', 'last_name' => 'required|max:80', 'email' => 'required|email', 'phone' => 'nullable|phone']);
         $roles = $this->validRoles($in['roles'] ?? [], $actorId);
+        $this->assertCanGiveRoles($roles, $actorId);
         $email = strtolower(trim((string) $in['email']));
         $id = $this->db->transaction(function () use ($in, $roles, $email, $actorId) {
             $existing = $this->db->one('SELECT * FROM users WHERE email = ? FOR UPDATE', [$email]);
@@ -86,6 +88,7 @@ final class StaffService
             if (in_array('super_admin', $before, true) && !in_array('super_admin', $roles, true)) {
                 $this->assertNotLastSuperAdmin($userId);
             }
+            $this->assertCanGiveRoles(array_values(array_diff($roles, $before)), $actorId);
             $this->replaceRoles($userId, $roles);
             // Role changes take effect on the next request (permissions are read per request).
             AuditLogger::log('staff.roles_changed', 'user', $userId, ['roles' => $before], ['roles' => $roles], $actorId);
@@ -128,6 +131,121 @@ final class StaffService
             $this->db->exec('UPDATE users SET is_staff = 0, password_changed_at = NOW() WHERE id = ?', [$userId]);
             AuditLogger::log('staff.revoked', 'user', $userId, ['roles' => $before], ['roles' => []], $actorId);
         });
+    }
+
+    // ------------------------------------------------------------------ personal permissions and account security
+
+    /** @return list<string> permissions given to this person on top of their roles */
+    public function grantsOf(int $userId): array
+    {
+        return array_column($this->db->all(
+            'SELECT p.slug FROM user_permissions up JOIN permissions p ON p.id = up.permission_id WHERE up.user_id = ? ORDER BY p.slug', [$userId]
+        ), 'slug');
+    }
+
+    /**
+     * Replaces a person's extra permissions. You cannot change your own, and you can only add or remove permissions you
+     * hold yourself (others they already have are kept as they are).
+     * @param list<string>|mixed $perms
+     */
+    public function setGrants(int $userId, mixed $perms, int $actorId): void
+    {
+        if ($userId === $actorId) {
+            throw ValidationException::withMessage('You cannot change your own permissions. Ask another administrator.');
+        }
+        $this->assertCanManage($userId, $actorId);
+        $known = array_column($this->db->all('SELECT slug FROM permissions'), 'slug');
+        $wanted = array_values(array_unique(array_filter((array) $perms, 'is_string')));
+        if (array_diff($wanted, $known)) {
+            throw new ValidationException(['permissions' => 'Unknown permission.']);
+        }
+        $mine = Auth::permissionsFor($actorId);
+        $before = $this->grantsOf($userId);
+        $after = array_values(array_unique(array_merge(
+            array_intersect($wanted, $mine),            // what the actor can decide
+            array_diff($before, $mine)                  // what only someone else can change
+        )));
+        $notMine = array_values(array_diff(array_diff($wanted, $before), $mine));
+        if ($notMine) {
+            throw new ValidationException(['permissions' => 'You can only give permissions you have yourself: ' . implode(', ', $notMine) . '.']);
+        }
+        sort($after);
+        if ($after === $before) {
+            return;
+        }
+        $this->db->transaction(function () use ($userId, $after, $before, $actorId) {
+            $this->db->exec('DELETE FROM user_permissions WHERE user_id = ?', [$userId]);
+            foreach ($after as $slug) {
+                $this->db->exec('INSERT INTO user_permissions (user_id, permission_id, granted_by) SELECT ?, id, ? FROM permissions WHERE slug = ?', [$userId, $actorId, $slug]);
+            }
+            AuditLogger::log('staff.permissions_changed', 'user', $userId, ['permissions' => $before],
+                ['permissions' => $after, 'added' => array_values(array_diff($after, $before)), 'removed' => array_values(array_diff($before, $after))], $actorId);
+        });
+        Auth::reset();
+    }
+
+    /** They must choose a new password the next time they use the admin. */
+    public function requirePasswordChange(int $userId, bool $required, int $actorId): void
+    {
+        $this->assertCanManage($userId, $actorId, true);
+        $this->db->exec('UPDATE users SET must_change_password = ? WHERE id = ? AND is_staff = 1', [$required ? 1 : 0, $userId]);
+        AuditLogger::log($required ? 'staff.password_change_required' : 'staff.password_change_cleared', 'user', $userId, null, null, $actorId);
+    }
+
+    /** Emails them a password-reset link (they choose the new password; nobody else sees it). */
+    public function sendPasswordReset(int $userId, int $actorId, string $ip): void
+    {
+        $this->assertCanManage($userId, $actorId, true);
+        $email = (string) $this->db->value('SELECT email FROM users WHERE id = ?', [$userId]);
+        (new AccountService($this->db))->requestPasswordReset($email, $ip);
+        AuditLogger::log('staff.password_reset_sent', 'user', $userId, null, null, $actorId);
+    }
+
+    /** Signs them out on every device now (their next request goes to the sign-in page). */
+    public function revokeSessions(int $userId, int $actorId): void
+    {
+        if ($userId === $actorId) {
+            throw ValidationException::withMessage('Use "Sign out my other sessions" on your own account page.');
+        }
+        $this->assertCanManage($userId, $actorId, true);
+        $this->db->exec('UPDATE users SET sessions_revoked_at = NOW() WHERE id = ?', [$userId]);
+        AuditLogger::log('staff.sessions_revoked', 'user', $userId, null, null, $actorId);
+        AuthEvents::record('sessions_revoked', $userId);
+    }
+
+    public function resetMfa(int $userId, int $actorId): void
+    {
+        $this->assertCanManage($userId, $actorId, true);
+        (new MfaService($this->db))->adminReset($userId, $actorId);
+    }
+
+    /** Only a super admin manages another super admin's account; never your own through these actions. */
+    private function assertCanManage(int $userId, int $actorId, bool $allowSelf = false): void
+    {
+        if (!$allowSelf && $userId === $actorId) {
+            throw ValidationException::withMessage('You cannot do this to your own account.');
+        }
+        $this->db->value('SELECT 1 FROM users WHERE id = ? AND is_staff = 1', [$userId]) ?: throw ValidationException::withMessage('Staff member not found.');
+        if ($userId !== $actorId && in_array('super_admin', $this->rolesOf($userId), true) && !in_array('super_admin', $this->rolesOf($actorId), true)) {
+            throw ValidationException::withMessage('Only a super administrator can change another super administrator\'s account.');
+        }
+    }
+
+    /** Giving a role gives its permissions: the actor must hold all of them. @param list<string> $roles */
+    private function assertCanGiveRoles(array $roles, int $actorId): void
+    {
+        if (!$roles || in_array('super_admin', $this->rolesOf($actorId), true)) {
+            return;
+        }
+        $mine = Auth::permissionsFor($actorId);
+        $rs = new RoleService($this->db);
+        foreach ($roles as $slug) {
+            $id = (int) $this->db->value('SELECT id FROM roles WHERE slug = ?', [$slug]);
+            $missing = array_diff($rs->permissionsOf($id), $mine);
+            if ($missing) {
+                throw new ValidationException(['roles' => 'You cannot give a role with permissions you do not have yourself (' . implode(', ', array_slice($missing, 0, 5)) . ').']);
+            }
+        }
     }
 
     private function assertNotLastSuperAdmin(int $userId): void

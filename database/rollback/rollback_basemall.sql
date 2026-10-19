@@ -1,8 +1,23 @@
--- ROLLBACK of the Basemall rebrand migrations (018 onwards; currently 018–023). Run only after taking a backup:
+-- ROLLBACK of the Basemall rebrand migrations (018 onwards; currently 018–024). Run only after taking a backup:
 --   php bin/backup.php
 --   C:\xampp\mysql\bin\mysql.exe -u root waimart < database\rollback\rollback_basemall.sql
 -- Restores the Waimart values only where they still hold the shipped Basemall values. Orders numbered BM- stay
 -- valid (the code that reads them is not removed by this script; only roll back the code together with it).
+
+-- 024 (roles and admin accounts): two-step sign-in, extra permissions and sign-in activity go away; custom roles
+-- created since stay (the older code shows and checks them), but staff given only a new built-in role lose that access.
+DROP TRIGGER IF EXISTS trg_audit_no_update;
+DROP TRIGGER IF EXISTS trg_audit_no_delete;
+DROP TRIGGER IF EXISTS trg_ae_no_update;
+DROP TRIGGER IF EXISTS trg_ae_no_delete;
+DROP TABLE auth_events;
+DROP TABLE mfa_recovery_codes;
+DROP TABLE user_permissions;
+ALTER TABLE users DROP COLUMN mfa_last_step, DROP COLUMN mfa_enabled_at, DROP COLUMN mfa_secret, DROP COLUMN sessions_revoked_at, DROP COLUMN must_change_password;
+DELETE FROM roles WHERE slug IN ('content_marketing', 'delivery_logistics');
+DELETE FROM permissions WHERE slug = 'roles.manage';
+ALTER TABLE roles DROP COLUMN updated_at, DROP COLUMN created_at, DROP COLUMN is_system;
+DELETE FROM settings WHERE setting_key = 'staff_mfa_required';
 
 -- 023 (payments, delivery, messages): payment methods, wording and status names go back to the code of that version.
 -- The SMTP password (if one was saved) is dropped with the secrets table: put it back in config.local.php first.
@@ -48,4 +63,4 @@ UPDATE commission_rules SET note = 'Waimart Official Store (platform-owned)'
  WHERE scope = 'seller' AND seller_id = 1 AND note = 'Basemall Official Store (platform-owned)' AND is_active = 1;
 DROP TABLE seller_slug_aliases;
 
-DELETE FROM schema_migrations WHERE filename IN ('023_payments_delivery_messages.sql', '022_content_management.sql', '021_normalise_setting_flags.sql', '020_unique_user_phone.sql', '019_settings_groups.sql', '018_basemall_brand.sql');
+DELETE FROM schema_migrations WHERE filename IN ('024_roles_mfa_security.sql', '023_payments_delivery_messages.sql', '022_content_management.sql', '021_normalise_setting_flags.sql', '020_unique_user_phone.sql', '019_settings_groups.sql', '018_basemall_brand.sql');

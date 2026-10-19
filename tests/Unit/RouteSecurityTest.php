@@ -23,12 +23,15 @@ final class RouteSecurityTest extends TestCase
 
     public function testEveryAdminRouteRequiresStaffAndAPermission(): void
     {
-        $public = ['/admin/login'];
+        $public = ['/admin/login', '/admin/login/two-step'];   // signing in (the second step needs a checked password in the session)
         foreach ($this->routes() as $r) {
             if (!str_starts_with($r['pattern'], '/admin') || in_array($r['pattern'], $public, true)) {
                 continue;
             }
             $this->assertContains('staff', $r['middleware'], "{$r['method']} {$r['pattern']} must require staff");
+            if (str_starts_with($r['pattern'], '/admin/account')) {
+                continue;   // every staff member's own account (password, two-step sign-in): staff only, no permission
+            }
             $perms = array_filter($r['middleware'], fn ($m) => str_starts_with($m, 'can:'));
             $this->assertNotEmpty($perms, "{$r['method']} {$r['pattern']} must declare a permission");
         }

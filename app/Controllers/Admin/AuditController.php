@@ -65,4 +65,16 @@ final class AuditController extends AdminController
             'actors' => $db->all('SELECT DISTINCT u.id, u.first_name, u.last_name FROM audit_logs a JOIN users u ON u.id = a.actor_user_id ORDER BY u.first_name'),
         ]);
     }
+
+    /** Sign-in activity (auth_events): successful and failed sign-ins, two-step checks and account security changes. */
+    public function signIns(Request $req): Response
+    {
+        $staffOnly = ($req->query['who'] ?? 'staff') !== 'all';
+        $event = (string) ($req->query['event'] ?? '');
+        return $this->view('audit/sign-ins', [
+            'title' => 'Sign-in activity', 'rows' => \Waimart\Services\AuthEvents::recent(null, $staffOnly, 200, $event !== '' ? $event : null),
+            'staffOnly' => $staffOnly, 'event' => $event,
+            'failed24h' => (int) App::db()->value("SELECT COUNT(*) FROM auth_events WHERE event IN ('login_failed','mfa_failed','login_locked') AND created_at >= NOW() - INTERVAL 1 DAY"),
+        ]);
+    }
 }

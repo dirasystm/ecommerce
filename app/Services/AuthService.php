@@ -7,12 +7,17 @@ namespace Waimart\Services;
 use Waimart\Core\App;
 use Waimart\Core\Auth;
 use Waimart\Core\RateLimiter;
+use Waimart\Core\Session;
 use Waimart\Core\ValidationException;
 use Waimart\Core\Validator;
 
 /**
  * Credential checks with brute-force protection. Error messages never reveal whether
- * an email is registered.
+ * an email is registered. Every attempt is recorded in the sign-in activity (AuthEvents).
+ *
+ * Accounts with two-step sign-in are not signed in by the password alone: attempt() returns with 'mfa_required' and
+ * keeps only a short-lived "password checked" marker in the (regenerated) session; completeMfa() then signs in.
+ * This applies on every sign-in page, so the customer sign-in page is not a way around a staff member's second step.
  */
 final class AuthService
 {
@@ -20,6 +25,8 @@ final class AuthService
     private const MAX_PER_ACCOUNT = 5;      // per 15 minutes
     private const MAX_PER_IP = 30;          // per 15 minutes
     private const WINDOW = 900;
+
+    private const MFA_PENDING_SECONDS = 300;
 
     private static ?string $dummyHash = null;
 
@@ -62,6 +69,7 @@ final class AuthService
 
         if ($limiter->tooMany($accountKey, self::MAX_PER_ACCOUNT, self::WINDOW)
             || !$limiter->attempt($ipKey, self::MAX_PER_IP, self::WINDOW)) {
+            AuthEvents::record('login_locked', null, $value, $staffOnly ?: null);
             throw ValidationException::withMessage('Too many sign-in attempts. Please wait 15 minutes and try again.');
         }
 
@@ -77,6 +85,9 @@ final class AuthService
             if ($user !== null && $staffOnly) {
                 AuditLogger::log('auth.staff_login_failed', 'user', (int) $user['id'], null, ['ip' => $ip], (int) $user['id']);
             }
+            // Unknown identifiers at the staff sign-in are worth seeing too (someone probing for staff accounts).
+            AuthEvents::record('login_failed', $user !== null ? (int) $user['id'] : null, $value,
+                $user !== null ? (int) $user['is_staff'] === 1 : $staffOnly);
             throw ValidationException::withMessage(self::GENERIC_ERROR);
         }
 
@@ -84,10 +95,47 @@ final class AuthService
         if (password_needs_rehash($user['password_hash'], PASSWORD_DEFAULT)) {
             App::db()->exec('UPDATE users SET password_hash = ? WHERE id = ?', [password_hash($password, PASSWORD_DEFAULT), $user['id']]);
         }
+        if (MfaService::enabled($user)) {
+            Session::regenerate();
+            Session::set('mfa_pending', ['user_id' => (int) $user['id'], 'at' => time()]);
+            AuthEvents::record('mfa_challenged', (int) $user['id'], $value);
+            return $user + ['mfa_required' => true];
+        }
+        $this->signIn($user, $ip, $value);
+        return $user;
+    }
+
+    /** The person whose password was just checked and who still owes a second step, if any (5 minutes). */
+    public static function pendingMfaUser(): ?int
+    {
+        $p = Session::get('mfa_pending');
+        if (!is_array($p) || time() - (int) ($p['at'] ?? 0) > self::MFA_PENDING_SECONDS) {
+            Session::forget('mfa_pending');
+            return null;
+        }
+        return (int) $p['user_id'];
+    }
+
+    /** Second step: an authenticator or recovery code. @return array<string,mixed> the signed-in user */
+    public function completeMfa(string $code, string $ip): array
+    {
+        $userId = self::pendingMfaUser() ?? throw ValidationException::withMessage('Your sign-in expired. Please enter your password again.');
+        $how = (new MfaService())->verify($userId, $code);
+        Session::forget('mfa_pending');
+        $user = App::db()->one("SELECT * FROM users WHERE id = ? AND status = 'active'", [$userId])
+            ?? throw ValidationException::withMessage(self::GENERIC_ERROR);
+        AuthEvents::record($how === 'recovery' ? 'recovery_code_used' : 'mfa_succeeded', $userId);
+        $this->signIn($user, $ip, null);
+        return $user;
+    }
+
+    /** @param array<string,mixed> $user */
+    private function signIn(array $user, string $ip, ?string $identifier): void
+    {
         Auth::login($user);
+        AuthEvents::record('login_succeeded', (int) $user['id'], $identifier, (int) $user['is_staff'] === 1);
         if ((int) $user['is_staff'] === 1) {
             AuditLogger::log('auth.staff_login', 'user', (int) $user['id'], null, ['ip' => $ip], (int) $user['id']);
         }
-        return $user;
     }
 }

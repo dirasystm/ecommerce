@@ -18,17 +18,18 @@ abstract class DbTestCase extends TestCase
     protected Database $db;
 
     /** Tables with reference data that must survive cleanup. */
-    private const KEEP = ['schema_migrations', 'counties', 'roles', 'permissions', 'role_permissions', 'settings', 'seller_slug_aliases'];
+    private const KEEP = ['schema_migrations', 'counties', 'permissions', 'settings', 'seller_slug_aliases'];
     /** Tables cleaned only partially: the WHERE keeps reference rows seeded by migrations. */
     private const KEEP_ROWS = ['sellers' => ' WHERE is_platform = 0'];
     /** Tables whose triggers refuse UPDATE/DELETE; emptied with TRUNCATE between tests. */
-    private const APPEND_ONLY = ['seller_ledger_entries', 'seller_payout_history'];
+    private const APPEND_ONLY = ['seller_ledger_entries', 'seller_payout_history', 'audit_logs', 'auth_events'];
     /**
-     * Content seeded by migrations 022 (pages, menus, homepage) and 023 (payment methods). Captured once from the freshly
+     * Content seeded by migrations 022 (pages, menus, homepage), 023 (payment methods), and roles with their permissions
+     * (editable since 024, and tests create custom roles). Captured once from the freshly
      * migrated test database and put back before every test, so each test starts from the shipped content and no test
      * can leak edits.
      */
-    private const CONTENT_SEEDED = ['content_pages', 'menus', 'menu_items', 'home_sections', 'payment_methods'];
+    private const CONTENT_SEEDED = ['content_pages', 'menus', 'menu_items', 'home_sections', 'payment_methods', 'roles', 'role_permissions'];
     /** @var array<string,list<array<string,mixed>>>|null */
     private static ?array $contentSeed = null;
 
@@ -45,7 +46,7 @@ abstract class DbTestCase extends TestCase
         $pdo = $this->db->pdo();
         if (self::$contentSeed === null) {
             foreach (self::CONTENT_SEEDED as $t) {
-                self::$contentSeed[$t] = $this->db->all("SELECT * FROM `$t` ORDER BY " . match ($t) { 'menu_items' => 'parent_id IS NOT NULL, id', 'payment_methods' => 'code', default => 'id' });
+                self::$contentSeed[$t] = $this->db->all("SELECT * FROM `$t` ORDER BY " . match ($t) { 'menu_items' => 'parent_id IS NOT NULL, id', 'payment_methods' => 'code', 'role_permissions' => 'role_id, permission_id', default => 'id' });
             }
         }
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
@@ -59,7 +60,7 @@ abstract class DbTestCase extends TestCase
         // Marketplace reference rows seeded by migrations 010/013, restored to their shipped values.
         $pdo->exec("UPDATE sellers SET status = 'active', suspended_at = NULL, suspension_reason = NULL WHERE is_platform = 1");
         $pdo->exec("INSERT INTO commission_rules (scope, seller_id, rate, note) VALUES
-            ('default', NULL, 10.00, 'Provisional default'), ('seller', 1, 0.00, 'Waimart Official Store')");
+            ('default', NULL, 10.00, 'Provisional default'), ('seller', 1, 0.00, 'Basemall Official Store (platform-owned)')");
         foreach (self::$contentSeed as $t => $rows) {
             foreach ($rows as $row) {
                 $this->db->insert($t, $row);

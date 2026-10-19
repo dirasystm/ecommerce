@@ -41,7 +41,7 @@ final class SchemaSafeguardsTest extends DbTestCase
     {
         $this->assertSame(47, (int) $this->db->value('SELECT COUNT(*) FROM counties'));
         $this->assertSame('30', $this->db->value("SELECT setting_value FROM settings WHERE setting_key = 'reservation_minutes'"));
-        $this->assertSame(6, (int) $this->db->value('SELECT COUNT(*) FROM roles'));
+        $this->assertSame(8, (int) $this->db->value('SELECT COUNT(*) FROM roles'), 'six original roles plus Content & Marketing and Delivery & Logistics (024)');
     }
 
     public function testInventoryCannotGoNegative(): void

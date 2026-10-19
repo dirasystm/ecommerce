@@ -3,9 +3,11 @@
 declare(strict_types=1);
 
 /**
- * Creates (or promotes) a super administrator.
+ * Creates (or promotes) a super administrator. This is the only way to create the first one: there are no default
+ * accounts or passwords anywhere in the application.
  * Usage: php bin/create-admin.php --email=admin@example.com [--first=Admin] [--last=User] [--password=...]
- * When --password is omitted a strong random password is generated and printed once.
+ * When --password is omitted a strong random password is generated and printed once. Either way it is a one-time
+ * password: the account must choose its own at first sign-in, and any existing sessions of that account are signed out.
  */
 
 require dirname(__DIR__) . '/bootstrap.php';
@@ -35,7 +37,8 @@ $db->transaction(function () use ($db, $email, $password, $opts) {
     $user = $db->one('SELECT id FROM users WHERE email = ?', [$email]);
     if ($user) {
         $id = (int) $user['id'];
-        $db->exec('UPDATE users SET is_staff = 1, status = \'active\', password_hash = ? WHERE id = ?', [password_hash($password, PASSWORD_DEFAULT), $id]);
+        $db->exec('UPDATE users SET is_staff = 1, status = \'active\', password_hash = ?, must_change_password = 1, sessions_revoked_at = NOW() WHERE id = ?',
+            [password_hash($password, PASSWORD_DEFAULT), $id]);
     } else {
         $id = $db->insert('users', [
             'email' => $email,
@@ -43,6 +46,7 @@ $db->transaction(function () use ($db, $email, $password, $opts) {
             'first_name' => $opts['first'] ?? 'Store',
             'last_name' => $opts['last'] ?? 'Administrator',
             'is_staff' => 1,
+            'must_change_password' => 1,
             'email_verified_at' => date('Y-m-d H:i:s'),
         ]);
     }
@@ -52,5 +56,6 @@ $db->transaction(function () use ($db, $email, $password, $opts) {
 
 echo "Super administrator ready: $email\n";
 if ($generated) {
-    echo "Generated password (shown once — change it after first login): $password\n";
+    echo "One-time password (shown once): $password\n";
 }
+echo "At first sign-in (/admin/login) you will be asked to choose your own password. Then turn on two-step sign-in under My account.\n";

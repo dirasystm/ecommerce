@@ -8,6 +8,10 @@ use Waimart\Core\App;
 use Waimart\Core\HttpException;
 use Waimart\Core\Request;
 use Waimart\Core\Response;
+use Waimart\Core\Auth;
+use Waimart\Services\AuthEvents;
+use Waimart\Services\MfaService;
+use Waimart\Services\RoleService;
 use Waimart\Services\StaffService;
 
 /** Staff accounts & roles (users.manage) and read-only customer lookup (customers.view). */
@@ -17,7 +21,8 @@ final class StaffController extends AdminController
     {
         $db = App::db();
         $rows = $db->all(
-            "SELECT u.id, u.email, u.first_name, u.last_name, u.status, u.last_login_at,
+            "SELECT u.id, u.email, u.first_name, u.last_name, u.status, u.last_login_at, u.mfa_enabled_at, u.must_change_password,
+                    (SELECT COUNT(*) FROM user_permissions up WHERE up.user_id = u.id) AS grants,
                     GROUP_CONCAT(r.name ORDER BY r.name SEPARATOR ', ') AS roles
                FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id LEFT JOIN roles r ON r.id = ur.role_id
               WHERE u.is_staff = 1 GROUP BY u.id ORDER BY u.status, u.first_name"
@@ -41,7 +46,55 @@ final class StaffController extends AdminController
     {
         $id = $this->intParam($req, 'id');
         $staff = App::db()->one('SELECT * FROM users WHERE id = ? AND is_staff = 1', [$id]) ?? throw HttpException::notFound();
-        return $this->view('staff/form', ['title' => 'Edit staff member', 'staff' => $staff, 'current' => (new StaffService())->rolesOf($id), 'roles' => $this->roles()]);
+        $svc = new StaffService();
+        return $this->view('staff/form', [
+            'title' => 'Edit staff member', 'staff' => $staff, 'current' => $svc->rolesOf($id), 'roles' => $this->roles(),
+            'grants' => $svc->grantsOf($id), 'catalog' => (new RoleService())->catalog(), 'mine' => Auth::permissionsFor($this->actor()),
+            'fromRoles' => array_values(array_diff(Auth::permissionsFor($id), $svc->grantsOf($id))),
+            'signIns' => AuthEvents::recent($id, false, 15),
+            'actions' => App::db()->all('SELECT action, entity_type, entity_id, created_at FROM audit_logs WHERE actor_user_id = ? ORDER BY id DESC LIMIT 15', [$id]),
+            'recovery' => (new MfaService())->unusedRecoveryCodes($id),
+        ]);
+    }
+
+    public function updateGrants(Request $req): Response
+    {
+        $id = $this->intParam($req, 'id');
+        (new StaffService())->setGrants($id, $req->post['permissions'] ?? [], $this->actor());
+        return $this->success('Extra permissions saved.', "/admin/staff/$id/edit");
+    }
+
+    /** Account security actions: require a password change, send a reset link, sign out everywhere, reset two-step sign-in. */
+    public function security(Request $req): Response
+    {
+        $id = $this->intParam($req, 'id');
+        $svc = new StaffService();
+        $actor = $this->actor();
+        switch ((string) $req->input('action', '')) {
+            case 'require_password':
+                $svc->requirePasswordChange($id, true, $actor);
+                $msg = 'They must choose a new password the next time they use the admin.';
+                break;
+            case 'clear_password':
+                $svc->requirePasswordChange($id, false, $actor);
+                $msg = 'Password change no longer required.';
+                break;
+            case 'send_reset':
+                $svc->sendPasswordReset($id, $actor, $req->ip());
+                $msg = 'A password reset link has been emailed to them.';
+                break;
+            case 'revoke_sessions':
+                $svc->revokeSessions($id, $actor);
+                $msg = 'Signed out on every device.';
+                break;
+            case 'reset_mfa':
+                $svc->resetMfa($id, $actor);
+                $msg = 'Two-step sign-in reset and signed out everywhere. They can set it up again from their account page.';
+                break;
+            default:
+                throw HttpException::notFound();
+        }
+        return $this->success($msg, "/admin/staff/$id/edit");
     }
 
     public function updateRoles(Request $req): Response
@@ -104,6 +157,6 @@ final class StaffController extends AdminController
     /** @return list<array<string,mixed>> */
     private function roles(): array
     {
-        return App::db()->all('SELECT slug, name, description FROM roles ORDER BY id');
+        return App::db()->all('SELECT slug, name, description FROM roles ORDER BY is_system DESC, id');
     }
 }

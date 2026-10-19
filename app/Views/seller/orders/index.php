@@ -2,7 +2,7 @@
 use Waimart\Services\OrderPresenter;
 
 /** @var string $tab @var list<array<string,mixed>> $rows @var array<string,int> $counts */
-$tabs = ['new' => 'New — accept or decline', 'preparing' => 'Preparing', 'handover' => 'Ready to hand over', 'with_waimart' => 'With ' . brand_name(),
+$tabs = ['new' => 'New — accept or decline', 'preparing' => 'Preparing', 'handover' => 'Ready to hand over', 'with_platform' => 'With ' . brand_name(),
          'completed' => 'Completed', 'cancelled' => 'Cancelled / declined'];
 ?>
 <div class="wm-admin-head"><h1>Orders</h1></div>

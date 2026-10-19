@@ -1,6 +1,6 @@
 # Basemall Rebrand and Database-Driven Management
 
-**Started:** 18 October 2026 · **Branch:** `feature/basemall-rebrand` (from `feature/multi-vendor`) · **Status:** Stages 1–4 complete (plus sign-in with phone or email); awaiting approval to start Stage 5
+**Started:** 18 October 2026 · **Branch:** `feature/basemall-rebrand` (from `feature/multi-vendor`) · **Status:** Stages 1–5 complete (plus sign-in with phone or email); Stage 6 in progress
 
 This is the plan and progress record for the owner's request "Rebrand the e-commerce platform to Basemall and implement full database-driven management". The marketplace work it builds on is recorded in `docs/MARKETPLACE_PLAN.md`.
 
@@ -420,3 +420,120 @@ Still hardcoded, and scheduled:
 - Three older tests were updated for the move of M-Pesa numbers to Payment methods and for the new required email settings in the full settings form.
 - **Full suite: 455 tests, 4,112 assertions, all passing.**
 - **Browser:** 0 serious/critical accessibility issues on the 8 new admin pages, checkout, How to pay and the home page; responsive checks passed on phone, tablet and desktop; screenshots reviewed.
+
+## Stage 5 results (19 October 2026): roles and admin accounts
+
+### Roles and the permission matrix (Admin → System → Roles & permissions; `roles.manage`)
+
+- **Every role's permissions can now be changed**, and **custom roles can be created**. The page shows the full matrix (permissions grouped by area, sensitive ones marked) with a check for each role.
+- **Two new built-in roles from the brief:**
+  - **Content & Marketing:** pages, menus, homepage, banners, flash sales, coupons and message wording.
+  - **Delivery & Logistics:** orders (view), dispatch and delivery, pickup handover and pickup station details.
+  - The brief's other roles map onto the existing ones: Store Manager = Manager; Product & Inventory = Inventory Clerk; Order & Fulfilment = Fulfilment Staff; Finance & Payments = Finance; Customer Support = Support; Seller accounts = Seller Centre (separate since the marketplace phases).
+- The six existing roles keep exactly their permissions. Built-in roles can't be deleted; a custom role can be deleted once nobody has it.
+- **Deny by default:** a person can do only what a role (or a personal permission) allows. Every admin page and action declares its permission and the server checks it. A new route test fails if any admin route is added without one.
+
+### Extra permissions for one person (on their staff page)
+
+- A permission can be given to one person on top of their roles. The matrix shows which ones come from roles (greyed out).
+- The staff list flags people with extra permissions.
+
+### No self-escalation (enforced on the server, tested)
+
+- Nobody can change their own roles or permissions.
+- **You can only give what you have:**
+  - a permission you hold;
+  - a role whose permissions you all hold;
+  - and you can only edit roles you don't hold yourself.
+  - Removing someone's extra permissions only touches the ones you hold; the rest stay for an administrator who holds them.
+- The Super Administrator role always has every permission and can't be edited. Only a super admin can grant or remove super admin, or act on another super admin's account. The last active super admin can't be removed or suspended (as before).
+- Only super admins hold `roles.manage`, `users.manage`, `settings.manage` and `secrets.manage` by default.
+
+### Two-step sign-in (TOTP)
+
+- **Optional for every account,** as decided. **Settings → Security → "Require two-step sign-in for all staff"** (off) can make it mandatory later; staff without it are then sent to set it up before anything else.
+- **Setup** (Admin → My account):
+  - enter the key in any authenticator app (Google or Microsoft Authenticator, Authy…), or tap the link on the phone;
+  - prove it works with a code and your password;
+  - get **10 single-use recovery codes**, shown once and stored hashed.
+  - The secret is stored encrypted with the app key, only after it is confirmed.
+- **Sign-in:** the password is checked first, then the 6-digit code (or a recovery code) on a second page.
+  - The password alone never signs in, **on either sign-in page**: the customer sign-in can't be used to skip the second step.
+  - The "password checked" step expires after 5 minutes.
+  - Codes allow one 30-second step of clock drift and are accepted only once (no replay).
+  - 5 wrong codes per 15 minutes per account.
+- Turning it off needs the password (and is refused when it is required). New recovery codes also need the password. An administrator can **reset** it for someone who lost their phone; that also signs them out everywhere.
+- The code generator matches the RFC 6238 test vectors.
+
+### Account management (Admin → Staff → a person; `users.manage`)
+
+- **Shown:**
+  - last sign-in;
+  - two-step status and recovery codes left;
+  - whether a password change is due;
+  - **recent sign-ins** and **recent actions** (from the audit log).
+- **Actions:**
+  - **require a password change** (they must choose a new one before using the admin);
+  - **email a password reset link** (nobody sees or sets passwords for others);
+  - **sign out everywhere**;
+  - **reset two-step sign-in**.
+  - All are audited and refused on super admins unless done by a super admin.
+- **My account** (every staff member, linked from the header): change password (a new one must differ from the old), two-step sign-in, "sign out my other sessions", recent sign-in activity. A password change signs out other sessions, as before.
+- Suspended accounts and accounts signed out everywhere lose their active sessions on the next click (checked on every request).
+
+### Sign-in activity (Admin → System → Sign-in activity; `audit.view`)
+
+- Every successful and failed sign-in, block after too many attempts, two-step challenge, success and failure, recovery-code use, sign-out, password change or reset, two-step on/off/reset and "signed out everywhere". It covers every account; the page filters to staff by default.
+- **Recorded:** the account (if known), a masked identifier (`ja•••@example.com`, `0712•••678`), the IP address and the browser. Passwords and codes are never recorded (tested).
+- Failed attempts with unknown emails at the staff sign-in are recorded too, so probing is visible. The page shows failed attempts in the last 24 hours.
+
+### Append-only logs
+
+- **`audit_logs` and the new `auth_events` refuse UPDATE and DELETE at the database level** (triggers), whatever tool issues them, like the seller ledger since 016. Tests try both on both tables.
+- Viewing the audit log needs `audit.view`, and exporting it is itself audited (as before).
+
+### First super admin
+
+- There are still **no default accounts or passwords anywhere**.
+- The only way to create the first super admin is `php bin/create-admin.php --email=…`. It now marks the printed password as **one-time**: the account must choose its own at first sign-in, and promoting an existing account signs out its sessions. It suggests turning on two-step sign-in.
+
+### Database
+
+- Migration 024 was applied to the dev database after a backup (`storage/backups/waimart-20261019-122409.sql`). It adds:
+  - `roles.is_system`;
+  - `user_permissions`;
+  - `users.must_change_password`, `sessions_revoked_at` and the `mfa_*` columns;
+  - `mfa_recovery_codes`;
+  - `auth_events`;
+  - the four append-only triggers;
+  - the two roles, the `roles.manage` permission and the `staff_mfa_required` setting.
+- `rollback_basemall.sql` covers 018–024. **Re-drilled:** on a copy of the pre-upgrade backup (010–024 forward, both rollbacks back): identical schema (8 triggers after migrating, 0 after rolling back), and identical settings keys and values.
+
+### Found and fixed while testing
+
+- The permissions matrix widened the whole page on phones: each cell's screen-reader label ("Yes"/"No") is absolutely positioned and escaped the sideways scroller. The scroller is now their containing box, and it is keyboard-focusable with a label (an accessibility check flagged it).
+- The new sign-in step was first at `/admin/login/verify`. The route-safety test flags GET addresses that look like actions, so it is now `/admin/login/two-step`. The route test now names the two public sign-in pages and the self-service account pages explicitly; every other admin route must still declare a permission.
+
+### Tests
+
+- **`RolesSecurityTest` (8):**
+  - the shipped roles and the matrix;
+  - escalation attempts: adding unheld permissions, editing your own role, the super admin role, deleting built-in or in-use roles, giving roles beyond your permissions;
+  - personal permissions, including keeping what only others can change;
+  - TOTP against the RFC 6238 vectors, drift and replay;
+  - the full two-step sign-in: password alone doesn't sign in, wrong code, recovery codes once each, expiry, events, disable rules, admin reset;
+  - the wrong-code limit;
+  - sign out everywhere and forced password change;
+  - masked failed sign-ins and append-only logs.
+- **`RolesSecurityHttpTest` (4):**
+  - two-step sign-in on both sign-in pages, returning to the page the person asked for;
+  - required steps first (password change, then required two-step setup through the real page, with recovery codes shown once);
+  - roles screens for five roles, and the new roles' reach;
+  - a role created by a super admin giving exactly its access;
+  - the sign-in activity page.
+- **`AdminRoleMatrixHttpTest` (2), the role matrix from the live route table:**
+  - every role (8) against every admin page: allowed pages open and never error; everything else is 403;
+  - four roles posting every admin action outside their role: all 403, and nothing changes (536 checks).
+- Two older tests were updated for the deliberate changes: the role count is now 8, and the route-safety allowlist.
+- **Full suite: 469 tests, 4,862 assertions, all passing.**
+- **Browser:** 0 serious/critical accessibility issues on roles (list and edit), staff (list and both edit views), My account, sign-in activity, Settings → Security and the staff sign-in; responsive checks passed on phone, tablet and desktop; screenshots reviewed.

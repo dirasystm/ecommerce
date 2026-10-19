@@ -192,7 +192,7 @@ final class SellerOrderService
         'new' => ['pending_acceptance'],
         'preparing' => ['accepted', 'processing'],
         'handover' => ['packed'],
-        'with_waimart' => ['handed_over', 'dispatched', 'out_for_delivery', 'ready_for_collection'],
+        'with_platform' => ['handed_over', 'dispatched', 'out_for_delivery', 'ready_for_collection'],
         'completed' => ['delivered', 'collected'],
         'cancelled' => ['cancelled', 'rejected'],
     ];
@@ -205,6 +205,7 @@ final class SellerOrderService
     {
         $params = [$sellerId];
         $where = 'so.seller_id = ? AND o.confirmed_at IS NOT NULL';
+        $tab = $tab === 'with_waimart' ? 'with_platform' : $tab;   // links saved before the Basemall rebrand
         if ($tab !== null && isset(self::SELLER_TABS[$tab])) {
             $where .= ' AND so.status IN (' . implode(',', array_fill(0, count(self::SELLER_TABS[$tab]), '?')) . ')';
             array_push($params, ...self::SELLER_TABS[$tab]);

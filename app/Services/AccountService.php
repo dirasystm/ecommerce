@@ -132,8 +132,12 @@ final class AccountService
         if (!password_verify((string) $in['current_password'], $user['password_hash'])) {
             throw new ValidationException(['current_password' => 'Your current password is incorrect.']);
         }
+        if (password_verify((string) $in['password'], $user['password_hash'])) {
+            throw new ValidationException(['password' => 'Choose a new password, different from your current one.']);
+        }
         $this->setPassword($userId, (string) $in['password']);
         Auth::touchAuthTime();      // keep this session; other sessions are signed out
+        AuthEvents::record('password_changed', $userId);
     }
 
     /** @param array<string,mixed> $in */
@@ -209,6 +213,7 @@ final class AccountService
             }
             $this->db->exec('UPDATE password_resets SET used_at = NOW() WHERE user_id = ? AND used_at IS NULL', [$row['user_id']]);
             $this->setPassword((int) $row['user_id'], (string) $in['password']);
+            AuthEvents::record('password_reset', (int) $row['user_id']);
             (new RateLimiter($this->db))->clear('login|' . $this->db->value('SELECT email FROM users WHERE id = ?', [$row['user_id']]));
         });
     }
@@ -216,7 +221,7 @@ final class AccountService
     private function setPassword(int $userId, string $password): void
     {
         $this->db->exec(
-            'UPDATE users SET password_hash = ?, password_changed_at = NOW() WHERE id = ?',
+            'UPDATE users SET password_hash = ?, password_changed_at = NOW(), must_change_password = 0 WHERE id = ?',
             [password_hash($password, PASSWORD_DEFAULT), $userId]
         );
     }

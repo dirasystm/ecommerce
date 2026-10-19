@@ -95,6 +95,19 @@ final class Kernel
                 if (!Auth::isStaff()) {
                     throw HttpException::forbidden();
                 }
+                // A required password change, or two-step sign-in required by Settings → Security, comes first: until
+                // done, only the staff member's own account page is open.
+                $u = (array) Auth::user();
+                if (!str_starts_with($req->path, '/admin/account')) {
+                    if ((int) ($u['must_change_password'] ?? 0) === 1) {
+                        Session::flash('warning', 'Please choose a new password before continuing.');
+                        return Response::redirect('/admin/account');
+                    }
+                    if (\Waimart\Services\MfaService::requiredForStaff() && !\Waimart\Services\MfaService::enabled($u)) {
+                        Session::flash('warning', 'Two-step sign-in is required for staff accounts. Please set it up to continue.');
+                        return Response::redirect('/admin/account');
+                    }
+                }
                 return null;
             case 'can':
                 Auth::authorize((string) $arg);
