@@ -102,6 +102,21 @@ final class CheckoutPrepareTest extends DbTestCase
         $this->expectField(fn () => (new CheckoutService($this->db))->prepare($this->cartWith('100'), $this->input(['county_id' => (string) $this->mandera, 'town' => 'Mandera']), null), 'town');
     }
 
+    /** A saved address outside every zone is explained next to the saved addresses (the town fields are hidden then). */
+    public function testUnsupportedSavedAddressIsReportedOnTheAddressChoice(): void
+    {
+        $owner = $this->db->insert('users', ['email' => 'm@x.co', 'password_hash' => 'x', 'first_name' => 'M', 'last_name' => 'W']);
+        $addr = (new AccountService($this->db))->saveAddress($owner, null, ['recipient_name' => 'M', 'phone' => '0712345679', 'county_id' => (string) $this->mandera, 'town' => 'Mandera', 'location' => 'Main St']);
+        $user = $this->db->one('SELECT * FROM users WHERE id = ?', [$owner]);
+        try {
+            (new CheckoutService($this->db))->prepare($this->cartWith('100'), $this->input(['address_id' => (string) $addr, 'customer_email' => 'm@x.co']), $user);
+            $this->fail('expected a validation error');
+        } catch (ValidationException $e) {
+            $this->assertSame(['address_id'], array_keys($e->errors));
+            $this->assertStringContainsString('do not deliver to Mandera, Mandera yet', $e->errors['address_id']);
+        }
+    }
+
     public function testCodRejectedWhereNotAllowed(): void
     {
         $this->expectField(fn () => (new CheckoutService($this->db))->prepare($this->cartWith('100'), $this->input([

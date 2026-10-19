@@ -139,7 +139,10 @@ final class CheckoutService
         $county = (string) $this->db->value('SELECT name FROM counties WHERE id = ?', [$addr['county_id']]);
         $fee = $quote === null ? null : MarketplacePolicy::fee(fn (string $s) => $this->delivery->quoteDelivery($addr['county_id'], $addr['town'], $s), $lines, $subtotal);
         if ($quote === null || $fee === null) {
-            throw new ValidationException(['town' => sprintf(
+            // Show it where the customer is looking: under the saved addresses when one was chosen (the new-address
+            // fields, and so a "town" error, are hidden then), otherwise under the town they typed.
+            $savedAddress = $user !== null && $addressId !== '' && $addressId !== 'new';
+            throw new ValidationException([($savedAddress ? 'address_id' : 'town') => sprintf(
                 'Sorry, we do not deliver to %s, %s yet. Please choose a pickup station or a different address.', $addr['town'], $county
             )]);
         }
