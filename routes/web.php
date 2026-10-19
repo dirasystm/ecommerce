@@ -203,6 +203,10 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
         $r->post('/delivery-zones/{id:\d+}', [Admin\DeliveryZoneController::class, 'update']);
         $r->post('/delivery-zones/{id:\d+}/locations', [Admin\DeliveryZoneController::class, 'addLocation']);
         $r->post('/delivery-zones/{id:\d+}/locations/{lid:\d+}/delete', [Admin\DeliveryZoneController::class, 'removeLocation']);
+        // Delivery options, store-wide free delivery, checkout notes and order status names (Basemall Stage 4).
+        $r->get('/delivery-settings', [Admin\DeliverySettingsController::class, 'show']);
+        $r->post('/delivery-settings', [Admin\DeliverySettingsController::class, 'save']);
+        $r->post('/delivery-settings/status-names', [Admin\DeliverySettingsController::class, 'saveLabels']);
     });
     $r->group(['middleware' => ['can:pickup_points.manage']], function ($r) {
         $r->get('/pickup-points', [Admin\PickupPointController::class, 'index']);
@@ -225,6 +229,13 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     $r->get('/resolutions', [Admin\PaymentController::class, 'resolutions'], ['can:resolutions.manage']);
     $r->post('/resolutions/{id:\d+}/re-reserve', [Admin\PaymentController::class, 'reReserve'], ['can:resolutions.manage']);
     $r->post('/resolutions/{id:\d+}/cancel', [Admin\PaymentController::class, 'cancelRefund'], ['can:resolutions.manage']);
+    // Payment methods offered at checkout and their customer instructions (Basemall Stage 4).
+    $r->group(['middleware' => ['can:payments.configure']], function ($r) {
+        $r->get('/payment-methods', [Admin\PaymentMethodController::class, 'index']);
+        $r->post('/payment-methods/rules', [Admin\PaymentMethodController::class, 'saveRules']);
+        $r->get('/payment-methods/{code:mpesa_till|mpesa_paybill|mpesa_phone|cod}', [Admin\PaymentMethodController::class, 'edit']);
+        $r->post('/payment-methods/{code:mpesa_till|mpesa_paybill|mpesa_phone|cod}', [Admin\PaymentMethodController::class, 'update']);
+    });
     $r->get('/cod', [Admin\PaymentController::class, 'cod'], ['can:cod.collect']);
     $r->post('/cod/{id:\d+}', [Admin\PaymentController::class, 'recordCod'], ['can:cod.collect']);
     $r->get('/settings', [Admin\SettingsController::class, 'index'], ['can:settings.manage']);
@@ -232,10 +243,20 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     $r->get('/settings/transfer', [Admin\SettingsController::class, 'transfer'], ['can:settings.manage']);
     $r->get('/settings/export', [Admin\SettingsController::class, 'export'], ['can:settings.manage', 'throttle:30,3600']);
     $r->post('/settings/import', [Admin\SettingsController::class, 'import'], ['can:settings.manage', 'throttle:10,3600']);
-    $r->get('/settings/{group:general|contact|social|seo|checkout|orders|payments|marketplace|maintenance}', [Admin\SettingsController::class, 'group'], ['can:settings.manage']);
-    $r->post('/settings/{group:general|contact|social|seo|checkout|orders|payments|marketplace|maintenance}', [Admin\SettingsController::class, 'saveGroup'], ['can:settings.manage']);
+    $r->get('/settings/{group:general|contact|social|seo|checkout|orders|payments|delivery|marketplace|email|maintenance}', [Admin\SettingsController::class, 'group'], ['can:settings.manage']);
+    $r->post('/settings/{group:general|contact|social|seo|checkout|orders|payments|delivery|marketplace|email|maintenance}', [Admin\SettingsController::class, 'saveGroup'], ['can:settings.manage']);
+    $r->post('/settings/email/password', [Admin\SettingsController::class, 'smtpPassword'], ['can:settings.manage', 'can:secrets.manage', 'throttle:20,3600']);
+    $r->post('/settings/email/test', [Admin\SettingsController::class, 'testEmail'], ['can:settings.manage', 'throttle:10,3600']);
     $r->get('/settings/branding', [Admin\BrandingController::class, 'edit'], ['can:settings.manage']);
     $r->post('/settings/branding', [Admin\BrandingController::class, 'update'], ['can:settings.manage', 'throttle:30,3600']);
+
+    // Email and SMS wording (Basemall Stage 4).
+    $r->group(['middleware' => ['can:messages.manage']], function ($r) {
+        $r->get('/messages', [Admin\MessageTemplateController::class, 'index']);
+        $r->get('/messages/{code:[a-z_]+}', [Admin\MessageTemplateController::class, 'edit']);
+        $r->post('/messages/{code:[a-z_]+}', [Admin\MessageTemplateController::class, 'update']);
+        $r->post('/messages/{code:[a-z_]+}/restore', [Admin\MessageTemplateController::class, 'restore']);
+    });
 
     $r->get('/reports', [Admin\ReportController::class, 'index'], ['can:reports.view']);
     $r->get('/audit', [Admin\AuditController::class, 'index'], ['can:audit.view']);

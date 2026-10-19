@@ -7,10 +7,12 @@ namespace Waimart\Services;
 use Waimart\Core\App;
 use Waimart\Core\Database;
 use Waimart\Core\Money;
+use Waimart\Core\Settings;
 
 /**
  * Fulfilment options and charges, always computed on the server (B1, B2, B3).
- * Admin management of zones and pickup points is added in Phase 8; this is the read side.
+ * Zones and pickup points are managed in Admin → Fulfilment; the switches, store-wide free delivery and checkout notes
+ * in Delivery settings. This is the read side.
  */
 final class DeliveryService
 {
@@ -21,20 +23,27 @@ final class DeliveryService
         $this->db = $db ?? App::db();
     }
 
+    /** Whether a fulfilment method is switched on (Fulfilment → Delivery settings). */
+    public static function methodEnabled(string $method): bool
+    {
+        return Settings::bool($method === 'delivery' ? 'delivery_home_enabled' : 'delivery_pickup_enabled', true);
+    }
+
     public function deliveryAvailable(): bool
     {
-        return (bool) $this->db->value(
+        return self::methodEnabled('delivery') && (bool) $this->db->value(
             'SELECT 1 FROM delivery_zones z JOIN delivery_zone_locations l ON l.zone_id = z.id WHERE z.is_active = 1 LIMIT 1'
         );
     }
 
     public function pickupAvailable(): bool
     {
-        return (bool) $this->db->value('SELECT 1 FROM pickup_points WHERE is_active = 1 LIMIT 1');
+        return self::methodEnabled('pickup') && (bool) $this->db->value('SELECT 1 FROM pickup_points WHERE is_active = 1 LIMIT 1');
     }
 
     /**
-     * Delivery quote for a location. A town-specific rule beats a county-wide rule.
+     * Delivery quote for a location. A town-specific rule beats a county-wide rule. Free delivery applies from the
+     * zone's own amount, or else from the store-wide amount (Delivery settings), if either is set.
      * Returns null when the location is outside every active zone.
      *
      * @return array{zone_id:int,zone_name:string,fee:string,free_threshold:?string,is_free:bool,eta_min:int,eta_max:int,cod_allowed:bool}|null
@@ -50,7 +59,8 @@ final class DeliveryService
         if ($zone === null) {
             return null;
         }
-        $threshold = $zone['free_delivery_threshold'] !== null ? (string) $zone['free_delivery_threshold'] : null;
+        $storeWide = trim((string) Settings::get('free_delivery_threshold', ''));
+        $threshold = $zone['free_delivery_threshold'] !== null ? (string) $zone['free_delivery_threshold'] : ($storeWide !== '' ? $storeWide : null);
         $isFree = $threshold !== null && Money::cmp($subtotal, $threshold) >= 0;
         return [
             'zone_id' => (int) $zone['id'],

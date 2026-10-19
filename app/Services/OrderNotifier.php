@@ -14,17 +14,8 @@ use Waimart\Core\Logger;
  */
 final class OrderNotifier
 {
-    private const NOTIFY = [
-        'confirmed' => 'Your order {n} has been confirmed.',
-        'dispatched' => 'Your order {n} has been dispatched and is on its way.',
-        'out_for_delivery' => 'Your order {n} is out for delivery today.',
-        'delivered' => 'Your order {n} has been delivered. Thank you for shopping with {store}!',
-        'ready_for_collection' => 'Your order {n} is ready for collection.',
-        'collected' => 'Your order {n} has been collected. Thank you for shopping with {store}!',
-        'cancelled' => 'Your order {n} has been cancelled.',
-        'expired' => 'The reservation for your order {n} expired before it was confirmed, so the items have been released. You are welcome to order again.',
-        'requires_resolution' => 'Our team is reviewing your order {n} and will contact you about the next steps.',
-    ];
+    /** Statuses customers are told about; the wording is the template order_<status> (MessageTemplates). */
+    private const NOTIFY = ['confirmed', 'dispatched', 'out_for_delivery', 'delivered', 'ready_for_collection', 'collected', 'cancelled', 'expired', 'requires_resolution'];
 
     public static function statusChanged(array $order): void
     {
@@ -36,42 +27,29 @@ final class OrderNotifier
                 \Waimart\Core\Logger::error('Seller notification failed', ['order_id' => $order['id'], 'error' => $e->getMessage()]);
             }
         }
-        $tpl = self::NOTIFY[$order['status']] ?? null;
-        if ($tpl === null) {
+        if (!in_array($order['status'], self::NOTIFY, true)) {
             return;
         }
         try {
             $db = App::db();
             $user = $order['user_id'] ? $db->one('SELECT notify_email, notify_sms FROM users WHERE id = ?', [$order['user_id']]) : null;
-            $text = brand_text(str_replace('{n}', (string) $order['order_number'], $tpl));
-            if ($order['status'] === 'cancelled' && $order['payment_status'] === 'refund_due') {
-                $text .= ' Because your payment was already received, our team will arrange your refund.';
-            }
-            $track = rtrim((string) config('app.url'), '/') . '/track-order';
+            $vars = ['status_label' => OrderPresenter::status((string) $order['status']),
+                     'refund_note' => $order['status'] === 'cancelled' && $order['payment_status'] === 'refund_due'
+                        ? ' Because your payment was already received, our team will arrange your refund.' : ''] + MessageTemplates::orderVars($order);
             $ctx = ['user_id' => $order['user_id'] ? (int) $order['user_id'] : null, 'order_id' => (int) $order['id']];
 
-            // Ready for collection: the code is essential, so it is always sent (preferences apply to
-            // optional updates only) and redacted from the stored outbox copy.
-            $essential = false;
+            // Ready for collection: the code is essential, so the template is always sent (preferences apply to
+            // optional updates only) and the code is redacted from the stored outbox copy.
             if ($order['status'] === 'ready_for_collection') {
                 $code = CollectionService::codeFor($order);
                 $f = $db->one('SELECT pickup_name, pickup_address, pickup_town, pickup_hours FROM order_fulfilment WHERE order_id = ?', [$order['id']]);
-                $hold = \Waimart\Core\Settings::int('collection_hold_days', 7);
-                $text .= " Collection code: $code. Collect at {$f['pickup_name']}, {$f['pickup_address']}, {$f['pickup_town']} ({$f['pickup_hours']})"
-                    . " within $hold days. Bring this code and your ID. Never share the code with anyone who calls you.";
+                $vars['collection_code'] = (string) $code;
+                $vars['pickup_location'] = "{$f['pickup_name']}, {$f['pickup_address']}, {$f['pickup_town']} ({$f['pickup_hours']})";
+                $vars['hold_days'] = (string) \Waimart\Core\Settings::int('collection_hold_days', 7);
                 $ctx['secrets'] = [(string) $code];
-                $essential = true;
             }
-
-            $n = new NotificationService();
-            if ($order['customer_email'] && ($essential || $user === null || (int) $user['notify_email'] === 1)) {
-                $n->email((string) $order['customer_email'], "Order {$order['order_number']}: " . OrderPresenter::status((string) $order['status']),
-                    "Hello {$order['customer_name']},\n\n$text\n\nTrack your order at $track using your order number and phone number.\n\n" . brand_name(),
-                    'order_' . $order['status'], $ctx);
-            }
-            if ($essential || $user === null || (int) $user['notify_sms'] === 1) {
-                $n->sms((string) $order['customer_phone'], brand_name() . ": $text", 'order_' . $order['status'], $ctx);
-            }
+            (new NotificationService())->sendTemplate('order_' . $order['status'], $vars,
+                ['email' => $order['customer_email'], 'phone' => $order['customer_phone'], 'prefs' => $user], $ctx);
         } catch (\Throwable $e) {
             Logger::error('Status notification failed', ['order_id' => $order['id'] ?? null, 'error' => $e->getMessage()]);
         }

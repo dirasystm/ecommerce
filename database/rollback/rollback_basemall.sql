@@ -1,8 +1,19 @@
--- ROLLBACK of the Basemall rebrand migrations (018 onwards; currently 018–022). Run only after taking a backup:
+-- ROLLBACK of the Basemall rebrand migrations (018 onwards; currently 018–023). Run only after taking a backup:
 --   php bin/backup.php
 --   C:\xampp\mysql\bin\mysql.exe -u root waimart < database\rollback\rollback_basemall.sql
 -- Restores the Waimart values only where they still hold the shipped Basemall values. Orders numbered BM- stay
 -- valid (the code that reads them is not removed by this script; only roll back the code together with it).
+
+-- 023 (payments, delivery, messages): payment methods, wording and status names go back to the code of that version.
+-- The SMTP password (if one was saved) is dropped with the secrets table: put it back in config.local.php first.
+DROP TABLE payment_methods;
+DROP TABLE secrets;
+DROP TABLE message_templates;
+DROP TABLE order_status_labels;
+DELETE FROM settings WHERE setting_key IN ('delivery_home_enabled', 'delivery_pickup_enabled', 'free_delivery_threshold', 'delivery_checkout_note',
+    'pickup_checkout_note', 'mail_from_name', 'mail_from_email', 'mail_reply_to', 'mail_driver', 'smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username');
+DELETE rp FROM role_permissions rp JOIN permissions p ON p.id = rp.permission_id WHERE p.slug IN ('payments.configure', 'secrets.manage', 'messages.manage');
+DELETE FROM permissions WHERE slug IN ('payments.configure', 'secrets.manage', 'messages.manage');
 
 -- 022 (content management): pages, menus and homepage sections move back into the templates of that code version.
 DROP TABLE content_page_revisions;
@@ -37,4 +48,4 @@ UPDATE commission_rules SET note = 'Waimart Official Store (platform-owned)'
  WHERE scope = 'seller' AND seller_id = 1 AND note = 'Basemall Official Store (platform-owned)' AND is_active = 1;
 DROP TABLE seller_slug_aliases;
 
-DELETE FROM schema_migrations WHERE filename IN ('022_content_management.sql', '021_normalise_setting_flags.sql', '020_unique_user_phone.sql', '019_settings_groups.sql', '018_basemall_brand.sql');
+DELETE FROM schema_migrations WHERE filename IN ('023_payments_delivery_messages.sql', '022_content_management.sql', '021_normalise_setting_flags.sql', '020_unique_user_phone.sql', '019_settings_groups.sql', '018_basemall_brand.sql');

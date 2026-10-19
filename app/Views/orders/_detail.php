@@ -49,6 +49,9 @@ $expires = $order['reservation_expires_at'];
                             <dd class="col-7 col-sm-8 fw-bold mb-1"><?= e($row['value']) ?></dd>
                         <?php endforeach; ?>
                     </dl>
+                    <?php if (($howTo = PaymentOptions::instructionsHtml((string) $order['payment_method'], ['order_number' => (string) $order['order_number'], 'amount' => money($order['grand_total'])])) !== ''): ?>
+                        <div class="small wm-content mb-2"><?= $howTo ?></div>
+                    <?php endif; ?>
                     <?php if ($expires): ?>
                         <p class="small mb-1"><i class="bi bi-hourglass-split" aria-hidden="true"></i> Items reserved until <strong><?= e(date('j M, g:i a', strtotime($expires))) ?></strong>.</p>
                     <?php endif; ?>
@@ -209,8 +212,11 @@ $expires = $order['reservation_expires_at'];
             <?php endif; ?>
             <div class="d-flex justify-content-between small"><span><?= $order['fulfilment_method'] === 'pickup' ? 'Pickup' : 'Delivery' ?></span><span><?= Money::isZero((string) $order['delivery_fee']) ? 'Free' : e(money($order['delivery_fee'])) ?></span></div>
             <div class="d-flex justify-content-between fw-bold fs-5 border-top pt-2 mt-2"><span>Total</span><span><?= e(money($order['grand_total'])) ?></span></div>
-            <div class="small mt-2"><span class="text-muted">Payment:</span> <?= e(PaymentOptions::LABELS[$order['payment_method']] ?? $order['payment_method']) ?></div>
+            <div class="small mt-2"><span class="text-muted">Payment:</span> <?= e(PaymentOptions::label((string) $order['payment_method'])) ?></div>
             <div class="small"><span class="text-muted">Payment status:</span> <?= e(OrderPresenter::payment($order['payment_status'])) ?></div>
+            <?php if ($order['payment_status'] === 'cod_pending' && ($howTo = PaymentOptions::instructionsHtml('cod', ['order_number' => (string) $order['order_number'], 'amount' => money($order['grand_total'])])) !== ''): ?>
+                <div class="small wm-content mt-2"><?= $howTo ?></div>
+            <?php endif; ?>
         </div>
 
         <div class="wm-card p-3">

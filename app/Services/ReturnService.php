@@ -127,7 +127,7 @@ final class ReturnService
             return $out;
         });
         $numbers = implode(', ', array_column($rets, 'return_number'));
-        $this->notify($orderId, 'return_requested', "We have received your return request $numbers. Our team will review it and let you know the next steps.");
+        $this->notify($orderId, 'return_requested', ['return_numbers' => $numbers]);
         foreach ($rets as $r) {
             $this->notifySeller($r, 'seller_return_requested', "Return {$r['return_number']} requested",
                 'A customer has asked to return items from order ' . $this->subNumber($r) . ' (reason: ' . self::REASONS[$reason] . ").\n"
@@ -139,7 +139,7 @@ final class ReturnService
     public function approve(int $returnId, int $staffId, ?string $note): void
     {
         $r = $this->move($returnId, 'requested', 'approved', $staffId, $note, ['decided_by' => $staffId, 'decided_at' => date('Y-m-d H:i:s'), 'decision_note' => $note]);
-        $this->notify((int) $r['order_id'], 'return_approved', "Your return {$r['return_number']} has been approved. Please bring or send the item(s) back as instructed by our team." . ($note ? " Note: $note" : ''));
+        $this->notify((int) $r['order_id'], 'return_approved', ['return_number' => (string) $r['return_number'], 'staff_note' => $note ? " Note: $note" : '']);
     }
 
     public function reject(int $returnId, int $staffId, string $note): void
@@ -152,7 +152,7 @@ final class ReturnService
             $this->restoreOrderStatus((int) $r['order_id'], $staffId, 'Return rejected');
             return $r;
         });
-        $this->notify((int) $r['order_id'], 'return_rejected', "Your return {$r['return_number']} could not be accepted: $note");
+        $this->notify((int) $r['order_id'], 'return_rejected', ['return_number' => (string) $r['return_number'], 'reason' => $note]);
         $this->notifySeller($r, 'seller_return_rejected', "Return {$r['return_number']} not accepted",
             brand_name() . ' did not accept the return on order ' . $this->subNumber($r) . '. Your earnings for it are no longer held by this return.');
     }
@@ -244,9 +244,8 @@ final class ReturnService
             AuditLogger::log('return.completed', 'return', $returnId, ['status' => 'received'], ['status' => 'completed', 'refund' => $amount, 'note' => $note], $staffId);
             return $r;
         });
-        $msg = "Your return {$r['return_number']} has been completed. "
-            . (Money::isZero($amount) ? 'No refund is due' . ($note ? ": $note" : '.') : 'A refund of ' . Money::format($amount) . ' has been approved and our team will send it to you.');
-        $this->notify((int) $r['order_id'], 'return_completed', $msg);
+        $this->notify((int) $r['order_id'], 'return_completed', ['return_number' => (string) $r['return_number'],
+            'refund_outcome' => Money::isZero($amount) ? 'No refund is due' . ($note ? ": $note" : '.') : 'A refund of ' . Money::format($amount) . ' has been approved and our team will send it to you.']);
         $this->notifySeller($r, 'seller_return_completed', "Return {$r['return_number']} closed",
             'The return on order ' . $this->subNumber($r) . ' has been closed. '
             . (Money::isZero($amount) ? 'No refund was given, so your earnings are unchanged.' : 'The customer is refunded ' . Money::format($amount) . '; the matching share of your sale (less ' . brand_name() . '\'s commission on it) is deducted in your ledger.'));
@@ -328,18 +327,14 @@ final class ReturnService
         throw new \RuntimeException('Could not allocate a return number.');
     }
 
-    private function notify(int $orderId, string $template, string $text): void
+    /** @param array<string,string> $vars the template's own placeholders */
+    private function notify(int $orderId, string $template, array $vars): void
     {
         try {
             $o = $this->db->one('SELECT o.*, u.notify_email, u.notify_sms FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?', [$orderId]);
-            $n = new NotificationService();
-            $ctx = ['order_id' => $orderId, 'user_id' => $o['user_id'] ? (int) $o['user_id'] : null];
-            if ($o['customer_email'] && ($o['user_id'] === null || (int) $o['notify_email'] === 1)) {
-                $n->email((string) $o['customer_email'], "Order {$o['order_number']}: return update", "Hello {$o['customer_name']},\n\n$text\n\n" . brand_name(), $template, $ctx);
-            }
-            if ($o['user_id'] === null || (int) $o['notify_sms'] === 1) {
-                $n->sms((string) $o['customer_phone'], brand_name() . ": $text", $template, $ctx);
-            }
+            (new NotificationService())->sendTemplate($template, $vars + MessageTemplates::orderVars($o),
+                ['email' => $o['customer_email'], 'phone' => $o['customer_phone'], 'prefs' => $o['user_id'] === null ? null : $o],
+                ['order_id' => $orderId, 'user_id' => $o['user_id'] ? (int) $o['user_id'] : null]);
         } catch (\Throwable $e) {
             \Waimart\Core\Logger::error('Return notification failed', ['order_id' => $orderId, 'error' => $e->getMessage()]);
         }

@@ -16,12 +16,13 @@ use Waimart\Core\Validator;
  * Values live in the `settings` table as text; the registry gives each one its type (rule), widget, help and group.
  * Settings::get() caches per request and every write flushes the cache, so changes apply on the next request.
  *
- * Store name, tagline, colours and logos are on the Branding page (BrandingService); payment-gateway secrets never
- * live here (Stage 4: encrypted secrets store).
+ * Store name, tagline, colours and logos are on the Branding page (BrandingService). Credentials never live here: they
+ * go in the encrypted secrets store (SecretStore). Two groups are edited on their own module pages rather than under
+ * Settings (see PAGES): M-Pesa numbers on Payment methods, and delivery options on Delivery settings.
  */
 final class SettingsService
 {
-    /** slug => [title, description, icon, protected from import] */
+    /** slug => [title, description, icon, protected from import (server- or money-specific)] */
     public const GROUPS = [
         'general' => ['General', 'Store description and catalogue preferences.', 'sliders', false],
         'contact' => ['Contact & business', 'How customers reach you: shown in the footer and on the Contact page.', 'telephone', false],
@@ -29,9 +30,20 @@ final class SettingsService
         'seo' => ['Search & sharing (SEO)', 'Default title and description for search engines and link previews.', 'search', false],
         'checkout' => ['Checkout & accounts', 'Customer accounts and guest checkout.', 'person-check', false],
         'orders' => ['Orders & returns', 'Stock holds, cash on delivery, pickup and returns.', 'receipt', false],
-        'payments' => ['M-Pesa', 'Where customers pay. Changes are logged separately in the audit trail.', 'phone', true],
+        'payments' => ['Payment methods', 'Where customers pay. Changes are logged separately in the audit trail.', 'credit-card', true],
+        'delivery' => ['Delivery', 'Which fulfilment options are offered, free delivery and the notes customers see at checkout.', 'truck', false],
         'marketplace' => ['Marketplace', 'Seller products, payouts and onboarding documents.', 'shop-window', false],
+        'email' => ['Email & SMS', 'Who emails come from and how they are sent.', 'envelope', true],
         'maintenance' => ['Maintenance & announcement', 'Temporarily close the shop, or show a message across the top of every page.', 'megaphone', false],
+    ];
+
+    /** Groups edited on their own module page (with that module's permission) instead of under Admin → Settings. */
+    public const PAGES = ['payments' => '/admin/payment-methods', 'delivery' => '/admin/delivery-settings'];
+
+    /** Choices for 'select' widgets. */
+    public const OPTIONS = [
+        'mail_driver' => ['' => 'Server setting (config.local.php)', 'smtp' => 'Send through a mail server (SMTP)', 'log' => 'Do not send: write to the mail log (testing)'],
+        'smtp_encryption' => ['tls' => 'STARTTLS (usually port 587)', 'ssl' => 'SSL/TLS (usually port 465)', 'none' => 'None (not recommended)'],
     ];
 
     /** key => [label, rule, help, group, widget] — widget: text (default), textarea, checkbox (rule "bool"), number */
@@ -76,10 +88,25 @@ final class SettingsService
         'mpesa_phone_name' => ['Send Money registered name', 'nullable|max:60', null, 'payments', 'text'],
         'max_payment_submissions' => ['Max payment code submissions per order', 'required|int|gte:1|lte:10', null, 'payments', 'number'],
 
+        'delivery_home_enabled' => ['Offer home delivery', 'bool', 'Customers can have orders delivered to places covered by an active delivery zone.', 'delivery', 'checkbox'],
+        'delivery_pickup_enabled' => ['Offer pickup stations', 'bool', 'Customers can collect orders from an open pickup station.', 'delivery', 'checkbox'],
+        'free_delivery_threshold' => ['Free home delivery from (KSh)', 'nullable|decimal', 'Orders at or above this amount get free home delivery, in zones that have no free-delivery amount of their own. Leave blank for none.', 'delivery', 'text'],
+        'delivery_checkout_note' => ['Note under home delivery at checkout', 'nullable|max:300', 'e.g. "Our rider calls before arriving." Shown to customers when they choose home delivery.', 'delivery', 'textarea'],
+        'pickup_checkout_note' => ['Note under pickup at checkout', 'nullable|max:300', 'e.g. "Wait for our ready-for-collection message before going to the station."', 'delivery', 'textarea'],
+
         'product_moderation' => ['Require approval before seller products go live', 'bool', 'If off, products from approved sellers are published as soon as the seller submits them.', 'marketplace', 'checkbox'],
         'payout_min_amount' => ['Minimum seller payout (KSh)', 'required|decimal', 'Sellers can request a payout once their available balance reaches this amount.', 'marketplace', 'text'],
         'payout_hold_days' => ['Earnings holding period (days)', 'required|int|gte:0|lte:90', 'Days after delivery or collection before a seller\'s earnings become available, leaving time for returns.', 'marketplace', 'number'],
         'payout_requires_fulfilment' => ['Release earnings only after delivery or collection', 'bool', 'If off, earnings become available after the holding period from payment, even before delivery.', 'marketplace', 'checkbox'],
+
+        'mail_from_name' => ['Sender name', 'nullable|max:80', 'The name customers see on emails. Blank: the store name.', 'email', 'text'],
+        'mail_from_email' => ['Sender email', 'nullable|email', 'The address emails come from; your mail server must allow it. Blank: the server setting.', 'email', 'text'],
+        'mail_reply_to' => ['Replies go to', 'nullable|email', 'Where customer replies go. Blank: the customer care email (Contact & business).', 'email', 'text'],
+        'mail_driver' => ['How email is sent', 'nullable|in:log,smtp', null, 'email', 'select'],
+        'smtp_host' => ['Mail server (SMTP host)', 'nullable|max:190', 'e.g. smtp.yourprovider.com', 'email', 'text'],
+        'smtp_port' => ['Port', 'required|int|gte:1|lte:65535', null, 'email', 'number'],
+        'smtp_encryption' => ['Encryption', 'required|in:tls,ssl,none', null, 'email', 'select'],
+        'smtp_username' => ['Username', 'nullable|max:190', 'Usually the sender email. The password is stored encrypted, below.', 'email', 'text'],
 
         'maintenance_mode' => ['Close the shop for maintenance', 'bool', 'Customers see the message below instead of the shop. Staff and sellers can still sign in and work; staff also see the shop as normal.', 'maintenance', 'checkbox'],
         'maintenance_message' => ['Maintenance message', 'nullable|max:500', 'e.g. "We are updating the shop and will be back by 10 am."', 'maintenance', 'textarea'],
@@ -128,6 +155,30 @@ final class SettingsService
             ? SellerDocumentPolicy::encode($in['doc_mode']) : null;
         [$before, $after] = $this->write($values + ($docPolicy !== null ? ['seller_required_documents' => $docPolicy] : []));
         $this->audit('settings.updated', $before, $after, $actorId);
+    }
+
+    /**
+     * Validates and saves only the given keys (part of a page, e.g. one payment method's numbers). Absent booleans
+     * among $keys are saved as off; settings not in $keys are untouched.
+     * @param array<string,mixed> $in @param list<string> $keys
+     */
+    public function saveKeys(array $in, int $actorId, array $keys): void
+    {
+        [$before, $after] = $this->write($this->validateKeys($in, $keys));
+        $this->audit('settings.updated', $before, $after, $actorId);
+    }
+
+    /**
+     * Validates the given keys without saving; throws ValidationException with every error.
+     * @param array<string,mixed> $in @param list<string> $keys @return array<string,string> the values to store
+     */
+    public function validateKeys(array $in, array $keys): array
+    {
+        $fields = array_intersect_key(self::FIELDS, array_flip($keys));
+        if (count($fields) !== count($keys)) {
+            throw new \InvalidArgumentException('Unknown setting in ' . implode(', ', $keys));
+        }
+        return $this->validated($in, $fields);
     }
 
     /**
@@ -214,6 +265,13 @@ final class SettingsService
             if ($key === 'announcement_link' && !self::safeLink($v)) {
                 $errors[$key] = 'Use a page on this site starting with / (e.g. /flash-sales) or a full https:// address.';
             }
+        }
+        if (isset($fields['delivery_home_enabled'], $fields['delivery_pickup_enabled'])
+            && empty($in['delivery_home_enabled']) && empty($in['delivery_pickup_enabled'])) {
+            $errors['delivery_home_enabled'] = 'Offer at least one way to receive orders: home delivery or pickup stations.';
+        }
+        if (isset($fields['mail_driver']) && ($in['mail_driver'] ?? '') === 'smtp' && trim((string) ($in['smtp_host'] ?? '')) === '') {
+            $errors['smtp_host'] = 'Enter the mail server to send through it.';
         }
         if (($in['announcement_enabled'] ?? '') !== '' && !empty($in['announcement_enabled']) && trim((string) ($in['announcement_text'] ?? '')) === ''
             && array_key_exists('announcement_text', $fields)) {

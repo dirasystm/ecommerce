@@ -90,8 +90,7 @@ final class PaymentService
             }
             return (array) $this->db->one('SELECT * FROM payment_submissions WHERE id = ?', [$id]);
         });
-        $this->notify($orderId, 'payment_submitted',
-            'We have received your M-Pesa transaction code ' . $code . ' and are verifying it. This does not yet confirm your payment — we will let you know once it is verified.');
+        $this->notify($orderId, 'payment_submitted', ['transaction_code' => $code]);
         return $result;
     }
 
@@ -145,7 +144,7 @@ final class PaymentService
         });
         OrderNotifier::statusChanged($order);
         if ($order['status'] !== 'confirmed') {
-            $this->notify((int) $order['id'], 'payment_verified', 'Your M-Pesa payment for order ' . $order['order_number'] . ' has been verified.');
+            $this->notify((int) $order['id'], 'payment_verified', []);
         }
         return $order;
     }
@@ -180,12 +179,13 @@ final class PaymentService
             }
             return (array) $this->db->one('SELECT * FROM orders WHERE id = ?', [$order['id']]);
         });
-        $msg = 'We could not verify your M-Pesa payment ' . ($this->db->value('SELECT transaction_code FROM payment_submissions WHERE id = ?', [$submissionId]))
-            . ' for order ' . $order['order_number'] . ' (' . $reasons[$reason] . ').';
-        $msg .= $order['payment_status'] === 'refund_due'
-            ? ' Our team will contact you to arrange a refund of the amount received.'
-            : ($order['status'] === 'awaiting_payment' ? ' Please check the details and submit the correct code from your order page.' : ' Please contact customer care.');
-        $this->notify((int) $order['id'], 'payment_rejected', $msg);
+        $this->notify((int) $order['id'], 'payment_rejected', [
+            'transaction_code' => (string) $this->db->value('SELECT transaction_code FROM payment_submissions WHERE id = ?', [$submissionId]),
+            'reason' => $reasons[$reason],
+            'next_step' => $order['payment_status'] === 'refund_due'
+                ? 'Our team will contact you to arrange a refund of the amount received.'
+                : ($order['status'] === 'awaiting_payment' ? 'Please check the details and submit the correct code from your order page.' : 'Please contact customer care.'),
+        ]);
         return $order;
     }
 
@@ -219,18 +219,14 @@ final class PaymentService
             ['status' => 'pending'], ['status' => $decision, 'order_id' => $s['order_id'], 'code' => $s['transaction_code'], 'amount' => $amount, 'note' => $note], $staffId);
     }
 
-    private function notify(int $orderId, string $template, string $text): void
+    /** @param array<string,string> $vars the template's own placeholders */
+    private function notify(int $orderId, string $template, array $vars): void
     {
         try {
             $o = $this->db->one('SELECT o.*, u.notify_email, u.notify_sms FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?', [$orderId]);
-            $n = new NotificationService();
-            $ctx = ['order_id' => $orderId, 'user_id' => $o['user_id'] ? (int) $o['user_id'] : null];
-            if ($o['customer_email'] && ($o['user_id'] === null || (int) $o['notify_email'] === 1)) {
-                $n->email((string) $o['customer_email'], "Order {$o['order_number']}: payment update", "Hello {$o['customer_name']},\n\n$text\n\n" . brand_name(), $template, $ctx);
-            }
-            if ($o['user_id'] === null || (int) $o['notify_sms'] === 1) {
-                $n->sms((string) $o['customer_phone'], brand_name() . ": $text", $template, $ctx);
-            }
+            (new NotificationService())->sendTemplate($template, $vars + MessageTemplates::orderVars($o),
+                ['email' => $o['customer_email'], 'phone' => $o['customer_phone'], 'prefs' => $o['user_id'] === null ? null : $o],
+                ['order_id' => $orderId, 'user_id' => $o['user_id'] ? (int) $o['user_id'] : null]);
         } catch (\Throwable $e) {
             \Waimart\Core\Logger::error('Payment notification failed', ['order_id' => $orderId, 'error' => $e->getMessage()]);
         }

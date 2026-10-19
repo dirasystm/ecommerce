@@ -215,7 +215,7 @@ $labels = ['confirmed' => 'Confirm order', 'processing' => 'Start processing', '
         <?php endif; ?>
         <section class="wm-panel mb-3 wm-panel-body small">
             <h2 class="fs-6 fw-bold">Payment</h2>
-            <p class="mb-1"><?= e(PaymentOptions::LABELS[$order['payment_method']] ?? $order['payment_method']) ?></p>
+            <p class="mb-1"><?= e(PaymentOptions::label((string) $order['payment_method'])) ?></p>
             <p class="mb-2"><?= e(OrderPresenter::payment($order['payment_status'])) ?></p>
             <div class="d-flex justify-content-between"><span>Subtotal</span><span><?= e(money($order['subtotal'])) ?></span></div>
             <?php if (!Money::isZero((string) $order['discount_total'])): ?><div class="d-flex justify-content-between"><span>Discount <?= e($order['coupon_code'] ?? '') ?></span><span>−<?= e(money($order['discount_total'])) ?></span></div><?php endif; ?>

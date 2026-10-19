@@ -27,6 +27,7 @@ $nav = [
         ['/admin/resolutions', 'exclamation-diamond', 'Resolutions', 'resolutions.manage'],
         ['/admin/cod', 'cash-coin', 'Cash on delivery', 'cod.collect'],
         ['/admin/refunds', 'arrow-return-left', 'Refunds', 'refunds.manage'],
+        ['/admin/payment-methods', 'credit-card', 'Payment methods', 'payments.configure'],
     ]],
     ['Marketplace', [
         ['/admin/sellers/applications', 'inbox', 'Seller applications', 'sellers.view'],
@@ -40,6 +41,7 @@ $nav = [
     ['Fulfilment', [
         ['/admin/delivery-zones', 'truck', 'Delivery zones', 'delivery.manage'],
         ['/admin/pickup-points', 'shop', 'Pickup points', 'pickup_points.manage'],
+        ['/admin/delivery-settings', 'sliders', 'Delivery settings', 'delivery.manage'],
     ]],
     ['Catalogue', [
         ['/admin/products', 'box-seam', 'Products', 'catalogue.manage'],
@@ -53,6 +55,7 @@ $nav = [
         ['/admin/content/homepage', 'house', 'Homepage', 'content.manage'],
         ['/admin/banners', 'images', 'Banners', 'content.manage'],
         ['/admin/flash-sales', 'lightning-charge', 'Flash sales', 'content.manage'],
+        ['/admin/messages', 'chat-square-text', 'Messages', 'messages.manage'],
     ]],
     ['System', [
         ['/admin/staff', 'person-badge', 'Staff & roles', 'users.manage'],

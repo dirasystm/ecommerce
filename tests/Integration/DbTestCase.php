@@ -24,10 +24,11 @@ abstract class DbTestCase extends TestCase
     /** Tables whose triggers refuse UPDATE/DELETE; emptied with TRUNCATE between tests. */
     private const APPEND_ONLY = ['seller_ledger_entries', 'seller_payout_history'];
     /**
-     * Content seeded by migration 022 (pages, menus, homepage). Captured once from the freshly migrated test database
-     * and put back before every test, so each test starts from the shipped content and no test can leak edits.
+     * Content seeded by migrations 022 (pages, menus, homepage) and 023 (payment methods). Captured once from the freshly
+     * migrated test database and put back before every test, so each test starts from the shipped content and no test
+     * can leak edits.
      */
-    private const CONTENT_SEEDED = ['content_pages', 'menus', 'menu_items', 'home_sections'];
+    private const CONTENT_SEEDED = ['content_pages', 'menus', 'menu_items', 'home_sections', 'payment_methods'];
     /** @var array<string,list<array<string,mixed>>>|null */
     private static ?array $contentSeed = null;
 
@@ -44,7 +45,7 @@ abstract class DbTestCase extends TestCase
         $pdo = $this->db->pdo();
         if (self::$contentSeed === null) {
             foreach (self::CONTENT_SEEDED as $t) {
-                self::$contentSeed[$t] = $this->db->all("SELECT * FROM `$t` ORDER BY " . ($t === 'menu_items' ? 'parent_id IS NOT NULL, id' : 'id'));
+                self::$contentSeed[$t] = $this->db->all("SELECT * FROM `$t` ORDER BY " . match ($t) { 'menu_items' => 'parent_id IS NOT NULL, id', 'payment_methods' => 'code', default => 'id' });
             }
         }
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');
@@ -67,6 +68,8 @@ abstract class DbTestCase extends TestCase
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 1');
         \Waimart\Services\Sellers::flush();
         \Waimart\Services\SiteContentService::flushCache();
+        \Waimart\Services\PaymentOptions::flush();
+        \Waimart\Services\StatusLabels::flush();
     }
 
     /** Creates a category, product and variant with the given stock; returns ids. */

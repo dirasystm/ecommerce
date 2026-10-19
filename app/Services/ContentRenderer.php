@@ -35,6 +35,11 @@ final class ContentRenderer
 
     private int $faqCount = 0;
 
+    /** @param array<string,string> $extra more {placeholders} for this text (e.g. {order_number} in payment instructions) */
+    public function __construct(private array $extra = [])
+    {
+    }
+
     /** Text for titles and descriptions: variables filled in, no markup. */
     public static function plain(string $text): string
     {
@@ -149,7 +154,7 @@ final class ContentRenderer
         }, $s);
         $s = (string) preg_replace('/\*\*(.+?)\*\*/', '<strong>$1</strong>', $s);
         $s = (string) preg_replace('/(?<![*\w])\*(?!\s)(.+?)(?<!\s)\*(?![*\w])/', '<em>$1</em>', $s);
-        return (string) preg_replace_callback('/\{([a-z_]+)\}/', fn ($m) => ($v = self::variable($m[1])) !== null ? e($v) : $m[0], $s);
+        return (string) preg_replace_callback('/\{([a-z_]+)\}/', fn ($m) => ($v = $this->extra[$m[1]] ?? self::variable($m[1])) !== null ? e($v) : $m[0], $s);
     }
 
     /** A link a content editor may use: a page on this site, https, mailto or tel. */
@@ -248,35 +253,47 @@ final class ContentRenderer
         return $out;
     }
 
+    /** Steps for each payment method currently offered (Admin → Payment methods), in the order set there. */
     private function paymentInstructions(): string
     {
-        $na = '<em>shown at checkout</em>';
         $s = fn (string $k) => (string) Settings::get($k, '');
         $step = fn (int $n, string $html) => '<div class="wm-pay-step"><span class="wm-step-num">' . $n . '</span><div>' . $html . '</div></div>';
         $out = '';
-        if ($s('mpesa_till_number') !== '') {
-            $out .= '<h2><i class="bi bi-shop me-1" aria-hidden="true"></i> Lipa na M-Pesa — Buy Goods (Till)</h2>'
-                . $step(1, 'Open M-Pesa and select <strong>Lipa na M-Pesa → Buy Goods and Services</strong>.')
-                . $step(2, 'Enter Till Number <strong>' . e($s('mpesa_till_number')) . '</strong>' . ($s('mpesa_till_name') !== '' ? ' (' . e($s('mpesa_till_name')) . ')' : '') . '.')
-                . $step(3, 'Enter the <strong>exact order total</strong>, then your M-Pesa PIN.')
-                . $step(4, 'Enter the 10-character transaction code from the M-Pesa SMS (e.g. <code>SGH7K2L9XQ</code>) on your order page.');
+        $mpesa = false;
+        foreach (PaymentOptions::all() as $code => $m) {
+            if (!isset(PaymentOptions::LABELS[$code]) || !PaymentOptions::offered($code)) {
+                continue;
+            }
+            $mpesa = $mpesa || $code !== 'cod';
+            $limits = array_filter([
+                $m['min_order_total'] !== null ? 'orders of ' . money((string) $m['min_order_total']) . ' or more' : null,
+                $m['max_order_total'] !== null ? 'orders up to ' . money((string) $m['max_order_total']) : null,
+            ]);
+            $out .= match ($code) {
+                'mpesa_till' => '<h2><i class="bi bi-shop me-1" aria-hidden="true"></i> ' . e($m['name']) . '</h2>'
+                    . $step(1, 'Open M-Pesa and select <strong>Lipa na M-Pesa → Buy Goods and Services</strong>.')
+                    . $step(2, 'Enter Till Number <strong>' . e($s('mpesa_till_number')) . '</strong>' . ($s('mpesa_till_name') !== '' ? ' (' . e($s('mpesa_till_name')) . ')' : '') . '.')
+                    . $step(3, 'Enter the <strong>exact order total</strong>, then your M-Pesa PIN.')
+                    . $step(4, 'Enter the 10-character transaction code from the M-Pesa SMS (e.g. <code>SGH7K2L9XQ</code>) on your order page.'),
+                'mpesa_paybill' => '<h2><i class="bi bi-building me-1" aria-hidden="true"></i> ' . e($m['name']) . '</h2>'
+                    . $step(1, 'Select <strong>Lipa na M-Pesa → Pay Bill</strong>.')
+                    . $step(2, 'Business number <strong>' . e($s('mpesa_paybill_number')) . '</strong>.')
+                    . $step(3, 'Account number: <strong>' . e($s('mpesa_paybill_account_hint') ?: 'your order number') . '</strong>.')
+                    . $step(4, 'Pay the exact total, then enter the transaction code on your order page.'),
+                'mpesa_phone' => '<h2><i class="bi bi-send me-1" aria-hidden="true"></i> ' . e($m['name']) . '</h2>'
+                    . $step(1, 'Select <strong>Send Money</strong> and send to <strong>' . e(Validator::displayPhone($s('mpesa_phone_number'))) . '</strong>' . ($s('mpesa_phone_name') !== '' ? ' (' . e($s('mpesa_phone_name')) . ')' : '') . '.')
+                    . $step(2, 'Check the recipient name before confirming, then enter the transaction code on your order page.'),
+                default => '<h2><i class="bi bi-cash-coin me-1" aria-hidden="true"></i> ' . e($m['name']) . '</h2>'
+                    . '<p>Where available for your location, pay in cash when you receive your order. Cash on delivery orders are confirmed by our team before dispatch. Please have the exact amount ready.</p>',
+            };
+            if ($limits) {
+                $out .= '<p class="small text-muted">Available for ' . e(implode(' and ', $limits)) . '.</p>';
+            }
+            $out .= PaymentOptions::instructionsHtml($code, ['order_number' => 'your order number', 'amount' => 'the order total']);
         }
-        if ($s('mpesa_paybill_number') !== '') {
-            $out .= '<h2><i class="bi bi-building me-1" aria-hidden="true"></i> Lipa na M-Pesa — Paybill</h2>'
-                . $step(1, 'Select <strong>Lipa na M-Pesa → Pay Bill</strong>.')
-                . $step(2, 'Business number <strong>' . e($s('mpesa_paybill_number')) . '</strong>.')
-                . $step(3, 'Account number: <strong>' . e($s('mpesa_paybill_account_hint') ?: 'your order number') . '</strong>.')
-                . $step(4, 'Pay the exact total, then enter the transaction code on your order page.');
+        if (!$mpesa) {
+            $out = '<p>M-Pesa payment details are <em>shown at checkout</em>.</p>' . $out;
         }
-        if ($s('mpesa_phone_number') !== '') {
-            $out .= '<h2><i class="bi bi-send me-1" aria-hidden="true"></i> M-Pesa Send Money</h2>'
-                . $step(1, 'Select <strong>Send Money</strong> and send to <strong>' . e(Validator::displayPhone($s('mpesa_phone_number'))) . '</strong>' . ($s('mpesa_phone_name') !== '' ? ' (' . e($s('mpesa_phone_name')) . ')' : '') . '.')
-                . $step(2, 'Check the recipient name before confirming, then enter the transaction code on your order page.');
-        }
-        if ($out === '') {
-            $out = '<p>M-Pesa payment details are ' . $na . '.</p>';
-        }
-        return $out . '<h2><i class="bi bi-cash-coin me-1" aria-hidden="true"></i> Cash on delivery</h2>'
-            . '<p>Where available for your location, pay in cash when you receive your order. Cash on delivery orders are confirmed by our team before dispatch. Please have the exact amount ready.</p>';
+        return $out;
     }
 }

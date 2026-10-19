@@ -10,6 +10,7 @@ use Waimart\Core\Validator;
  * @var bool $deliveryAvailable
  * @var bool $pickupAvailable
  * @var array<string,array<string,mixed>> $payments
+ * @var string $deliveryNote @var string $pickupNote
  * @var string $checkoutToken
  */
 $method = (string) fv('fulfilment_method', $deliveryAvailable ? 'delivery' : 'pickup');
@@ -83,6 +84,7 @@ foreach ($pickupPoints as $pp) {
 
                 <?php if ($deliveryAvailable): ?>
                 <div data-panel="delivery" <?= $method === 'delivery' ? '' : 'hidden' ?>>
+                    <?php if ($deliveryNote !== ''): ?><p class="small wm-callout mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i><?= e($deliveryNote) ?></p><?php endif; ?>
                     <?php if ($addresses): ?>
                         <fieldset class="mb-3">
                             <legend class="fs-6 fw-semibold">Deliver to</legend>
@@ -136,6 +138,7 @@ foreach ($pickupPoints as $pp) {
 
                 <?php if ($pickupAvailable): ?>
                 <div data-panel="pickup" <?= $method === 'pickup' ? '' : 'hidden' ?>>
+                    <?php if ($pickupNote !== ''): ?><p class="small wm-callout mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i><?= e($pickupNote) ?></p><?php endif; ?>
                     <?= field_error('pickup_point_id') ?>
                     <fieldset>
                         <legend class="fs-6 fw-semibold">Choose a pickup station</legend>
@@ -165,14 +168,16 @@ foreach ($pickupPoints as $pp) {
             <section class="wm-card wm-checkout-step" aria-labelledby="stepPay">
                 <h2 id="stepPay"><span class="wm-step-num">3</span> Payment method</h2>
                 <?= field_error('payment_method') ?>
+                <?php if (!$payments): ?>
+                    <div class="alert alert-warning small">No payment method is available at the moment. Please contact us to complete your order.</div>
+                <?php endif; ?>
                 <?php foreach ($payments as $key => $p): ?>
                     <div class="form-check border rounded p-2 ps-5 mb-2">
-                        <input class="form-check-input" type="radio" name="payment_method" id="pm_<?= $key ?>" value="<?= $key ?>" <?= $payChoice === $key ? 'checked' : '' ?> <?= $key === 'cod' ? 'data-cod' : '' ?>>
+                        <input class="form-check-input" type="radio" name="payment_method" id="pm_<?= $key ?>" value="<?= $key ?>" <?= $payChoice === $key && $p['available'] ? 'checked' : '' ?> <?= $key === 'cod' ? 'data-cod' : '' ?><?= $p['available'] ? '' : ' disabled data-blocked' ?>>
                         <label class="form-check-label w-100" for="pm_<?= $key ?>">
                             <strong class="small"><?= e($p['label']) ?></strong>
-                            <span class="d-block small text-muted">
-                                <?= $key === 'cod' ? 'Pay in cash when you receive your order. Our team confirms COD orders before dispatch.' : 'Pay the exact total by M-Pesa, then enter the transaction code. Your order is confirmed after we verify the payment.' ?>
-                            </span>
+                            <?php if ($p['description'] !== ''): ?><span class="d-block small text-muted"><?= e($p['description']) ?></span><?php endif; ?>
+                            <?php if (!$p['available']): ?><span class="d-block small text-danger"><?= e((string) $p['reason']) ?></span><?php endif; ?>
                             <span class="d-block small text-danger" data-cod-reason hidden></span>
                         </label>
                     </div>

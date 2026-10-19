@@ -1,6 +1,6 @@
 # Basemall Rebrand and Database-Driven Management
 
-**Started:** 18 October 2026 · **Branch:** `feature/basemall-rebrand` (from `feature/multi-vendor`) · **Status:** Stages 1–3 complete (plus sign-in with phone or email); awaiting approval to start Stage 4
+**Started:** 18 October 2026 · **Branch:** `feature/basemall-rebrand` (from `feature/multi-vendor`) · **Status:** Stages 1–4 complete (plus sign-in with phone or email); awaiting approval to start Stage 5
 
 This is the plan and progress record for the owner's request "Rebrand the e-commerce platform to Basemall and implement full database-driven management". The marketplace work it builds on is recorded in `docs/MARKETPLACE_PLAN.md`.
 
@@ -297,3 +297,126 @@ Still hardcoded, and scheduled:
 - **`ContentHttpTest` (4):** three non-content roles get 403 on 7 pages and on saving; editing a page goes live; draft preview, 404 for visitors, publishing; menus and footer follow the admin, bad links refused, managers cannot change the footer note; homepage sections hide and text blocks appear.
 - **Full suite: 439 tests, 3,830 assertions, all passing.**
 - **Browser:** 0 serious/critical accessibility issues on the 10 public content pages and 9 content admin pages; responsive checks passed; screenshots reviewed.
+
+## Stage 4 results (19 October 2026): payments, delivery and messages
+
+### Payment methods (Admin → Finance → Payment methods)
+
+- The four methods the order system handles (M-Pesa Till, Paybill and Send Money, which are manual, and cash on delivery) are now records in `payment_methods`.
+- For each method, staff set:
+  - on/off;
+  - the name (used at checkout, on orders, in reports and admin lists);
+  - the footer badge;
+  - the line shown under it at checkout;
+  - extra customer instructions (the safe content format, with `{order_number}` and `{amount}`);
+  - display order;
+  - optional minimum and maximum order totals.
+- **The M-Pesa numbers moved here** from Settings, next to the method they belong to. They are still settings, so changing a number still writes its own `settings.payment_destination_changed` audit entry. `/admin/settings/payments` now redirects here.
+- **A method is offered only when** it is switched on, its M-Pesa number is set, and the order total is within its limits. Cash on delivery also needs the zone or station and the marketplace rule to allow it.
+  - Checkout re-checks all of this on the server when the order is placed, against the real total including delivery. A disabled or out-of-limit method posted anyway is refused.
+- **Safeguards:**
+  - an M-Pesa method can't be switched on without its number;
+  - the last method that is on can't be switched off;
+  - limits are validated;
+  - every change is audited (`payment_method.updated`, before and after).
+- **What uses it:**
+  - checkout lists the methods in their set order; a method outside its limit shows why, disabled;
+  - the customer's order page shows the method's instructions under the payment details (for cash on delivery, while payment is due);
+  - the How to pay page (`[[payment_instructions]]`) lists only methods currently offered, with their names, limits and instructions;
+  - **the footer payment badges** now come from the methods offered (the M-PESA badge only when an M-Pesa method is offered). They were hardcoded before.
+- **Health at a glance:** the list shows, for each method, whether it is offered (or why not), payments waiting, verified and rejected in the last 30 days, and when a payment was last verified. The "max code submissions per order" rule is on the same page.
+- **No gateway:** these are manual methods, so there are no gateway keys, callbacks or sandbox/live modes; the page says so. When a gateway is added, its keys go in the secrets store below. Its callbacks must be verified server-side, as the brief requires.
+
+### Encrypted secrets store
+
+- `secrets` table: values encrypted with the app key (AES-256-GCM, the same scheme as payout details).
+- Only named slots can be stored; today there is one, the **SMTP password**.
+- **Write-only:** the admin shows only whether a value is set, when and by whom, never the value.
+- **Permissions:** changing a secret needs `settings.manage` and the new `secrets.manage` (super admins only).
+- **Audit:** changes are audited by name only (`secret.updated` / `secret.removed`); tests confirm the value never reaches the audit log.
+- If the app key changes, a stored secret shows as "cannot be read: enter it again" instead of failing silently.
+
+### Email & SMS (Admin → Settings → Email & SMS)
+
+- **Sender name, sender email and reply-to address** (reply-to defaults to the customer care email).
+- **How email is sent:**
+  - the server setting (`config.local.php`, as today);
+  - a mail server (SMTP host, port, encryption, username, plus the encrypted password);
+  - the mail log (testing).
+  - Blank settings fall back to `config.local.php`, so nothing changes until the owner chooses. **This means the owner can now set up real email from the admin, without editing server files.**
+- **"Send me a test email"** reports honestly whether the email was sent, only logged, or failed (with the first line of the server's error, credentials hidden). It is audited.
+- **SMS:** no provider is connected. The page says SMS messages are kept in the message log and not delivered. A provider's credentials would go in the secrets store.
+- The group is not exported or imported, because its values belong to one server.
+
+### Message templates (Admin → Content & marketing → Messages)
+
+- **Coverage:** every customer and seller message now comes from an editable template (28):
+  - order placed, and each order status (confirmed, dispatched, out for delivery, delivered, ready for collection, collected, cancelled, expired, under review);
+  - payment code received, verified and not verified;
+  - returns (requested, approved, rejected, completed) and refund sent;
+  - seller cases (opened, reply, resolved);
+  - the three per-seller part updates;
+  - account messages (new **welcome email**, password reset, add-an-order code);
+  - the layout of every message to sellers and seller applicants.
+- **Built-in wording is unchanged.** Tests compare the rendered text with the old wording exactly. A template has a database row only once edited, and "Restore the original wording" removes it.
+- **Placeholders and validation:**
+  - each template lists the placeholders it may use, with descriptions; unknown placeholders are refused;
+  - **required placeholders** (reset link, collection code, add-an-order code, refund amount…) can't be removed;
+  - subjects and SMS must be one line (no header injection); the SMS limit is 480 characters, with a counter in the preview;
+  - values are filled in a single pass, so a customer named `{collection_code}` cannot pull a code into a message.
+- **Channels:**
+  - email and SMS can be switched off per template;
+  - **messages with codes, links or money are always sent** and can't be switched off;
+  - customers' own email/SMS preferences are respected as before.
+- **Preview** with a sample order beside the editor.
+- Edits and restores are audited (`messages.template_updated` / `messages.template_restored`, with before and after wording).
+- The new permission `messages.manage` is given to super admins and managers.
+- Staff-only alerts (new application, payout request, new case) stay in code: they are internal, not customer communication.
+- **Two behaviour notes:**
+  - "Part of your order dispatched" (multi-seller orders) now follows the customer's SMS/email preferences, like the whole-order "Dispatched" message. Before, it ignored them.
+  - New accounts get a welcome email (it can be switched off).
+
+### Delivery settings (Admin → Fulfilment → Delivery settings)
+
+- **Offer home delivery / offer pickup stations** switches: at least one must stay on. A switched-off method disappears from checkout, the live quote ignores it, and a crafted order is refused.
+- **Store-wide free delivery from an amount**, for zones without their own free-delivery amount; a zone's own amount still wins. This is calculated on the server in `DeliveryService::quoteDelivery`, the single place every quote comes from.
+- **Checkout notes** under home delivery and under pickup.
+- **Order status names:** every customer-visible status can be renamed, for example "Awaiting payment" to "Waiting for your M-Pesa payment". This applies on order pages, tracking, admin and message subjects. Only the wording changes; the statuses and rules stay in code. A blank name restores the original, and renames are audited.
+- Fees, delivery times, cash-on-delivery rules, regions and stations stay on the Delivery zones and Pickup points pages (Phase 8), now linked from here.
+
+### Database
+
+- Migration 023 was applied to the dev database after a backup (`storage/backups/waimart-20261019-102408.sql`). It adds:
+  - the tables `payment_methods` (seeded with today's names and descriptions, all on), `secrets`, `message_templates` and `order_status_labels`;
+  - settings for delivery and email;
+  - three permissions.
+- `rollback_basemall.sql` covers 018–023. **Re-drilled:** on a copy of the pre-upgrade backup (010–023 forward, both rollbacks back): identical schema, and identical settings keys and values.
+
+### Found and fixed while building
+
+- A maximum order total of `0` was treated as blank. It is now refused with "leave blank for no limit".
+- The test database's seed restore assumed every seeded table has an `id`; `payment_methods` is keyed by its code.
+
+### Tests
+
+- **`PaymentsDeliveryMessagesTest` (12):**
+  - methods decide checkout: off, renamed, limits against the real total, footer badges, audit;
+  - method validation, including the last method staying on;
+  - safe, filled-in instructions with no nested blocks;
+  - secrets: encrypted, write-only, never in the audit log, unreadable after a key change, used by the mail transport;
+  - email settings validation and export exclusion;
+  - built-in wording identical to before;
+  - edited templates sent, a channel switched off;
+  - template validation, essential channels locked, single-pass filling;
+  - preferences vs always-sent messages;
+  - welcome email;
+  - delivery switches and store-wide free delivery (zone wins);
+  - status names renamed and restored.
+- **`PaymentsDeliveryMessagesHttpTest` (4):**
+  - the role matrix for the three modules and the credentials endpoint (six roles);
+  - disabling and renaming methods changes checkout, the badges and How to pay, and a crafted order with a disabled method is refused;
+  - delivery switches, notes and status names through the admin;
+  - message editing with a refused placeholder and the preview, the SMTP password never echoed, the test email result, and a real order using the edited wording with the private link redacted in the stored copy.
+- Three older tests were updated for the move of M-Pesa numbers to Payment methods and for the new required email settings in the full settings form.
+- **Full suite: 455 tests, 4,112 assertions, all passing.**
+- **Browser:** 0 serious/critical accessibility issues on the 8 new admin pages, checkout, How to pay and the home page; responsive checks passed on phone, tablet and desktop; screenshots reviewed.

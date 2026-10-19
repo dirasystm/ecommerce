@@ -3,7 +3,10 @@ use Waimart\Core\Validator;
 use Waimart\Services\SellerDocumentPolicy;
 use Waimart\Services\SettingsService;
 
-/** @var string $group @var array<string,string> $values @var array<string,string> $docModes */
+/**
+ * @var string $group @var array<string,string> $values @var array<string,string> $docModes
+ * @var array<string,mixed>|null $secret SMTP password status (email group) @var array<string,mixed>|null $mail effective mail settings
+ */
 [$groupTitle, $groupDesc] = SettingsService::GROUPS[$group];
 $fields = SettingsService::fieldsOf($group);
 ?>
@@ -40,7 +43,13 @@ $fields = SettingsService::fieldsOf($group);
                         <?php else: ?>
                             <div class="<?= $widget === 'textarea' ? 'col-12' : 'col-md-6' ?>">
                                 <label class="form-label" for="<?= e($key) ?>"><?= e($label) ?></label>
-                                <?php if ($widget === 'textarea'): ?>
+                                <?php if ($widget === 'select'): ?>
+                                    <select class="form-select<?= invalid($key) ?>" id="<?= e($key) ?>" name="<?= e($key) ?>"<?= $helpId ? ' aria-describedby="' . e($helpId) . '"' : '' ?>>
+                                        <?php foreach (SettingsService::OPTIONS[$key] as $opt => $optLabel): ?>
+                                            <option value="<?= e((string) $opt) ?>" <?= $val === (string) $opt ? 'selected' : '' ?>><?= e($optLabel) ?></option>
+                                        <?php endforeach; ?>
+                                    </select>
+                                <?php elseif ($widget === 'textarea'): ?>
                                     <textarea class="form-control<?= invalid($key) ?>" id="<?= e($key) ?>" name="<?= e($key) ?>" rows="3"<?= preg_match('/max:(\d+)/', $rule, $m) ? ' maxlength="' . $m[1] . '"' : '' ?><?= $helpId ? ' aria-describedby="' . e($helpId) . '"' : '' ?>><?= e($val) ?></textarea>
                                 <?php else: ?>
                                     <input class="form-control<?= invalid($key) ?>" id="<?= e($key) ?>" name="<?= e($key) ?>" value="<?= e($val) ?>"
@@ -76,5 +85,61 @@ $fields = SettingsService::fieldsOf($group);
             <?php endif; ?>
             <button class="btn btn-wm-green" type="submit">Save <?= e(strtolower($groupTitle)) ?> settings</button>
         </form>
+
+        <?php if ($group === 'email' && $secret !== null && $mail !== null): ?>
+            <section class="wm-panel mt-3">
+                <div class="wm-panel-head">SMTP password</div>
+                <div class="wm-panel-body">
+                    <p class="small mb-2">
+                        <?php if (!$secret['set']): ?>
+                            <span class="badge badge-soft-muted">Not set</span>
+                        <?php elseif (!$secret['readable']): ?>
+                            <span class="badge badge-soft-danger">Cannot be read</span> The app key changed since it was saved. Enter the password again.
+                        <?php else: ?>
+                            <span class="badge badge-soft-success">Saved</span> <?= e(date('d M Y H:i', strtotime((string) $secret['updated_at']))) ?><?= $secret['updated_by'] ? ' by ' . e($secret['updated_by']) : '' ?>.
+                        <?php endif; ?>
+                        Stored encrypted and never shown again. Only staff allowed to manage credentials can change it.
+                    </p>
+                    <?php if (\Waimart\Core\Auth::can('secrets.manage')): ?>
+                        <form class="row g-2 align-items-end" method="post" action="<?= e(url('/admin/settings/email/password')) ?>" autocomplete="off" novalidate>
+                            <?= csrf_field() ?>
+                            <div class="col-md-7">
+                                <label class="form-label" for="secret_smtp_password"><?= $secret['set'] ? 'Replace the password' : 'Password' ?></label>
+                                <input class="form-control<?= invalid('secret_smtp_password') ?>" type="password" id="secret_smtp_password" name="secret_smtp_password" maxlength="500" autocomplete="new-password">
+                                <?= field_error('secret_smtp_password') ?>
+                            </div>
+                            <div class="col-md-5"><button class="btn btn-wm-green" type="submit">Save password</button></div>
+                        </form>
+                        <?php if ($secret['set']): ?>
+                            <form class="mt-2" method="post" action="<?= e(url('/admin/settings/email/password')) ?>" data-confirm="Remove the saved SMTP password? Email sending through the mail server will stop working until a new one is saved.">
+                                <?= csrf_field() ?><input type="hidden" name="remove" value="1">
+                                <button class="btn btn-sm btn-outline-danger" type="submit">Remove the saved password</button>
+                            </form>
+                        <?php endif; ?>
+                    <?php endif; ?>
+                </div>
+            </section>
+            <section class="wm-panel mt-3">
+                <div class="wm-panel-head">Sending now</div>
+                <div class="wm-panel-body small">
+                    <dl class="row mb-2">
+                        <dt class="col-sm-4 fw-normal text-muted">Email</dt>
+                        <dd class="col-sm-8 mb-1"><?= $mail['driver'] === 'smtp' ? 'Sent through ' . e($mail['host'] ?: '(no server set)') . ':' . (int) $mail['port'] : 'Not sent: written to the mail log (storage/logs)' ?>
+                            <span class="text-muted">· <?= $mail['source'] === 'settings' ? 'from this page' : 'from the server configuration' ?></span></dd>
+                        <dt class="col-sm-4 fw-normal text-muted">From</dt>
+                        <dd class="col-sm-8 mb-1"><?= e($mail['from_name']) ?> &lt;<?= e($mail['from_email'] ?: 'not set') ?>&gt;</dd>
+                        <dt class="col-sm-4 fw-normal text-muted">Replies go to</dt>
+                        <dd class="col-sm-8 mb-1"><?= e($mail['reply_to'] ?: '—') ?></dd>
+                        <dt class="col-sm-4 fw-normal text-muted">SMS</dt>
+                        <dd class="col-sm-8 mb-1">No SMS provider is connected: SMS messages are kept in the message log (Customer service → Notifications) and are not delivered to phones.</dd>
+                    </dl>
+                    <form method="post" action="<?= e(url('/admin/settings/email/test')) ?>">
+                        <?= csrf_field() ?>
+                        <button class="btn btn-outline-secondary btn-sm" type="submit"><i class="bi bi-send" aria-hidden="true"></i> Send me a test email</button>
+                        <span class="text-muted ms-1">Uses the saved settings; save first.</span>
+                    </form>
+                </div>
+            </section>
+        <?php endif; ?>
     </div>
 </div>

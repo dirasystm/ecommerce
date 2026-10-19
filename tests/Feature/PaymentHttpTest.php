@@ -65,10 +65,13 @@ final class PaymentHttpTest extends FeatureTestCase
         $this->loginStaff('manager');
         $this->assertSame(403, $this->get('/admin/settings')['status'], 'managers lack settings.manage');
         $this->assertSame(403, $this->get('/admin/settings/payments')['status']);
+        $this->assertSame(403, $this->get('/admin/payment-methods/mpesa_till')['status'], 'managers lack payments.configure');
         $this->post('/logout', [], '/admin');
         $this->loginStaff('super_admin');
         $this->assertStringEndsWith('/admin/settings/general', (string) ($this->get('/admin/settings')['headers']['location'] ?? ''));
-        $page = $this->get('/admin/settings/payments');
+        // M-Pesa numbers are edited with their payment method (Stage 4); the old settings address leads there.
+        $this->assertStringEndsWith('/admin/payment-methods', (string) ($this->get('/admin/settings/payments')['headers']['location'] ?? ''));
+        $page = $this->get('/admin/payment-methods/mpesa_till');
         $this->assertSame(200, $page['status']);
         $this->assertStringContainsString('Double-check every digit', $page['body']);
     }

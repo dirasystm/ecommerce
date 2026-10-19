@@ -495,7 +495,7 @@ final class SellerApplicationService
 
     private function notifyApplicant(array $app, string $template, string $subject, string $body): void
     {
-        (new NotificationService())->email((string) $app['email'], $subject, "Hello {$app['contact_name']},\n\n$body\n\n— " . brand_name() . " Seller Support", $template,
-            ['user_id' => (int) $app['user_id']]);
+        (new NotificationService())->sendTemplate('seller_message', ['first_name' => (string) $app['contact_name'], 'subject' => $subject, 'message' => $body] + MessageTemplates::contactVars(),
+            ['email' => (string) $app['email']], ['user_id' => (int) $app['user_id'], 'log_as' => $template]);
     }
 }

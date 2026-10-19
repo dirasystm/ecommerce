@@ -54,7 +54,7 @@ final class RefundService
             AuditLogger::log('refund.paid', 'refund', $refundId, ['status' => 'due'], ['status' => 'paid', 'amount' => $r['amount'], 'method' => $method, 'reference' => $reference], $staffId);
             return $r;
         });
-        $this->notify((int) $r['order_id'], 'Your refund of ' . Money::format((string) $r['amount']) . ' has been sent (' . self::METHODS[$method] . ", reference $reference).");
+        $this->notify((int) $r['order_id'], ['refund_amount' => Money::format((string) $r['amount']), 'refund_method' => self::METHODS[$method], 'refund_reference' => $reference]);
     }
 
     public function cancel(int $refundId, int $staffId, string $note): void
@@ -94,16 +94,14 @@ final class RefundService
         $this->db->exec("UPDATE orders SET payment_status = ? WHERE id = ? AND payment_status = 'refund_due'", [$restore, $orderId]);
     }
 
-    private function notify(int $orderId, string $text): void
+    /** About the customer's money: always sent (the template cannot be switched off). @param array<string,string> $vars */
+    private function notify(int $orderId, array $vars): void
     {
         try {
             $o = $this->db->one('SELECT * FROM orders WHERE id = ?', [$orderId]);
-            $n = new NotificationService();
-            $ctx = ['order_id' => $orderId, 'user_id' => $o['user_id'] ? (int) $o['user_id'] : null];
-            if ($o['customer_email']) {
-                $n->email((string) $o['customer_email'], "Order {$o['order_number']}: refund sent", "Hello {$o['customer_name']},\n\n$text\n\n" . brand_name(), 'refund_paid', $ctx);
-            }
-            $n->sms((string) $o['customer_phone'], brand_name() . ": $text", 'refund_paid', $ctx);
+            (new NotificationService())->sendTemplate('refund_paid', $vars + MessageTemplates::orderVars($o),
+                ['email' => $o['customer_email'], 'phone' => $o['customer_phone']],
+                ['order_id' => $orderId, 'user_id' => $o['user_id'] ? (int) $o['user_id'] : null]);
         } catch (\Throwable $e) {
             \Waimart\Core\Logger::error('Refund notification failed', ['order_id' => $orderId, 'error' => $e->getMessage()]);
         }

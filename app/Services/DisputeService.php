@@ -108,7 +108,7 @@ final class DisputeService
             "A case was opened about order {$d['sub_number']}: " . self::REASONS[$reason] . ".\n\n\"" . mb_substr($details, 0, 500) . "\"\n\n"
             . "Please reply in the Seller Centre. Earnings for this order are held until the case is closed.\n" . config('app.url') . '/seller/disputes/' . $d['id']);
         if ($role === 'customer') {
-            $this->tellCustomer($d, 'dispute_opened', "We have opened case {$d['dispute_number']} about your items from {$d['seller_name']}. Our team will look into it and keep you updated.");
+            $this->tellCustomer($d, 'dispute_opened', ['seller_name' => (string) $d['seller_name']]);
         }
         if ($ops = (string) Settings::get('store_email', '')) {
             (new NotificationService())->email($ops, "New case {$d['dispute_number']}", "{$d['seller_name']} · order {$d['sub_number']} · " . self::REASONS[$reason]
@@ -149,7 +149,7 @@ final class DisputeService
                 ($role === 'staff' ? brand_name() : 'The customer') . " wrote about order {$d['sub_number']}:\n\n$excerpt\n\n" . config('app.url') . '/seller/disputes/' . $d['id']);
         }
         if ($role !== 'customer') {
-            $this->tellCustomer($d, 'dispute_message', ($role === 'staff' ? brand_name() : $d['seller_name']) . " replied on case {$d['dispute_number']}: $excerpt");
+            $this->tellCustomer($d, 'dispute_message', ['sender' => $role === 'staff' ? brand_name() : (string) $d['seller_name'], 'excerpt' => $excerpt]);
         }
     }
 
@@ -215,7 +215,7 @@ final class DisputeService
             return $this->find($disputeId);
         });
         $outcome = self::RESOLUTIONS[$resolution] . ($refund !== null ? ' (' . Money::format($refund) . ')' : '') . ". $note";
-        $this->tellCustomer($d, 'dispute_resolved', "Case {$d['dispute_number']} is resolved: $outcome" . ($refund !== null ? ' Our team will send the refund to you.' : ''));
+        $this->tellCustomer($d, 'dispute_resolved', ['outcome' => $outcome, 'refund_note' => $refund !== null ? ' Our team will send the refund to you.' : '']);
         $this->tellSeller($d, 'seller_dispute_resolved', "Case {$d['dispute_number']} resolved", "Decision on order {$d['sub_number']}: $outcome"
             . ($refund !== null ? "\n\nThe customer is refunded " . Money::format($refund) . '; the matching share of your sale (less ' . brand_name() . '\'s commission on it) is deducted in your ledger.' : ''));
     }
@@ -326,18 +326,14 @@ final class DisputeService
         (new SellerNotifier($this->db))->send((int) $d['seller_id'], $template, $subject, $body, false, ['owner', 'manager'], (int) $d['order_id']);
     }
 
-    private function tellCustomer(array $d, string $template, string $text): void
+    /** @param array<string,string> $vars the template's own placeholders (the case number is added here) */
+    private function tellCustomer(array $d, string $template, array $vars): void
     {
         try {
             $o = $this->db->one('SELECT o.*, u.notify_email, u.notify_sms FROM orders o LEFT JOIN users u ON u.id = o.user_id WHERE o.id = ?', [$d['order_id']]);
-            $n = new NotificationService();
-            $ctx = ['order_id' => (int) $d['order_id'], 'user_id' => $o['user_id'] ? (int) $o['user_id'] : null];
-            if ($o['customer_email'] && ($o['user_id'] === null || (int) $o['notify_email'] === 1)) {
-                $n->email((string) $o['customer_email'], "Order {$o['order_number']}: case {$d['dispute_number']}", "Hello {$o['customer_name']},\n\n$text\n\n" . brand_name(), $template, $ctx);
-            }
-            if ($o['user_id'] === null || (int) $o['notify_sms'] === 1) {
-                $n->sms((string) $o['customer_phone'], brand_name() . ": $text", $template, $ctx);
-            }
+            (new NotificationService())->sendTemplate($template, $vars + ['case_number' => (string) $d['dispute_number']] + MessageTemplates::orderVars($o),
+                ['email' => $o['customer_email'], 'phone' => $o['customer_phone'], 'prefs' => $o['user_id'] === null ? null : $o],
+                ['order_id' => (int) $d['order_id'], 'user_id' => $o['user_id'] ? (int) $o['user_id'] : null]);
         } catch (\Throwable $e) {
             \Waimart\Core\Logger::error('Dispute notification failed', ['dispute_id' => $d['id'] ?? null, 'error' => $e->getMessage()]);
         }

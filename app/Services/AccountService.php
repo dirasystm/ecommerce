@@ -72,7 +72,15 @@ final class AccountService
             }
             throw $e;
         }
-        return (array) $this->db->one('SELECT * FROM users WHERE id = ?', [$id]);
+        $user = (array) $this->db->one('SELECT * FROM users WHERE id = ?', [$id]);
+        try {
+            (new NotificationService())->sendTemplate('account_welcome',
+                ['first_name' => (string) $user['first_name'], 'login_url' => rtrim((string) config('app.url'), '/') . '/login'] + MessageTemplates::contactVars(),
+                ['email' => (string) $user['email'], 'prefs' => $user], ['user_id' => (int) $id]);
+        } catch (\Throwable $e) {
+            \Waimart\Core\Logger::error('Welcome email failed', ['user_id' => $id, 'error' => $e->getMessage()]);
+        }
+        return $user;
     }
 
     /** Whether customers may create accounts (Admin → Settings → Checkout & accounts). */
@@ -169,15 +177,9 @@ final class AccountService
             ]);
         });
         $link = rtrim((string) config('app.url'), '/') . '/reset-password?token=' . $token;
-        (new NotificationService())->email(
-            $user['email'],
-            'Reset your ' . brand_name() . ' password',
-            "Hello {$user['first_name']},\n\nWe received a request to reset your " . brand_name() . " password.\n"
-            . "Use this link within " . self::RESET_TTL_MINUTES . " minutes:\n\n$link\n\n"
-            . "If you did not ask for this, you can ignore this email. Your password will not change.\n\n" . brand_name(),
-            'password_reset',
-            ['user_id' => (int) $user['id'], 'secrets' => [$token]]
-        );
+        (new NotificationService())->sendTemplate('password_reset',
+            ['first_name' => (string) $user['first_name'], 'reset_link' => $link, 'minutes' => (string) self::RESET_TTL_MINUTES] + MessageTemplates::contactVars(),
+            ['email' => (string) $user['email']], ['user_id' => (int) $user['id'], 'secrets' => [$token]]);
     }
 
     /** True when the token is currently usable (for showing the form). */

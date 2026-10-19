@@ -4,7 +4,7 @@ use Waimart\Services\SettingsService;
 /** @var string $group current page: a settings group slug, "branding" or "transfer" */
 $items = [];
 foreach (SettingsService::GROUPS as $slug => [$title, , $icon]) {
-    $items[] = [$slug, $title, $icon, '/admin/settings/' . $slug];
+    $items[] = [$slug, $title, $icon, SettingsService::PAGES[$slug] ?? '/admin/settings/' . $slug];   // some groups live on their module page
 }
 array_splice($items, 1, 0, [['branding', 'Branding', 'palette', '/admin/settings/branding']]);
 $items[] = ['transfer', 'Export & import', 'arrow-left-right', '/admin/settings/transfer'];

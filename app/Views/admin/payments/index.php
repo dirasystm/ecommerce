@@ -24,7 +24,7 @@ use Waimart\Services\PaymentOptions;
             </div>
             <div class="wm-panel-body">
                 <div class="row g-3 small">
-                    <div class="col-md-4"><span class="text-muted d-block">Method</span><?= e(PaymentOptions::LABELS[$r['method']] ?? $r['method']) ?></div>
+                    <div class="col-md-4"><span class="text-muted d-block">Method</span><?= e(PaymentOptions::label((string) $r['method'])) ?></div>
                     <div class="col-md-4"><span class="text-muted d-block">Payer phone</span><?= e(Validator::displayPhone((string) $r['payer_phone'])) ?> (<?= e($r['customer_name']) ?>)</div>
                     <div class="col-md-4"><span class="text-muted d-block">Claimed / order total</span><?= e(money($r['amount_claimed'])) ?> / <strong><?= e(money($r['grand_total'])) ?></strong>
                         <?= $short ? '<span class="badge badge-soft-danger ms-1">Short</span>' : '' ?></div>

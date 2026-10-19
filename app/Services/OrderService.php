@@ -213,16 +213,9 @@ final class OrderService
             $user = $order['user_id'] ? $this->db->one('SELECT notify_email, notify_sms FROM users WHERE id = ?', [$order['user_id']]) : null;
             $link = rtrim((string) config('app.url'), '/') . '/track/' . $order['order_number'] . '?t=' . $token;
             $next = OrderPresenter::nextStepText($order, (new ReservationService($this->db))->expiresAt((int) $order['id']));
-            $body = "Hello {$order['customer_name']},\n\nThank you for shopping with " . brand_name() . ". Your order {$order['order_number']} has been placed.\n"
-                . 'Total: ' . Money::format((string) $order['grand_total']) . "\n\n$next\n\nTrack your order: $link\n\n" . brand_name();
-            $n = new NotificationService();
-            $ctx = ['user_id' => $order['user_id'] ? (int) $order['user_id'] : null, 'order_id' => (int) $order['id'], 'secrets' => [$token]];
-            if ($order['customer_email'] && ($user === null || (int) $user['notify_email'] === 1)) {
-                $n->email((string) $order['customer_email'], "Order {$order['order_number']} placed", $body, 'order_placed', $ctx);
-            }
-            if ($user === null || (int) $user['notify_sms'] === 1) {
-                $n->sms((string) $order['customer_phone'], brand_name() . ": order {$order['order_number']} placed. " . $next . " Track: $link", 'order_placed', $ctx);
-            }
+            (new NotificationService())->sendTemplate('order_placed', ['next_step' => $next, 'track_url' => $link] + MessageTemplates::orderVars($order),
+                ['email' => $order['customer_email'], 'phone' => $order['customer_phone'], 'prefs' => $user],
+                ['user_id' => $order['user_id'] ? (int) $order['user_id'] : null, 'order_id' => (int) $order['id'], 'secrets' => [$token]]);
         } catch (\Throwable $e) {
             Logger::error('Order placed notification failed', ['order_id' => $order['id'], 'error' => $e->getMessage()]);
         }

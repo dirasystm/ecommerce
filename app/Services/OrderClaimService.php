@@ -56,14 +56,8 @@ final class OrderClaimService
             ]);
         });
 
-        $msg = "Your " . brand_name() . " verification code to add order {$order['order_number']} to your account is $code. "
-            . 'It expires in ' . self::TTL_MINUTES . ' minutes. If you did not request this, ignore this message.';
-        $n = new NotificationService();
-        $ctx = ['order_id' => (int) $order['id'], 'secrets' => [$code]];
-        $n->sms((string) $order['customer_phone'], $msg, 'order_claim_code', $ctx);
-        if ($order['customer_email']) {
-            $n->email((string) $order['customer_email'], 'Your ' . brand_name() . ' verification code', $msg, 'order_claim_code', $ctx);
-        }
+        (new NotificationService())->sendTemplate('order_claim_code', ['code' => $code, 'minutes' => (string) self::TTL_MINUTES] + MessageTemplates::orderVars($order),
+            ['email' => $order['customer_email'], 'phone' => $order['customer_phone']], ['order_id' => (int) $order['id'], 'secrets' => [$code]]);
         return $claimId;
     }
 

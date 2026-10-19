@@ -267,7 +267,8 @@ final class PaymentFlowTest extends DbTestCase
         $svc = new SettingsService();
         $valid = ['store_name' => (string) Settings::get('store_name'), 'max_payment_submissions' => '3', 'reservation_minutes' => '45', 'reservation_minutes_cod' => '240',
                   'collection_hold_days' => '7', 'return_window_days' => '7', 'products_per_page' => '24', 'allow_registration' => '1',
-                  'product_moderation' => '1', 'payout_min_amount' => '500', 'payout_hold_days' => '7', 'payout_requires_fulfilment' => '1'];
+                  'product_moderation' => '1', 'payout_min_amount' => '500', 'payout_hold_days' => '7', 'payout_requires_fulfilment' => '1',
+                  'delivery_home_enabled' => '1', 'delivery_pickup_enabled' => '1', 'smtp_port' => '587', 'smtp_encryption' => 'tls'];
         try {
             $svc->save(['mpesa_till_number' => '12ab'] + $valid, $this->staff);
             $this->fail('invalid till');

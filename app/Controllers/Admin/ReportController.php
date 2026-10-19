@@ -54,7 +54,7 @@ final class ReportController extends AdminController
             'stock' => Csv::response($name, ['SKU', 'Product', 'Variant', 'Price', 'On hand', 'Reserved', 'Available', 'Low-stock threshold', 'Active'],
                 array_map(fn ($s) => [$s['sku'], $s['product'], $s['variant'], $s['price'], $s['on_hand'], $s['reserved'], $s['available'], $s['low_stock_threshold'], $s['is_active'] ? 'yes' : 'no'], $data['rows'])),
             'payments' => Csv::response($name, ['Code', 'Order', 'Method', 'Claimed', 'Status', 'Submitted', 'Confirmed amount', 'Decided at', 'Decided by', 'Note'],
-                array_map(fn ($p) => [$p['transaction_code'], $p['order_number'], PaymentOptions::LABELS[$p['method']] ?? $p['method'], $p['amount_claimed'], $p['status'], $p['submitted_at'], $p['amount_confirmed'], $p['decided_at'], $p['decided_by'], $p['note']], $data['rows'])),
+                array_map(fn ($p) => [$p['transaction_code'], $p['order_number'], PaymentOptions::label((string) $p['method']), $p['amount_claimed'], $p['status'], $p['submitted_at'], $p['amount_confirmed'], $p['decided_at'], $p['decided_by'], $p['note']], $data['rows'])),
             'cod' => Csv::response($name, ['Order', 'Status', 'Expected', 'Collected', 'Difference', 'Collected at', 'Collected by', 'Note'],
                 array_map(fn ($c) => [$c['order_number'], OrderPresenter::status($c['status']), $c['expected'], $c['collected'], $c['difference'], $c['collected_at'], $c['collected_by'], $c['note']], $data['rows'])),
             'refunds' => Csv::response($name, ['Order', 'Amount', 'Reason', 'Status', 'Method', 'Reference', 'Created', 'Paid'],

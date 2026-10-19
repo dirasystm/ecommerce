@@ -44,6 +44,11 @@ final class SettingsHttpTest extends FeatureTestCase
         $this->loginStaff('super_admin');
         $this->assertStringEndsWith('/admin/settings/general', (string) ($this->get('/admin/settings')['headers']['location'] ?? ''));
         foreach ($paths as $p) {
+            $group = substr($p, strlen('/admin/settings/'));
+            if (isset(SettingsService::PAGES[$group])) {   // edited on its module page (payment methods, delivery settings)
+                $this->assertStringEndsWith(SettingsService::PAGES[$group], (string) ($this->get($p)['headers']['location'] ?? ''), $p);
+                continue;
+            }
             $this->assertSame(200, $this->get($p)['status'], $p);
         }
         $this->assertSame(404, $this->get('/admin/settings/nonsense')['status']);

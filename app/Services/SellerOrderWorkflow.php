@@ -321,19 +321,19 @@ final class SellerOrderWorkflow
                     OrderNotifier::statusChanged($order);
                     continue;
                 }
-                $store = (string) $this->db->value('SELECT name FROM sellers WHERE id = ?', [$m['so']['seller_id']]);
-                $part = "Part of your order {$order['order_number']} ({$m['so']['sub_number']}, sold by $store)";
-                $text = match ($m['type']) {
-                    'dispatched' => "$part has been dispatched.",
-                    'ready' => "$part is ready for collection." . ($m['code'] ? " Your collection code is {$m['code']}. Keep it private." : ' Use the collection code we sent you earlier.'),
-                    'withdrawn' => "$part cannot be supplied: {$m['so']['reason']}." . (in_array($order['payment_status'], ['refund_due'], true) ? ' We will refund you for it.' : ' You will not be charged for it.'),
-                };
-                $ctx = ['user_id' => $order['user_id'] ? (int) $order['user_id'] : null, 'order_id' => (int) $order['id'], 'secrets' => $m['code'] ? [$m['code']] : []];
-                $n = new NotificationService();
-                $n->sms((string) $order['customer_phone'], $text, 'seller_order_' . $m['type'], $ctx);
-                if ($order['customer_email']) {
-                    $n->email((string) $order['customer_email'], 'Update on your order ' . $order['order_number'], $text, 'seller_order_' . $m['type'], $ctx);
+                $vars = ['part_number' => (string) $m['so']['sub_number'],
+                         'seller_name' => (string) $this->db->value('SELECT name FROM sellers WHERE id = ?', [$m['so']['seller_id']])] + MessageTemplates::orderVars($order);
+                if ($m['type'] === 'ready') {
+                    $vars['collection_note'] = $m['code'] ? " Your collection code is {$m['code']}. Keep it private." : ' Use the collection code we sent you earlier.';
+                } elseif ($m['type'] === 'withdrawn') {
+                    $vars['reason'] = (string) $m['so']['reason'];
+                    $vars['refund_note'] = in_array($order['payment_status'], ['refund_due'], true) ? ' We will refund you for it.' : ' You will not be charged for it.';
                 }
+                // "Ready" (it may carry the code) and "withdrawn" are always sent; "dispatched" follows the customer's preferences.
+                $prefs = $order['user_id'] ? $this->db->one('SELECT notify_email, notify_sms FROM users WHERE id = ?', [$order['user_id']]) : null;
+                (new NotificationService())->sendTemplate('seller_order_' . $m['type'], $vars,
+                    ['email' => $order['customer_email'], 'phone' => $order['customer_phone'], 'prefs' => $prefs],
+                    ['user_id' => $order['user_id'] ? (int) $order['user_id'] : null, 'order_id' => (int) $order['id'], 'secrets' => $m['code'] ? [$m['code']] : []]);
             } catch (\Throwable $e) {
                 \Waimart\Core\Logger::error('Seller order notification failed', ['error' => $e->getMessage()]);
             }

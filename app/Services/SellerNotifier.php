@@ -38,15 +38,12 @@ final class SellerNotifier
             );
             $svc = new NotificationService();
             foreach ($users as $u) {
-                $ctx = ['user_id' => (int) $u['id'], 'order_id' => $orderId];
-                if ($important || (int) $u['notify_email'] === 1) {
-                    $svc->email((string) $u['email'], $subject, "Hello {$u['first_name']},\n\n$body\n\n— " . brand_name() . " Seller Support", $template, $ctx);
-                    $n++;
-                }
-                if (!$important && (int) $u['notify_sms'] === 1 && (string) $u['phone'] !== '') {
-                    $svc->sms((string) $u['phone'], brand_name() . " Seller Centre: $subject", $template, $ctx);
-                    $n++;
-                }
+                // Layout and SMS wording: the seller_message template. Important messages are emailed regardless of
+                // the person's preferences and never by SMS.
+                $n += $svc->sendTemplate('seller_message', ['first_name' => (string) $u['first_name'], 'subject' => $subject, 'message' => $body] + MessageTemplates::contactVars(),
+                    ['email' => $important || (int) $u['notify_email'] === 1 ? (string) $u['email'] : null,
+                     'phone' => !$important && (int) $u['notify_sms'] === 1 ? (string) $u['phone'] : null],
+                    ['user_id' => (int) $u['id'], 'order_id' => $orderId, 'log_as' => $template]);
             }
         } catch (\Throwable $e) {
             Logger::error('Seller notification failed', ['seller_id' => $sellerId, 'template' => $template, 'error' => $e->getMessage()]);

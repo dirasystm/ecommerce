@@ -44,9 +44,10 @@ final class OrderPresenter
         'refunded' => 'Refunded',
     ];
 
+    /** The status name as currently set (Delivery settings can rename statuses; STATUS_LABELS are the built-in names). */
     public static function status(string $s): string
     {
-        return self::STATUS_LABELS[$s] ?? ucfirst(str_replace('_', ' ', $s));
+        return StatusLabels::all()[$s] ?? ucfirst(str_replace('_', ' ', $s));
     }
 
     /** Customer-facing labels for a seller's part of an order. */

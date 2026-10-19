@@ -24,6 +24,11 @@ try {
 $tagline = \Waimart\Services\Brand::tagline();
 $menus = new \Waimart\Services\SiteContentService();
 $footerNote = trim((string) Settings::get('footer_note', ''));
+try {
+    $payBadges = \Waimart\Services\PaymentOptions::badges();   // the methods currently offered (Admin → Payment methods)
+} catch (\Throwable) {
+    $payBadges = ['mpesa' => false, 'names' => []];
+}
 ?>
 <footer class="wm-footer">
     <div class="wm-footer-top">
@@ -57,13 +62,13 @@ $footerNote = trim((string) Settings::get('footer_note', ''));
                     </div>
                 <?php endforeach; ?>
                 <div class="col-6 col-md-3">
-                    <h3>Payment methods</h3>
-                    <div class="wm-pay-badges mb-3">
-                        <span class="wm-pay-badge mpesa">M-PESA</span>
-                        <span class="wm-pay-badge">Till</span>
-                        <span class="wm-pay-badge">Paybill</span>
-                        <span class="wm-pay-badge">Cash on Delivery</span>
-                    </div>
+                    <?php if ($payBadges['names']): ?>
+                        <h3>Payment methods</h3>
+                        <div class="wm-pay-badges mb-3">
+                            <?php if ($payBadges['mpesa']): ?><span class="wm-pay-badge mpesa">M-PESA</span><?php endif; ?>
+                            <?php foreach ($payBadges['names'] as $badge): ?><span class="wm-pay-badge"><?= e($badge) ?></span><?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
                     <?php if ($storePhone !== '' || $storeEmail !== '' || $whatsapp !== ''): ?>
                         <h3>Contact</h3>
                         <ul>

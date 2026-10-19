@@ -55,7 +55,9 @@ final class CheckoutController extends Controller
             'pickupPoints' => $delivery->pickupPoints(),
             'deliveryAvailable' => $delivery->deliveryAvailable(),
             'pickupAvailable' => $delivery->pickupAvailable(),
-            'payments' => PaymentOptions::forFulfilment(null),
+            'payments' => PaymentOptions::forFulfilment(null, null, $cart['subtotal']),
+            'deliveryNote' => (string) \Waimart\Core\Settings::get('delivery_checkout_note', ''),
+            'pickupNote' => (string) \Waimart\Core\Settings::get('pickup_checkout_note', ''),
             'checkoutToken' => (string) Session::get('checkout_token'),
         ])->withHeader('Cache-Control', 'no-store, private');
     }
@@ -68,6 +70,9 @@ final class CheckoutController extends Controller
         $method = (string) $req->input('fulfilment_method', '');
         $out = ['ok' => false, 'message' => null, 'fee' => null, 'eta' => null, 'cod_allowed' => null];
 
+        if (in_array($method, ['delivery', 'pickup'], true) && !DeliveryService::methodEnabled($method)) {
+            $method = '';
+        }
         if ($method === 'delivery') {
             $county = (string) $req->input('county_id', '');
             $town = (string) $req->input('town', '');

@@ -47,7 +47,7 @@ $money = fn ($v) => $v === null ? '—' : e(money((string) $v));
             <div class="wm-panel-body"><?= View::partial('admin/partials/daily-chart', ['daily' => $daily]) ?></div></section>
     <?php endif; ?>
     <div class="row g-3">
-        <?php foreach ([['By payment method', $byPayment, fn ($l) => PaymentOptions::LABELS[$l] ?? $l], ['By fulfilment', $byFulfilment, fn ($l) => ucfirst($l)], ['By current status (all orders)', $byStatus, fn ($l) => OrderPresenter::status($l)]] as [$h, $rows, $fmt]): ?>
+        <?php foreach ([['By payment method', $byPayment, fn ($l) => PaymentOptions::label((string) $l)], ['By fulfilment', $byFulfilment, fn ($l) => ucfirst($l)], ['By current status (all orders)', $byStatus, fn ($l) => OrderPresenter::status($l)]] as [$h, $rows, $fmt]): ?>
             <div class="col-lg-4"><section class="wm-panel h-100"><div class="wm-panel-head"><?= e($h) ?></div>
                 <table class="table table-sm mb-0 wm-num"><thead><tr><th></th><th class="text-end">Orders</th><th class="text-end">Value</th></tr></thead><tbody>
                 <?php foreach ($rows as $r): ?><tr><td><?= e($fmt($r['label'])) ?></td><td class="text-end"><?= (int) $r['orders'] ?></td><td class="text-end"><?= $money($r['booked']) ?></td></tr><?php endforeach; ?>
@@ -73,7 +73,7 @@ $money = fn ($v) => $v === null ? '—' : e(money((string) $v));
                     <td><?= $a <= 0 ? '<span class="badge badge-soft-danger"><i class="bi bi-x-octagon"></i> Out</span>' : ($a <= (int) $r['low_stock_threshold'] ? '<span class="badge badge-soft-warning"><i class="bi bi-exclamation-triangle"></i> Low</span>' : '<span class="badge badge-soft-success">OK</span>') ?></td></tr><?php endforeach; ?>
             <?php elseif ($tab === 'payments'): ?>
                 <thead><tr><th>Code</th><th>Order</th><th>Method</th><th class="text-end">Claimed</th><th class="text-end">Confirmed</th><th>Status</th><th>Decided by</th></tr></thead><tbody>
-                <?php foreach ($rows as $r): ?><tr><td><code><?= e($r['transaction_code']) ?></code></td><td><?= e($r['order_number']) ?></td><td class="small"><?= e(PaymentOptions::LABELS[$r['method']] ?? $r['method']) ?></td>
+                <?php foreach ($rows as $r): ?><tr><td><code><?= e($r['transaction_code']) ?></code></td><td><?= e($r['order_number']) ?></td><td class="small"><?= e(PaymentOptions::label((string) $r['method'])) ?></td>
                     <td class="text-end"><?= $money($r['amount_claimed']) ?></td><td class="text-end"><?= $money($r['amount_confirmed']) ?></td><td><?= e($r['status']) ?></td><td class="small"><?= e((string) $r['decided_by']) ?></td></tr><?php endforeach; ?>
             <?php elseif ($tab === 'cod'): ?>
                 <thead><tr><th>Order</th><th>Status</th><th class="text-end">Expected</th><th class="text-end">Collected</th><th class="text-end">Difference</th><th>By</th><th>Note</th></tr></thead><tbody>

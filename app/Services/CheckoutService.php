@@ -43,22 +43,16 @@ final class CheckoutService
 
         $customer = $this->validateCustomer($in, $user);
         $method = (string) ($in['fulfilment_method'] ?? '');
+        if (in_array($method, ['delivery', 'pickup'], true) && !DeliveryService::methodEnabled($method)) {
+            throw new ValidationException(['fulfilment_method' => $method === 'delivery'
+                ? 'Home delivery is not available at the moment. Please choose a pickup station.'
+                : 'Pickup stations are not available at the moment. Please choose home delivery.']);
+        }
         $fulfilment = match ($method) {
             'delivery' => $this->validateDelivery($in, $user, $summary['subtotal'], $summary['lines']),
             'pickup' => $this->validatePickup($in, $summary['subtotal'], $summary['lines']),
             default => throw new ValidationException(['fulfilment_method' => 'Choose home delivery or a pickup station.']),
         };
-
-        // COD needs both the location's permission and the marketplace rule (MarketplacePolicy::cod).
-        $marketCod = MarketplacePolicy::cod($summary['lines'], $method);
-        $payment = (string) ($in['payment_method'] ?? '');
-        $options = PaymentOptions::forFulfilment((bool) $fulfilment['cod_allowed'] && $marketCod['allowed'], $marketCod['reason']);
-        if (!isset($options[$payment])) {
-            throw new ValidationException(['payment_method' => 'Choose a payment method.']);
-        }
-        if (!$options[$payment]['available']) {
-            throw new ValidationException(['payment_method' => (string) $options[$payment]['reason']]);
-        }
 
         Validator::validate($in, ['notes' => 'nullable|max:500', 'coupon_code' => 'nullable|max:40'], ['notes' => 'Order notes']);
 
@@ -75,6 +69,18 @@ final class CheckoutService
             $coupon = $eval['coupon'];
         }
         $total = Money::sub(Money::add($summary['subtotal'], $fulfilment['fee']), $discount);
+
+        // Payment method: switched on and configured (Admin → Payment methods), within its order limits, and for COD
+        // both the location's permission and the marketplace rule (MarketplacePolicy::cod).
+        $marketCod = MarketplacePolicy::cod($summary['lines'], $method);
+        $payment = (string) ($in['payment_method'] ?? '');
+        $options = PaymentOptions::forFulfilment((bool) $fulfilment['cod_allowed'] && $marketCod['allowed'], $marketCod['reason'], $total);
+        if (!isset($options[$payment])) {
+            throw new ValidationException(['payment_method' => 'Choose a payment method.']);
+        }
+        if (!$options[$payment]['available']) {
+            throw new ValidationException(['payment_method' => (string) $options[$payment]['reason']]);
+        }
 
         return [
             'customer' => $customer,

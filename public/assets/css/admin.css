@@ -67,3 +67,6 @@ body.wm-admin { background: #f4f6f5; padding-bottom: 0; }
 .wm-panel .list-group-item.active { background: var(--wm-green); border-color: var(--wm-green); color: #fff; }
 .wm-panel .list-group-item-action { text-decoration: none; }
 .wm-panel .list-group-item-action:not(.active):hover { background: var(--wm-green-50); }
+
+/* Message templates: the preview keeps line breaks and wraps long links. */
+.wm-message-preview { white-space: pre-wrap; overflow-wrap: anywhere; font-family: inherit; font-size: .875rem; background: var(--bs-light, #f8f9fa); border: 1px solid var(--bs-border-color, #dee2e6); border-radius: .375rem; padding: .75rem; margin-bottom: .75rem; }

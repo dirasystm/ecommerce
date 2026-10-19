@@ -243,7 +243,7 @@
                     msg.className = 'small mt-2 mb-0 ' + (q.ok ? 'text-success' : 'text-danger');
                     if (cod) {
                         var blocked = q.cod_allowed === false;
-                        cod.disabled = blocked;
+                        cod.disabled = blocked || cod.hasAttribute('data-blocked');   // data-blocked: outside the method's order limits
                         if (blocked && cod.checked) { cod.checked = false; }
                         if (codReason) { codReason.hidden = !blocked; codReason.textContent = blocked ? (q.cod_reason || 'Not available for the selected location.') : ''; }
                     }
