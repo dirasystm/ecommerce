@@ -64,6 +64,11 @@ p a:not(.btn), li > a:not(.btn):not(.dropdown-item):not(.nav-link):not(.page-lin
 }
 .wm-footer li > a, .wm-filters li > a, .wm-cat-flyout li > a, .wm-help-nav a, .breadcrumb a { text-decoration: none; }
 .wm-footer li > a:hover, .wm-filters li > a:hover, .wm-cat-flyout li > a:hover, .breadcrumb a:hover { text-decoration: underline; }
+/* Footer link lists: no underline at rest (they are lists of links, not links in running text, so 1.4.1 does not
+   apply). The selector repeats the :not() chain above so it outranks it; hover and keyboard focus still underline. */
+.wm-footer li > a:not(.btn):not(.dropdown-item):not(.nav-link):not(.page-link):not(.list-group-item) { text-decoration: none; }
+.wm-footer li > a:not(.btn):not(.dropdown-item):not(.nav-link):not(.page-link):not(.list-group-item):hover,
+.wm-footer li > a:not(.btn):not(.dropdown-item):not(.nav-link):not(.page-link):not(.list-group-item):focus-visible { text-decoration: underline; }
 
 .container-wm { max-width: var(--wm-container); margin-inline: auto; padding-inline: 16px; }
 
