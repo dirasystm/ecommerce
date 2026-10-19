@@ -130,19 +130,27 @@ $expires = $order['reservation_expires_at'];
             <?php endif; ?>
 
             <?php if (\Waimart\Services\OrderWorkflow::customerCanCancel($order)): ?>
-                <details class="mt-3">
+                <?php $cancelReason = (string) fv('reason', ''); ?>
+                <details class="mt-3" <?= error('reason') !== null || error('reason_other') !== null ? 'open' : '' ?>>
                     <summary class="small text-danger">Cancel this order</summary>
-                    <form method="post" action="<?= e(url('/order/' . $order['order_number'] . '/cancel')) ?>" class="mt-2" data-confirm="Cancel this order? Your reserved items will be released.">
+                    <form method="post" action="<?= e(url('/order/' . $order['order_number'] . '/cancel')) ?>" class="mt-2" data-confirm="Cancel this order? Your reserved items will be released." novalidate>
                         <?= csrf_field() ?>
                         <label class="form-label small" for="cancelReason">Reason</label>
-                        <select class="form-select form-select-sm mb-2" id="cancelReason" name="reason" required>
+                        <select class="form-select form-select-sm mb-2<?= invalid('reason') ?>" id="cancelReason" name="reason" required data-other-target="cancelReasonOtherWrap">
                             <option value="">Choose a reason…</option>
-                            <option value="changed_mind">Changed my mind</option>
-                            <option value="ordered_by_mistake">Ordered by mistake</option>
-                            <option value="found_cheaper">Found it cheaper elsewhere</option>
-                            <option value="delivery_too_long">Delivery takes too long</option>
-                            <option value="other">Other</option>
+                            <?php foreach (['changed_mind' => 'Changed my mind', 'ordered_by_mistake' => 'Ordered by mistake', 'found_cheaper' => 'Found it cheaper elsewhere',
+                                            'delivery_too_long' => 'Delivery takes too long', 'other' => 'Other'] as $value => $label): ?>
+                                <option value="<?= $value ?>" <?= $cancelReason === $value ? 'selected' : '' ?>><?= e($label) ?></option>
+                            <?php endforeach; ?>
                         </select>
+                        <?= field_error('reason') ?>
+                        <div id="cancelReasonOtherWrap" class="mb-2" <?= $cancelReason === 'other' ? '' : 'hidden' ?>>
+                            <label class="form-label small" for="cancelReasonOther">Please tell us why</label>
+                            <textarea class="form-control form-control-sm<?= invalid('reason_other') ?>" id="cancelReasonOther" name="reason_other" rows="2" maxlength="200"
+                                      aria-describedby="cancelReasonOtherHelp"<?= $cancelReason === 'other' ? ' required' : '' ?>><?= e((string) fv('reason_other', '')) ?></textarea>
+                            <div class="form-text" id="cancelReasonOtherHelp">A short reason helps us improve (up to 200 characters).</div>
+                            <?= field_error('reason_other') ?>
+                        </div>
                         <button class="btn btn-sm btn-outline-danger" type="submit">Cancel order</button>
                     </form>
                 </details>

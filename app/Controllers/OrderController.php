@@ -104,8 +104,20 @@ final class OrderController extends Controller
         if (!isset($reasons[$reason])) {
             throw new ValidationException(['reason' => 'Please choose a reason.']);
         }
+        $text = $reasons[$reason];
+        if ($reason === 'other') {
+            // "Other" needs the customer's own words (one line, no control characters), stored with the order.
+            $other = trim((string) preg_replace('/[\x00-\x1F\x7F]+/u', ' ', (string) $req->input('reason_other', '')));
+            if (mb_strlen($other) < 3) {
+                throw new ValidationException(['reason_other' => 'Please tell us why you are cancelling.']);
+            }
+            if (mb_strlen($other) > 200) {
+                throw new ValidationException(['reason_other' => 'Please keep the reason under 200 characters.']);
+            }
+            $text = 'Other: ' . $other;
+        }
         $updated = (new OrderWorkflow())->transition(
-            (int) $order['id'], 'cancelled', ['type' => 'customer', 'id' => Auth::id()], 'Cancelled by customer', ['reason' => $reasons[$reason]]
+            (int) $order['id'], 'cancelled', ['type' => 'customer', 'id' => Auth::id()], 'Cancelled by customer', ['reason' => $text]
         );
         OrderNotifier::statusChanged($updated);
         Session::flash('success', 'Your order has been cancelled.');

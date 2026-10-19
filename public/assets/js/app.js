@@ -195,6 +195,23 @@
         load();
     });
 
+    // ---------------------------------------------------------------- "Other" reason boxes
+    // <select data-other-target="id">: choosing "other" shows the element with that id (a text box for the reason)
+    // and makes its field required; any other choice hides it again.
+    document.querySelectorAll('select[data-other-target]').forEach(function (sel) {
+        var wrap = document.getElementById(sel.getAttribute('data-other-target'));
+        if (!wrap) { return; }
+        var field = wrap.querySelector('textarea, input');
+        var sync = function () {
+            var other = sel.value === 'other';
+            wrap.hidden = !other;
+            if (field) { field.required = other; }
+            if (other && field && document.activeElement === sel) { field.focus(); }
+        };
+        sel.addEventListener('change', sync);
+        sync();
+    });
+
     // ---------------------------------------------------------------- pickup station finder (checkout)
     // Filters the station list as the customer types a town or county; a chosen station always stays visible.
     var finder = document.querySelector('[data-station-finder]');

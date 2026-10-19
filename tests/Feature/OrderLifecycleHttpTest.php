@@ -42,6 +42,31 @@ final class OrderLifecycleHttpTest extends FeatureTestCase
         $this->assertStringNotContainsString('Cancel this order', $this->get($page)['body'], 'no longer offered');
     }
 
+    public function testOtherReasonNeedsTheCustomersOwnWords(): void
+    {
+        $this->post('/register', ['first_name' => 'D', 'last_name' => 'Y', 'email' => 'dy@example.com', 'phone' => '0712131313',
+            'password' => 'Secret123', 'password_confirmation' => 'Secret123', 'accept_terms' => '1'], '/register');
+        $uid = (int) $this->db->value("SELECT id FROM users WHERE email = 'dy@example.com'");
+        $o = $this->placeOrder([[$this->makeVariant(3)['variant_id'], 1]], 'cod');
+        $this->db->exec('UPDATE orders SET user_id = ? WHERE id = ?', [$uid, $o['id']]);
+        $page = '/account/orders/' . $o['order_number'];
+
+        $form = $this->get($page)['body'];
+        $this->assertStringContainsString('data-other-target="cancelReasonOtherWrap"', $form);
+        $this->assertMatchesRegularExpression('/id="cancelReasonOtherWrap"[^>]*hidden/', $form, 'the box appears only for "Other"');
+
+        // "Other" without words: refused, the form reopens with "Other" kept and the box shown with the message.
+        $bad = $this->follow($this->post('/order/' . $o['order_number'] . '/cancel', ['reason' => 'other', 'reason_other' => ' '], $page))['body'];
+        $this->assertSame('pending_confirmation', $this->db->value('SELECT status FROM orders WHERE id = ?', [$o['id']]));
+        $this->assertStringContainsString('Please tell us why you are cancelling.', $bad);
+        $this->assertMatchesRegularExpression('/<details class="mt-3"\s+open>/', $bad);
+        $this->assertMatchesRegularExpression('/<option value="other" selected>/', $bad);
+        $this->assertDoesNotMatchRegularExpression('/id="cancelReasonOtherWrap"[^>]*hidden/', $bad);
+
+        $this->post('/order/' . $o['order_number'] . '/cancel', ['reason' => 'other', 'reason_other' => "Wrong colour\nsorry"], $page);
+        $this->assertSame(['cancelled', 'Other: Wrong colour sorry'], array_values((array) $this->db->one('SELECT status, cancel_reason FROM orders WHERE id = ?', [$o['id']])));
+    }
+
     public function testStrangersCannotCancelOrders(): void
     {
         $v = $this->makeVariant(3)['variant_id'];
