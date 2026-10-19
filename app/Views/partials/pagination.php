@@ -1,13 +1,13 @@
 <?php
-/** @var int $page @var int $pages @var string $path */
+/** @var int $page @var int $pages @var string $path @var bool $compact optional: no padding, aligned right (above a table) */
 if ($pages <= 1) {
     return;
 }
 $window = array_unique(array_filter([1, $page - 2, $page - 1, $page, $page + 1, $page + 2, $pages], fn ($n) => $n >= 1 && $n <= $pages));
 sort($window);
 ?>
-<nav aria-label="Pagination" class="d-flex justify-content-center py-3">
-    <ul class="pagination mb-0">
+<nav aria-label="<?= !empty($compact) ? 'Pagination (top)' : 'Pagination' ?>" class="d-flex <?= !empty($compact) ? 'justify-content-end' : 'justify-content-center py-3' ?>">
+    <ul class="pagination mb-0<?= !empty($compact) ? ' pagination-sm' : '' ?>">
         <li class="page-item<?= $page <= 1 ? ' disabled' : '' ?>">
             <a class="page-link" href="<?= e(query_url($path, ['page' => $page - 1])) ?>" aria-label="Previous page"><i class="bi bi-chevron-left" aria-hidden="true"></i></a>
         </li>
