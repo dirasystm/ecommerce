@@ -91,7 +91,7 @@ foreach ($pickupPoints as $pp) {
                             <?= field_error('address_id') ?>
                             <?php foreach ($addresses as $a): ?>
                                 <div class="form-check border rounded p-2 ps-5 mb-2">
-                                    <input class="form-check-input" type="radio" name="address_id" id="addr<?= $a['id'] ?>" value="<?= $a['id'] ?>" <?= $addrChoice === (string) $a['id'] ? 'checked' : '' ?> data-quote>
+                                    <input class="form-check-input" type="radio" name="address_id" id="addr<?= $a['id'] ?>" value="<?= $a['id'] ?>" <?= $addrChoice === (string) $a['id'] ? 'checked' : '' ?> data-quote data-county-name="<?= e($a['county_name']) ?>">
                                     <label class="form-check-label small w-100" for="addr<?= $a['id'] ?>">
                                         <strong><?= e($a['label'] ?: $a['recipient_name']) ?></strong> — <?= e($a['location']) ?>, <?= e($a['town']) ?>, <?= e($a['county_name']) ?>
                                     </label>
@@ -140,12 +140,21 @@ foreach ($pickupPoints as $pp) {
                 <div data-panel="pickup" <?= $method === 'pickup' ? '' : 'hidden' ?>>
                     <?php if ($pickupNote !== ''): ?><p class="small wm-callout mb-3"><i class="bi bi-info-circle me-1" aria-hidden="true"></i><?= e($pickupNote) ?></p><?php endif; ?>
                     <?= field_error('pickup_point_id') ?>
-                    <fieldset>
+                    <fieldset data-station-finder>
                         <legend class="fs-6 fw-semibold">Choose a pickup station</legend>
+                        <?php if (count($pickupPoints) > 4): ?>
+                            <label class="form-label small mb-1" for="stationSearch">Find a station near you</label>
+                            <input class="form-control mb-1" type="search" id="stationSearch" list="stationPlaces" placeholder="Type your town or county, e.g. Nanyuki" autocomplete="off" aria-describedby="stationSearchHelp" data-station-search>
+                            <datalist id="stationPlaces">
+                                <?php foreach (array_unique(array_merge(array_column($pickupPoints, 'town'), array_keys($byCounty))) as $place): ?><option value="<?= e($place) ?>"><?php endforeach; ?>
+                            </datalist>
+                            <div class="form-text mb-2" id="stationSearchHelp" role="status" aria-live="polite" data-station-count><?= count($pickupPoints) ?> stations across Kenya</div>
+                        <?php endif; ?>
                         <?php foreach ($byCounty as $county => $points): ?>
+                            <div data-station-group>
                             <h3 class="fs-6 text-muted text-uppercase mt-3 mb-2 small fw-bold"><?= e($county) ?></h3>
                             <?php foreach ($points as $pp): ?>
-                                <div class="form-check border rounded p-2 ps-5 mb-2">
+                                <div class="form-check border rounded p-2 ps-5 mb-2" data-station="<?= e(mb_strtolower($pp['name'] . ' ' . $pp['town'] . ' ' . $county . ' ' . $pp['address'])) ?>">
                                     <input class="form-check-input" type="radio" name="pickup_point_id" id="pp<?= $pp['id'] ?>" value="<?= $pp['id'] ?>" <?= (string) fv('pickup_point_id', '') === (string) $pp['id'] ? 'checked' : '' ?> data-quote>
                                     <label class="form-check-label small w-100" for="pp<?= $pp['id'] ?>">
                                         <strong><?= e($pp['name']) ?></strong>
@@ -157,7 +166,9 @@ foreach ($pickupPoints as $pp) {
                                     </label>
                                 </div>
                             <?php endforeach; ?>
+                            </div>
                         <?php endforeach; ?>
+                        <p class="small text-muted" data-station-none hidden>No pickup station matches that place yet. Try your county name, or choose home delivery.</p>
                     </fieldset>
                 </div>
                 <?php endif; ?>

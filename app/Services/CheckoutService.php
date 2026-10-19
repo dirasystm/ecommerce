@@ -142,9 +142,10 @@ final class CheckoutService
             // Show it where the customer is looking: under the saved addresses when one was chosen (the new-address
             // fields, and so a "town" error, are hidden then), otherwise under the town they typed.
             $savedAddress = $user !== null && $addressId !== '' && $addressId !== 'new';
+            $hint = $this->delivery->pickupHint($addr['county_id']);
             throw new ValidationException([($savedAddress ? 'address_id' : 'town') => sprintf(
-                'Sorry, we do not deliver to %s, %s yet. Please choose a pickup station or a different address.', $addr['town'], $county
-            )]);
+                'Sorry, we do not deliver to %s, %s yet.', $addr['town'], $county
+            ) . ($hint !== '' ? $hint : ' Please choose a pickup station or a different address.')]);
         }
         return [
             'method' => 'delivery',

@@ -120,16 +120,32 @@ final class DeliveryService
         ];
     }
 
-    /** Known towns for a county (for autocomplete), from zone rules and pickup points. @return list<string> */
+    /** "We do not deliver here" help: the open pickup stations in the same county, if any (else ''). */
+    public function pickupHint(int $countyId): string
+    {
+        $names = array_column($this->pickupPoints($countyId), 'name');
+        if (!$names) {
+            return '';
+        }
+        $list = count($names) > 3 ? implode(', ', array_slice($names, 0, 3)) . ' and ' . (count($names) - 3) . ' more' : implode(', ', $names);
+        return ' You can collect your order from ' . (count($names) === 1 ? 'our pickup station' : 'our pickup stations') . " in this county ($list): choose “Pickup station” above.";
+    }
+
+    /**
+     * Town suggestions for a county (checkout autocomplete): its main towns (KenyaTowns), plus any town named in a
+     * delivery zone or at an open pickup station. @return list<string>
+     */
     public function towns(int $countyId): array
     {
         $rows = $this->db->all(
             "SELECT town FROM delivery_zone_locations WHERE county_id = ? AND town <> ''
-             UNION SELECT town FROM pickup_points WHERE county_id = ? AND is_active = 1
-             ORDER BY town",
+             UNION SELECT town FROM pickup_points WHERE county_id = ? AND is_active = 1",
             [$countyId, $countyId]
         );
-        return array_values(array_unique(array_column($rows, 'town')));
+        $county = (string) $this->db->value('SELECT name FROM counties WHERE id = ?', [$countyId]);
+        $towns = array_values(array_unique(array_merge(KenyaTowns::forCounty($county), array_column($rows, 'town'))));
+        natcasesort($towns);
+        return array_values($towns);
     }
 
     /** @return list<array{id:int,name:string}> */

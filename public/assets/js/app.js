@@ -195,6 +195,43 @@
         load();
     });
 
+    // ---------------------------------------------------------------- pickup station finder (checkout)
+    // Filters the station list as the customer types a town or county; a chosen station always stays visible.
+    var finder = document.querySelector('[data-station-finder]');
+    var finderInput = finder ? finder.querySelector('[data-station-search]') : null;
+    if (finderInput) {
+        var stationCount = finder.querySelector('[data-station-count]');
+        var stationNone = finder.querySelector('[data-station-none]');
+        var stations = finder.querySelectorAll('[data-station]');
+        var filterStations = function () {
+            var q = finderInput.value.trim().toLowerCase();
+            var shown = 0;
+            stations.forEach(function (s) {
+                var hit = !q || s.getAttribute('data-station').indexOf(q) !== -1 || s.querySelector('input:checked') !== null;
+                s.hidden = !hit;
+                if (hit) { shown++; }
+            });
+            finder.querySelectorAll('[data-station-group]').forEach(function (g) {
+                g.hidden = !g.querySelector('[data-station]:not([hidden])');
+            });
+            if (stationNone) { stationNone.hidden = shown > 0; }
+            if (stationCount) {
+                stationCount.textContent = q ? shown + ' of ' + stations.length + ' stations match “' + finderInput.value.trim() + '”' : stations.length + ' stations across Kenya';
+            }
+        };
+        finderInput.addEventListener('input', filterStations);
+        // Switching to pickup starts from the customer's county: the saved address chosen, or the county selected.
+        document.querySelectorAll('input[name="fulfilment_method"]').forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                if (radio.value !== 'pickup' || finderInput.value) { return; }
+                var saved = document.querySelector('input[name="address_id"]:checked[data-county-name]');
+                var county = document.getElementById('county_id');
+                var place = saved ? saved.getAttribute('data-county-name') : (county && county.value ? county.options[county.selectedIndex].text : '');
+                if (place) { finderInput.value = place; filterStations(); }
+            });
+        });
+    }
+
     // ---------------------------------------------------------------- checkout
     var checkout = document.querySelector('form[data-checkout]');
     if (checkout) {

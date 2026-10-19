@@ -85,7 +85,8 @@ final class CheckoutController extends Controller
                 $q = $delivery->quoteDelivery((int) $county, $town, $cart['subtotal']);
                 $f = $q === null ? null : MarketplacePolicy::fee(fn (string $s) => $delivery->quoteDelivery((int) $county, $town, $s), $cart['lines'], $cart['subtotal']);
                 if ($q === null || $f === null) {
-                    $out['message'] = 'We do not deliver to this location yet. Please choose a pickup station.';
+                    $hint = $delivery->pickupHint((int) $county);
+                    $out['message'] = 'We do not deliver to this location yet.' . ($hint !== '' ? $hint : ' Please choose a pickup station.');
                     $out['cod_allowed'] = false;
                 } else {
                     $out = ['ok' => true, 'fee' => $f['fee'], 'eta' => $q['eta_min'] . '–' . $q['eta_max'] . ' business days (estimate)',

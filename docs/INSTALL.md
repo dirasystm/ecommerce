@@ -129,7 +129,7 @@ To require two-step sign-in for every staff member, tick **Settings → Security
    - A method appears at checkout only once it is on and its number is set.
 3. **Fulfilment:**
    - **Delivery zones:** counties and towns, fee, days, COD.
-   - **Pickup points.**
+   - **Pickup points.** For testing across Kenya, `php bin/seed-kenya-coverage.php` adds a station in the main town of every county that has none, plus a "Rest of Kenya" delivery zone (KSh 599, 3–7 days, COD) for counties no zone covers. Run it with `--dry-run` first. The new stations' addresses say "exact location to be confirmed": replace them with real addresses, or switch unused stations off, before going live.
    - **Delivery settings:** home delivery and pickup on/off, store-wide free-delivery amount, checkout notes, status names.
 4. **Catalogue:** categories, brands, products, variants and opening stock (recorded as stock movements).
 5. **Content & marketing:**
