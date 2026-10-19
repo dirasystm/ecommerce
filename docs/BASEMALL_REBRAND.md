@@ -1,6 +1,6 @@
 # Basemall Rebrand and Database-Driven Management
 
-**Started:** 18 October 2026 · **Branch:** `feature/basemall-rebrand` (from `feature/multi-vendor`) · **Status:** Stages 1–5 complete (plus sign-in with phone or email); Stage 6 in progress
+**Started:** 18 October 2026 · **Branch:** `feature/basemall-rebrand` (from `feature/multi-vendor`) · **Status:** All 6 stages complete (plus sign-in with phone or email). Summary: docs/BASEMALL_FINAL_REPORT.md
 
 This is the plan and progress record for the owner's request "Rebrand the e-commerce platform to Basemall and implement full database-driven management". The marketplace work it builds on is recorded in `docs/MARKETPLACE_PLAN.md`.
 
@@ -537,3 +537,60 @@ Still hardcoded, and scheduled:
 - Two older tests were updated for the deliberate changes: the role count is now 8, and the route-safety allowlist.
 - **Full suite: 469 tests, 4,862 assertions, all passing.**
 - **Browser:** 0 serious/critical accessibility issues on roles (list and edit), staff (list and both edit views), My account, sign-in activity, Settings → Security and the staff sign-in; responsive checks passed on phone, tablet and desktop; screenshots reviewed.
+
+## Stage 6 results (19 October 2026): verification and documentation
+
+This stage also completes the marketplace upgrade's remaining Phase 10 and 11 items: the full browser sweep, the ledger load test and the docs. The summary for the owner is [BASEMALL_FINAL_REPORT.md](BASEMALL_FINAL_REPORT.md).
+
+### Verification added
+
+- **Role matrix from the live route table** (`AdminRoleMatrixHttpTest`):
+  - each of the 8 roles is signed in and opens every admin page: allowed pages open without error, everything else is 403;
+  - four roles post every admin action outside their role: all 403, and a fingerprint of settings, roles, permissions, payment methods and content is unchanged (536 checks).
+- **The brief's acceptance checks** (`BriefAcceptanceHttpTest`):
+  - with every optional setting deleted, 19 shop pages and 7 admin pages load without errors and invent no contact or payment details;
+  - the tagline and footer note change from the admin;
+  - a delivery-fee change in the admin changes the server's quote and the placed order, and a posted fee or total is ignored;
+  - a suspended manager's open session stops on the next click.
+- **Old-brand scan** (`tests/scripts/brand_scan.php`): every PHP string literal and HTML/JS/CSS text in the app, ignoring the deliberate internal identifiers. Result: none left.
+- **Ledger load test** (`tests/scripts/ledger_load.php`, test database only): 100,000 rows across 20 sellers, written at about 1,300 rows/s through the real posting code.
+  - Every balance is exact to the cent, and the balance query uses its index.
+  - Seller dashboard, summary and statement: 9–20 ms.
+  - Finance liability: 0.54 s; reconciliation: 0.42 s; 30-day seller performance: 1.2 s.
+- **Integrity tool** (`bin/check-integrity.php`): 7 new checks:
+  - the audit and sign-in log guards installed;
+  - an active super administrator;
+  - a payment method on;
+  - a delivery option on;
+  - the 9 built-in pages present;
+  - no roles on non-staff accounts;
+  - no two-step sign-in without a secret.
+  - 33 checks in all. On the dev database every check passes except "no active super administrator", which is true: creating it is the owner's first step.
+- **Full browser sweep:** every page with a fixed address, generated from the route table (63 admin, 11 Seller Centre, 11 customer account, 18 public), each signed in as the right user, plus the main id pages (an order, a case, a payout, an application, a seller part, a product, a store, a missing page).
+  - Accessibility: 0 serious or critical issues.
+  - Responsive at phone, tablet and desktop: no overflow and no console errors.
+
+### Found and fixed in this stage
+
+- **Old name in staff messages:** two Commission messages said "The Waimart Official Store…". They now use the store name.
+- **Old name in addresses:** the Seller Centre filter address `?tab=with_waimart` is now `with_platform`; old links still work.
+- **Contrast:** the outline "Deactivate" buttons (Pickup points and other admin lists) used Bootstrap's red, which sits on the contrast limit. The admin now uses a darker red.
+- **Links told apart by colour only:** order links inside sentences on the Refunds and Resolutions pages are now underlined.
+- The test fixture for the Official Store's commission note still used the old name; it now matches the shipped value.
+
+### Documentation
+
+- **Updated:**
+  - **INSTALL.md:** first super admin with a one-time password and two-step sign-in; the new settings areas, payment methods and delivery settings; the integrity check.
+  - **OPERATIONS.md:** daily and weekly checks; staff accounts and security procedures (leavers, lost phones, suspected compromise).
+  - **ARCHITECTURE.md:** roles, permissions and sign-in; where managed content and settings live.
+  - **BACKUP_RESTORE.md:** what the app key protects now.
+- **New:**
+  - **SELLER_GUIDE.md** (marketplace Phase 11);
+  - **BASEMALL_FINAL_REPORT.md** (the brief's deliverables, acceptance criteria, owner actions and deployment steps).
+
+### Tests
+
+- New: `AdminRoleMatrixHttpTest` (2), `BriefAcceptanceHttpTest` (4), and the brand and ledger scripts.
+- **Full suite: 473 tests, 4,929 assertions, all passing.**
+- **Rollback drill:** the pre-upgrade backup migrated 010→024 (8 triggers), then both rollbacks (0 triggers): identical schema, and identical settings keys and values.

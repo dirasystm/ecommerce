@@ -9,7 +9,7 @@ $reasonLabels = ['payment_after_expiry' => 'Payment verified after reservation e
 <?php foreach ($rows as $r): ?>
     <section class="wm-panel mb-3">
         <div class="wm-panel-head">
-            <span><a href="<?= e(url('/admin/orders/' . $r['order_id'])) ?>"><?= e($r['order_number']) ?></a> · <?= e($r['customer_name']) ?> · <?= e(money($r['grand_total'])) ?></span>
+            <span><a class="text-decoration-underline" href="<?= e(url('/admin/orders/' . $r['order_id'])) ?>"><?= e($r['order_number']) ?></a> · <?= e($r['customer_name']) ?> · <?= e(money($r['grand_total'])) ?></span>
             <span class="small fw-normal text-muted">Opened <?= e(date('d M H:i', strtotime($r['opened_at']))) ?> · <?= e(OrderPresenter::payment($r['payment_status'])) ?></span>
         </div>
         <div class="wm-panel-body">

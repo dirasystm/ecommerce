@@ -1,4 +1,4 @@
-# Waimart — Operations
+# Basemall — Operations
 
 ## Reservation expiry worker (required)
 
@@ -64,6 +64,27 @@ innodb_buffer_pool_size=256M
 ```
 
 Then restart MySQL from the XAMPP Control Panel. Phase 12 measurements are in `docs/REQUIREMENTS_CHECKLIST.md` (Phase 12 notes).
+
+## Daily and weekly checks
+
+| When | What | Where |
+|---|---|---|
+| Daily (schedule it) | `php bin/check-integrity.php`: order and part totals, stock vs reservations, refund caps, ledger reconciliation, the append-only guards, at least one super admin, a payment method on, a delivery option on. Exit code 1 if anything fails. | Task Scheduler / cron, like the backup |
+| Daily | Payments waiting to be verified, COD orders to confirm | Finance → M-Pesa payments, Payment methods (the list shows what is waiting) |
+| Weekly | Failed or blocked sign-ins, especially at the staff sign-in | System → Sign-in activity |
+| Weekly | Unusual staff actions (exports, settings, payment numbers, roles) | System → Audit log (filter by area) |
+| Before paying sellers | Reconciliation | Marketplace → Marketplace report, then Seller payouts |
+
+## Staff accounts and security
+
+- **New staff:** Admin → Staff → Add. They get an email link to set their own password. Give the smallest role that fits; add a single permission on their page if they need one more thing.
+- **Someone leaves:** remove their staff access (their history stays in the audit log), or suspend them. Either signs them out everywhere at once.
+- **Lost phone (two-step sign-in):** on their staff page, **Reset two-step sign-in**. They sign in with their password and set it up again.
+- **Suspected compromise:**
+  1. on their page, **Sign out everywhere**, then **Require a password change** (or email a reset link);
+  2. review Sign-in activity and the audit log for that person.
+- **Credentials** (the SMTP password) live in the encrypted store, under Settings → Email & SMS. They are encrypted with the app key in `config.local.php`. If the key changes, the page says the password must be entered again.
+- The **audit log** and **sign-in activity** cannot be edited or deleted, even directly in the database (triggers refuse it).
 
 ## Backups
 

@@ -12,7 +12,7 @@ use Waimart\Core\Validator;
 <?php foreach ($rows as $f): ?>
     <section class="wm-panel mb-3">
         <div class="wm-panel-head">
-            <span><?= e(money($f['amount'])) ?> · <a href="<?= e(url('/admin/orders/' . $f['order_id'])) ?>"><?= e($f['order_number']) ?></a> · <?= e($f['customer_name']) ?></span>
+            <span><?= e(money($f['amount'])) ?> · <a class="text-decoration-underline" href="<?= e(url('/admin/orders/' . $f['order_id'])) ?>"><?= e($f['order_number']) ?></a> · <?= e($f['customer_name']) ?></span>
             <span class="small fw-normal text-muted">Recorded <?= e(date('d M Y', strtotime($f['created_at']))) ?></span>
         </div>
         <div class="wm-panel-body small">

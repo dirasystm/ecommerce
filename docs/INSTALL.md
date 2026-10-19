@@ -1,6 +1,6 @@
-# Waimart — Installation
+# Basemall — Installation
 
-This guide installs Waimart on **Windows with XAMPP**, the environment it was built and tested on. A section at the end covers a Linux production server.
+This guide installs Basemall (formerly Waimart; internal names such as the `waimart` database keep the old name) on **Windows with XAMPP**, the environment it was built and tested on. A section at the end covers a Linux production server.
 
 ## 1. Requirements
 
@@ -83,7 +83,7 @@ return [
 php bin/migrate.php
 ```
 
-This applies `database/migrations/001…009` in order and records each one in `schema_migrations`. Re-running applies only new migrations, so upgrades use the same command. Migration 004 loads the reference data: the 47 counties, roles and permissions, and default settings.
+This applies `database/migrations/001…024` in order and records each one in `schema_migrations`. Re-running applies only new migrations, so upgrades use the same command. Migration 004 loads the reference data: the 47 counties, roles and permissions, and default settings.
 
 ## 6. Create your administrator
 
@@ -91,7 +91,15 @@ This applies `database/migrations/001…009` in order and records each one in `s
 php bin/create-admin.php --email=you@example.co.ke --first=Your --last=Name
 ```
 
-A strong password is generated and **printed once**. Sign in at **/admin/login**, then change it at **/account/password**. Running the command again for the same email promotes that user to super admin. Add further staff from **Admin → Staff**, giving each a role:
+A strong **one-time** password is generated and printed once. There are no default accounts or passwords anywhere in the application; this command is the only way to create the first super administrator.
+
+1. Sign in at **/admin/login** with the one-time password.
+2. You are asked to choose your own password before anything else.
+3. Then open **My account** (top right) and turn on **two-step sign-in** with an authenticator app. Save the recovery codes.
+
+Running the command again for the same email promotes that account to super admin, with a new one-time password; its other sessions are signed out.
+
+Add further staff from **Admin → Staff**. They are emailed a link to set their own password. Give each a role (change what roles can do, or create roles, in **Admin → Roles & permissions**):
 
 | Role | Main permissions |
 |---|---|
@@ -101,17 +109,33 @@ A strong password is generated and **printed once**. Sign in at **/admin/login**
 | Fulfilment Staff | Process, dispatch and deliver orders, confirm pickup collection (code check), record COD cash |
 | Inventory Clerk | Catalogue, stock adjustments, return inspections |
 | Customer Support | View customers and orders, cancel orders, returns, review moderation |
+| Content & Marketing | Pages, menus, homepage, banners, flash sales, coupons, message wording |
+| Delivery & Logistics | View orders, dispatch and delivery, pickup handover, pickup station details |
+
+To require two-step sign-in for every staff member, tick **Settings → Security → Require two-step sign-in for all staff**.
 
 ## 7. Configure the shop (Admin)
 
-1. **Settings:**
-   - M-Pesa **Till number**, **Paybill + account format** and/or the **phone number** customers pay to. A method appears at checkout only once its details are set.
-   - Reservation windows: `reservation_minutes` (M-Pesa, default 30) and `reservation_minutes_cod` (COD, default 240).
-   - Return window.
-2. **Delivery zones:** counties/towns, fee, delivery days, and whether COD is allowed.
-3. **Pickup points:** code, address, opening hours, active/inactive. Inactive points can't be chosen at checkout.
+1. **Settings** (one page per area):
+   - **Branding:** name, tagline, colours, logo and icons.
+   - **Contact & business, Social media, SEO.**
+   - **Checkout & accounts, Orders & returns:** reservation windows (M-Pesa 30 min, COD 240 min), return window.
+   - **Email & SMS:** sender name and address, reply-to, and the mail server (SMTP; the password is stored encrypted). Use **Send me a test email**. Until set, the values in `config.local.php` are used.
+   - **Security, Maintenance & announcement, Marketplace.**
+2. **Finance → Payment methods:**
+   - enter the M-Pesa **Till**, **Paybill** and/or **Send Money** number;
+   - switch methods on or off;
+   - edit names, instructions and order limits.
+   - A method appears at checkout only once it is on and its number is set.
+3. **Fulfilment:**
+   - **Delivery zones:** counties and towns, fee, days, COD.
+   - **Pickup points.**
+   - **Delivery settings:** home delivery and pickup on/off, store-wide free-delivery amount, checkout notes, status names.
 4. **Catalogue:** categories, brands, products, variants and opening stock (recorded as stock movements).
-5. Optional: banners and flash sales.
+5. **Content & marketing:**
+   - **Pages:** About, Contact, Help, policies… (they ship with sensible wording; review them, especially Terms and Privacy);
+   - **Menus, Homepage, Banners, Flash sales;**
+   - **Messages:** the wording of every email and SMS.
 
 For a development or demo shop, `php bin/seed-demo.php` loads a fictional catalogue, zones, pickup points, banners and a running flash sale. It refuses to run when `app.env` is `production`.
 
@@ -144,6 +168,7 @@ Then copy `storage\backups` off the machine regularly. See [BACKUP_RESTORE.md](B
 | Home page, a category, a product | Pages load with your catalogue |
 | Place a test order (pickup + COD) | Confirmation page with a private tracking link; the order appears in Admin → Orders with stock reserved |
 | `storage/logs/` | Writable by Apache; `app-*.log` files appear |
+| `php bin/check-integrity.php` | `All checks OK`. It reports "no active super administrator" until step 6 is done, and checks money, stock, logs and settings. |
 
 Optionally run the automated tests (step 12).
 

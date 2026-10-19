@@ -1,7 +1,8 @@
-# Waimart — Architecture
+# Basemall — Architecture
 
-Single-store e-commerce site inspired by Jumia Kenya.
-Brand: **Waimart** — "Everything You Need. One Marketplace."
+Multi-vendor marketplace inspired by Jumia Kenya (single-store until the marketplace upgrade, docs/MARKETPLACE_PLAN.md).
+Brand: **Basemall**, "Everything You Need. One Marketplace." (formerly Waimart; see docs/BASEMALL_REBRAND.md). Internal identifiers
+keep the old name on purpose: the `Waimart\` PHP namespace, the `waimart` database, the session cookie and `WAIMART_` environment variables.
 
 ## 1. Environment (inspected 2026-10-17)
 
@@ -216,8 +217,30 @@ Default reservation window: **30 minutes** (`settings.reservation_minutes`).
 
 ## 12. Roles & permissions
 
-Roles: `super_admin`, `manager`, `inventory_clerk`, `fulfilment_staff`, `finance`, `support`.
-Permissions are fine-grained (e.g. `payments.verify`, `orders.collect`, `inventory.adjust`, `pickup_points.manage`) and checked in middleware and again in services for sensitive actions. All admin mutations are written to `audit_logs(actor, action, entity, entity_id, before_json, after_json, ip, created_at)`.
+- **Built-in roles:** `super_admin`, `manager`, `inventory_clerk`, `fulfilment_staff`, `finance`, `support`, `content_marketing`, `delivery_logistics`. Custom roles can be added (`roles.is_system = 0`).
+- **What a person may do** = the permissions of their roles ∪ their personal grants (`user_permissions`). Super admin implicitly has all.
+  - `Auth::permissionsFor()` reads this per request, so changes apply on the next click.
+- **Checks:** every admin route declares `can:<permission>` (a unit test enforces it). Services re-check sensitive rules.
+  - **No self-escalation** (`RoleService`, `StaffService`): you can only give permissions you hold, never change your own roles or permissions, and never edit a role you hold.
+- **Audit:** all admin mutations are written to `audit_logs(actor, action, entity, entity_id, before_json, after_json, ip, created_at)`. It is append-only, enforced by triggers.
+- **Sign-in:**
+  - passwords are hashed with `password_hash`;
+  - rate limits per account and per network;
+  - optional TOTP second step (`MfaService`, RFC 6238) with hashed recovery codes;
+  - `must_change_password` and `sessions_revoked_at` gate sessions in `Auth::user()` and the staff middleware.
+- **Sign-in activity:** every attempt is recorded in `auth_events` (masked identifiers; append-only).
+
+## 12a. Managed content and settings (Basemall)
+
+| Area | Where it lives | Service |
+|---|---|---|
+| Settings (typed, grouped, validated, exported/imported) | `settings` + the registry in code | `SettingsService` |
+| Brand (name, tagline, colours, logos, icons) | `settings`, `public/assets/brand` | `Brand`, `BrandingService` |
+| Pages (drafts, scheduling, revisions), menus, homepage sections | `content_pages`, `content_page_revisions`, `menus`, `menu_items`, `home_sections` | `SiteContentService`, `ContentRenderer` (safe text format, no HTML) |
+| Payment methods | `payment_methods` (+ M-Pesa numbers in `settings`) | `PaymentOptions` |
+| Message wording | `message_templates` (edited ones only) + built-in wording in code | `MessageTemplates`, `NotificationService::sendTemplate` |
+| Order status names | `order_status_labels` (edited ones only) | `StatusLabels` |
+| Credentials | `secrets` (AES-256-GCM with the app key, write-only) | `SecretStore` |
 
 ## 13. Testing strategy
 
@@ -225,4 +248,6 @@ Permissions are fine-grained (e.g. `payments.verify`, `orders.collect`, `invento
 - **Integration (real MariaDB `waimart_test`):** checkout, reservations, expiry, cancellation, consumption, payments, returns, ownership checks.
 - **Concurrency:** parallel PHP processes (`proc_open`) racing for the last unit, and concurrent expiry runs.
 - **HTTP smoke tests:** key pages and forms via cURL against Apache.
+- **Role matrix:** every role against every admin route, from the live route table (`AdminRoleMatrixHttpTest`).
+- **Scripts:** `tests/scripts/brand_scan.php` (no visible old branding), `tests/scripts/ledger_load.php` (100,000-row ledger timings), `tests/scripts/race_refund.php`.
 - Every phase ends with the full suite green. Failures are fixed and rerun before the phase is accepted.

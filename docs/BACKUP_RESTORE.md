@@ -1,4 +1,4 @@
-# Waimart — Backup and Restore
+# Basemall — Backup and Restore
 
 ## What has to be backed up
 
@@ -7,7 +7,7 @@
 | The database | MariaDB `waimart` | Orders, customers, payments, stock and its full movement ledger, audit log, settings |
 | Uploaded images | `public/uploads/` | Product and banner images and store logos. These are files, so they are **not** in the database dump. |
 | Seller documents | `storage/private/` | Verification documents uploaded by seller applicants. Private files, never web-accessible, and **not** in the database dump. |
-| Local config | `config/config.local.php` | Database password and the **app key**, which signs and encrypts pickup collection codes and other tokens. Without the same key, open pickup orders need new codes and outstanding emailed links stop working. |
+| Local config | `config/config.local.php` | Database password and the **app key**, which signs and encrypts pickup collection codes and other tokens, sellers' payout details, the stored SMTP password and staff two-step sign-in secrets. Without the same key, open pickup orders need new codes, emailed links stop working, the SMTP password must be entered again, and staff with two-step sign-in need it reset (Admin → Staff). |
 
 `bin/backup.php` saves all three.
 
