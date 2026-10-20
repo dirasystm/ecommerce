@@ -18,7 +18,8 @@ final class AuthEvents
         'login_succeeded' => 'Signed in', 'login_failed' => 'Sign-in failed', 'login_locked' => 'Sign-in blocked (too many attempts)',
         'mfa_challenged' => 'Password correct, two-step code requested', 'mfa_succeeded' => 'Two-step code accepted', 'mfa_failed' => 'Two-step code wrong',
         'recovery_code_used' => 'Signed in with a recovery code', 'logout' => 'Signed out', 'password_changed' => 'Password changed',
-        'password_reset' => 'Password reset by email link', 'mfa_enabled' => 'Two-step sign-in turned on', 'mfa_disabled' => 'Two-step sign-in turned off',
+        'password_reset' => 'Password reset', 'password_reset_code_sent' => 'Password reset code sent by SMS', 'password_reset_code_failed' => 'Password reset code wrong',
+        'mfa_enabled' => 'Two-step sign-in turned on', 'mfa_disabled' => 'Two-step sign-in turned off',
         'mfa_reset' => 'Two-step sign-in reset by an administrator', 'sessions_revoked' => 'Signed out everywhere',
     ];
 

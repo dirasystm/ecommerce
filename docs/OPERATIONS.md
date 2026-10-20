@@ -104,6 +104,27 @@ One page for both channels (permission `messaging.manage`; changing the SMS toke
 - **Test email** to any address uses the settings under Settings → Email.
 - SMS are sent while the page or action that triggers them runs. If Talksasa is slow or down, the message is marked Failed (with the reason) after about 12 seconds, and the order or other action still completes.
 
+## Forgotten passwords
+
+Every sign-in page has **Forgot your password?**: the shop sign-in (customers and sellers) and staff sign-in.
+- People enter their email **or** phone number and choose either:
+  - **an email link**, which works for 60 minutes;
+  - **an SMS code** (6 digits), which works for 15 minutes and allows 5 tries.
+- The SMS option appears only when SMS is switched on (Email & SMS).
+- Either way they set a new password on the same page. Staff then return to staff sign-in, where two-step sign-in still applies.
+- The page looks the same whether or not the account exists, so it cannot be used to find out who has an account.
+- Codes and links are hidden in the message log. Requests, wrong codes and resets appear under Sign-in activity.
+
+## Order progress and arrival dates
+
+The customer's order page shows every step, from placing the order to delivery or collection.
+- **Each step shows:** which office handles it (from the staff member's role, never their name), when it happened, and what is happening now.
+- **Estimated arrival:** counted in working days, Monday to Saturday.
+  - It uses the delivery zone's days, plus **Days to prepare before dispatch** (Delivery settings).
+  - Pickup orders use **Pickup orders ready after**.
+  - After dispatch, the count starts from the dispatch. Out for delivery shows "Today".
+- **Messages:** customers get an SMS and an email at each step: confirmed, being prepared, packed, dispatched, out for delivery, delivered or ready, and collected. Each carries the estimate. The wording is under Content → Messages.
+
 ## Order tracking numbers
 
 When staff dispatch a seller's part of an order, they can enter the courier's **delivery reference**. This becomes the customer's **tracking number**:

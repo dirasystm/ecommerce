@@ -1,8 +1,15 @@
--- ROLLBACK of the Basemall rebrand migrations (018 onwards; currently 018–026). Run only after taking a backup:
+-- ROLLBACK of the Basemall rebrand migrations (018 onwards; currently 018–028). Run only after taking a backup:
 --   php bin/backup.php
 --   C:\xampp\mysql\bin\mysql.exe -u root waimart < database\rollback\rollback_basemall.sql
 -- Restores the Waimart values only where they still hold the shipped Basemall values. Orders numbered BM- stay
 -- valid (the code that reads them is not removed by this script; only roll back the code together with it).
+
+-- 028 (password reset by SMS code): pending SMS resets are cancelled; email links keep working.
+UPDATE password_resets SET used_at = NOW() WHERE used_at IS NULL AND code_hash IS NOT NULL;
+ALTER TABLE password_resets DROP COLUMN IF EXISTS code_attempts, DROP COLUMN IF EXISTS code_hash, DROP COLUMN IF EXISTS channel;
+
+-- 027 (order journey): the arrival-estimate settings.
+DELETE FROM settings WHERE setting_key IN ('dispatch_lead_days', 'pickup_ready_min_days', 'pickup_ready_max_days');
 
 -- 026 (Email & SMS): the SMS gateway settings, its encrypted token, the gateway ids on logged messages and the tracking-number index.
 DROP INDEX IF EXISTS ix_so_tracking_reference ON seller_orders;
@@ -74,4 +81,4 @@ UPDATE commission_rules SET note = 'Waimart Official Store (platform-owned)'
  WHERE scope = 'seller' AND seller_id = 1 AND note = 'Basemall Official Store (platform-owned)' AND is_active = 1;
 DROP TABLE seller_slug_aliases;
 
-DELETE FROM schema_migrations WHERE filename IN ('026_messaging.sql', '025_system_updates.sql', '024_roles_mfa_security.sql', '023_payments_delivery_messages.sql', '022_content_management.sql', '021_normalise_setting_flags.sql', '020_unique_user_phone.sql', '019_settings_groups.sql', '018_basemall_brand.sql');
+DELETE FROM schema_migrations WHERE filename IN ('028_password_reset_sms.sql', '027_order_journey.sql', '026_messaging.sql', '025_system_updates.sql', '024_roles_mfa_security.sql', '023_payments_delivery_messages.sql', '022_content_management.sql', '021_normalise_setting_flags.sql', '020_unique_user_phone.sql', '019_settings_groups.sql', '018_basemall_brand.sql');

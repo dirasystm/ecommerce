@@ -20,6 +20,9 @@ use Waimart\Core\Validator;
 final class AccountService
 {
     public const RESET_TTL_MINUTES = 60;
+    /** An SMS reset code works for this long, and for this many tries. */
+    public const RESET_CODE_MINUTES = 15;
+    public const RESET_CODE_ATTEMPTS = 5;
     private Database $db;
 
     public function __construct(?Database $db = null)
@@ -153,8 +156,107 @@ final class AccountService
     // ------------------------------------------------------------------ password reset
 
     /**
-     * Always behaves the same whether or not the email exists (no account enumeration).
+     * Starts a password reset for the account with this email or phone number: an email with a reset link, or an SMS
+     * with a 6-digit code. Behaves the same whether or not the account exists (no account enumeration).
+     * @return int|null the account it was sent for (kept server-side for the code step; never shown), or null
      */
+    public function requestReset(string $login, string $channel, string $ip): ?int
+    {
+        $login = trim($login);
+        $byEmail = str_contains($login, '@');
+        $phone = $byEmail ? null : Validator::normalizePhone($login);
+        if ($byEmail ? Validator::check(['email' => $login], ['email' => 'required|email']) : $phone === null) {
+            throw new ValidationException(['login' => 'Enter the email address or phone number on your account.']);
+        }
+        if (!in_array($channel, ['email', 'sms'], true)) {
+            throw new ValidationException(['channel' => 'Choose how to receive your reset: email or SMS.']);
+        }
+        $rl = new RateLimiter($this->db);
+        $key = $byEmail ? strtolower($login) : (string) $phone;
+        if (!$rl->attempt('reset-ip|' . $ip, 10, 3600) || !$rl->attempt('reset|' . $key, 3, 3600)) {
+            return null;     // silently dropped; the response is identical
+        }
+        $user = $byEmail
+            ? $this->db->one("SELECT id, first_name, email, phone FROM users WHERE email = ? AND status = 'active'", [strtolower($login)])
+            : $this->db->one("SELECT id, first_name, email, phone FROM users WHERE phone = ? AND status = 'active'", [$phone]);
+        if ($user === null) {
+            return null;
+        }
+        if ($channel === 'email') {
+            $this->sendResetLink($user, $ip);
+            return (int) $user['id'];
+        }
+        if ((string) $user['phone'] === '') {
+            return null;
+        }
+        $code = (string) random_int(100000, 999999);
+        $this->db->transaction(function () use ($user, $code, $ip) {
+            $this->db->exec('UPDATE password_resets SET used_at = NOW() WHERE user_id = ? AND used_at IS NULL', [$user['id']]);
+            $this->db->insert('password_resets', [
+                'user_id' => $user['id'], 'channel' => 'sms',
+                'token_hash' => Crypto::hash(Crypto::token(32)),          // replaced by a usable link token once the code is right
+                'code_hash' => self::codeHash((int) $user['id'], $code),
+                'expires_at' => date('Y-m-d H:i:s', time() + self::RESET_CODE_MINUTES * 60),
+                'ip_address' => $ip,
+            ]);
+        });
+        (new NotificationService())->sendTemplate('password_reset_code',
+            ['first_name' => (string) $user['first_name'], 'code' => $code, 'minutes' => (string) self::RESET_CODE_MINUTES] + MessageTemplates::contactVars(),
+            ['phone' => (string) $user['phone']], ['user_id' => (int) $user['id'], 'secrets' => [$code]]);
+        AuthEvents::record('password_reset_code_sent', (int) $user['id']);
+        return (int) $user['id'];
+    }
+
+    /**
+     * Checks an SMS reset code. The right code returns a one-time token for the "set a new password" page; a wrong
+     * one counts against the code (RESET_CODE_ATTEMPTS), and every failure gives the same message.
+     */
+    public function verifyResetCode(?int $userId, string $code, string $ip): string
+    {
+        $code = preg_replace('/\D+/', '', $code) ?? '';
+        $fail = fn () => new ValidationException(['code' => 'That code is not right, or it has expired. Check the SMS, or ask for a new code.']);
+        if (!(new RateLimiter($this->db))->attempt('reset-code-ip|' . $ip, 20, 900)) {
+            throw ValidationException::withMessage('Too many attempts. Please wait 15 minutes and try again.');
+        }
+        if ($userId === null || strlen($code) !== 6) {
+            throw $fail();
+        }
+        // The transaction returns the token, or null for a wrong code; the wrong try is counted after it commits
+        // (throwing inside would roll the count back and allow unlimited guesses).
+        $wrongId = null;
+        $token = $this->db->transaction(function () use ($userId, $code, $fail, &$wrongId) {
+            $row = $this->db->one(
+                "SELECT * FROM password_resets WHERE user_id = ? AND channel = 'sms' AND used_at IS NULL AND code_hash IS NOT NULL ORDER BY id DESC LIMIT 1 FOR UPDATE",
+                [$userId]
+            );
+            if ($row === null || strtotime((string) $row['expires_at']) <= time() || (int) $row['code_attempts'] >= self::RESET_CODE_ATTEMPTS) {
+                return null;
+            }
+            if (!hash_equals((string) $row['code_hash'], self::codeHash($userId, $code))) {
+                $this->db->exec('UPDATE password_resets SET code_attempts = code_attempts + 1 WHERE id = ?', [$row['id']]);
+                $wrongId = (int) $row['id'];
+                return null;
+            }
+            $token = Crypto::token(32);
+            $this->db->exec('UPDATE password_resets SET token_hash = ?, code_hash = NULL, expires_at = ? WHERE id = ?',
+                [Crypto::hash($token), date('Y-m-d H:i:s', time() + self::RESET_CODE_MINUTES * 60), $row['id']]);
+            return $token;
+        });
+        if ($token === null) {
+            if ($wrongId !== null) {
+                AuthEvents::record('password_reset_code_failed', $userId);
+            }
+            throw $fail();
+        }
+        return $token;
+    }
+
+    private static function codeHash(int $userId, string $code): string
+    {
+        return Crypto::hash('reset-code|' . $userId . '|' . $code);
+    }
+
+    /** Email reset link (kept for callers that only have an email address). */
     public function requestPasswordReset(string $email, string $ip): void
     {
         $email = strtolower(trim($email));
@@ -169,6 +271,12 @@ final class AccountService
         if ($user === null) {
             return;
         }
+        $this->sendResetLink($user, $ip);
+    }
+
+    /** @param array<string,mixed> $user id, first_name, email */
+    private function sendResetLink(array $user, string $ip): void
+    {
         $token = Crypto::token(32);
         $this->db->transaction(function () use ($user, $token, $ip) {
             // Only the newest link works.
@@ -190,31 +298,32 @@ final class AccountService
     public function resetTokenValid(string $token): bool
     {
         return $token !== '' && (bool) $this->db->value(
-            'SELECT id FROM password_resets WHERE token_hash = ? AND used_at IS NULL AND expires_at > NOW()',
+            'SELECT id FROM password_resets WHERE token_hash = ? AND used_at IS NULL AND code_hash IS NULL AND expires_at > NOW()',
             [Crypto::hash($token)]
         );
     }
 
-    /** @param array<string,mixed> $in */
-    public function resetPassword(string $token, array $in): void
+    /** @param array<string,mixed> $in @return int the account whose password was changed */
+    public function resetPassword(string $token, array $in): int
     {
         Validator::validate($in, [
             'password' => 'required|password',
             'password_confirmation' => 'required|same:password',
         ], ['password' => 'New password', 'password_confirmation' => 'Password confirmation']);
 
-        $this->db->transaction(function () use ($token, $in) {
+        return $this->db->transaction(function () use ($token, $in) {
             $row = $token === '' ? null : $this->db->one(
                 'SELECT * FROM password_resets WHERE token_hash = ? FOR UPDATE',
                 [Crypto::hash($token)]
             );
-            if ($row === null || $row['used_at'] !== null || strtotime((string) $row['expires_at']) <= time()) {
+            if ($row === null || $row['used_at'] !== null || $row['code_hash'] !== null || strtotime((string) $row['expires_at']) <= time()) {
                 throw ValidationException::withMessage('This reset link is invalid or has expired. Please request a new one.');
             }
             $this->db->exec('UPDATE password_resets SET used_at = NOW() WHERE user_id = ? AND used_at IS NULL', [$row['user_id']]);
             $this->setPassword((int) $row['user_id'], (string) $in['password']);
             AuthEvents::record('password_reset', (int) $row['user_id']);
             (new RateLimiter($this->db))->clear('login|' . $this->db->value('SELECT email FROM users WHERE id = ?', [$row['user_id']]));
+            return (int) $row['user_id'];
         });
     }
 

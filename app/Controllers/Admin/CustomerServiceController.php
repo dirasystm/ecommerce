@@ -137,7 +137,7 @@ final class CustomerServiceController extends AdminController
     // ------------------------------------------------------------------ notifications outbox
 
     /** Templates whose stored body is redacted (it held a secret) — they can never be re-sent from the outbox. */
-    private const NO_RESEND = ['password_reset', 'order_claim_code', 'order_ready_for_collection', 'order_placed'];
+    private const NO_RESEND = ['password_reset', 'password_reset_code', 'order_claim_code', 'order_ready_for_collection', 'order_placed'];
 
     public function notifications(Request $req): Response
     {

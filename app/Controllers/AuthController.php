@@ -44,18 +44,59 @@ final class AuthController extends Controller
         return $this->afterSignIn((int) $user['id'], $guestToken, 'Your account has been created. Welcome to ' . brand_name() . '!');
     }
 
+    /** Forgot password, for customers, sellers and staff (?staff=1 from the staff sign-in page). */
     public function forgotForm(Request $req): Response
     {
-        return $this->view('auth/forgot', ['title' => 'Forgot password']);
+        if (isset($req->query['staff'])) {
+            Session::set('reset_staff', !empty($req->query['staff']));
+        }
+        return $this->view('auth/forgot', ['title' => 'Forgot password', 'smsAvailable' => self::smsAvailable(), 'staff' => (bool) Session::get('reset_staff', false)]);
     }
 
+    /** Email link or SMS code. The response never says whether the account exists. */
     public function forgot(Request $req): Response
     {
-        (new AccountService())->requestPasswordReset((string) $req->input('email', ''), $req->ip());
-        // Identical response whether or not the account exists.
-        Session::flash('success', 'If an account exists for that email, we have sent a link to reset your password. It expires in '
-            . AccountService::RESET_TTL_MINUTES . ' minutes.');
-        return Response::redirect('/login');
+        $login = trim((string) ($req->input('login', '') ?: $req->input('email', '')));
+        $channel = self::smsAvailable() ? (string) $req->input('channel', 'email') : 'email';
+        $userId = (new AccountService())->requestReset($login, $channel, $req->ip());
+        if ($channel === 'sms') {
+            Session::set('reset_code_user', $userId);      // server-side only; the page shows the same thing either way
+            Session::set('reset_code_for', $login);
+            Session::flash('success', 'If an account with those details has a phone number, we have sent a 6-digit code to it by SMS. It expires in '
+                . AccountService::RESET_CODE_MINUTES . ' minutes.');
+            return Response::redirect('/forgot-password/code');
+        }
+        Session::flash('success', 'If an account exists with those details, we have sent a link to reset your password to its email address. It expires in '
+            . AccountService::RESET_TTL_MINUTES . ' minutes. Check your spam folder too.');
+        return Response::redirect(Session::get('reset_staff') ? '/admin/login' : '/login');
+    }
+
+    public function codeForm(Request $req): Response
+    {
+        if (!Session::get('reset_code_for')) {
+            return Response::redirect('/forgot-password');
+        }
+        return $this->view('auth/reset-code', ['title' => 'Enter your reset code', 'for' => (string) Session::get('reset_code_for'),
+                                               'minutes' => AccountService::RESET_CODE_MINUTES]);
+    }
+
+    /** The right SMS code opens the "set a new password" page. */
+    public function code(Request $req): Response
+    {
+        if (!Session::get('reset_code_for')) {
+            return Response::redirect('/forgot-password');
+        }
+        $uid = Session::get('reset_code_user');
+        $token = (new AccountService())->verifyResetCode(is_int($uid) ? $uid : null, (string) $req->input('code', ''), $req->ip());
+        Session::forget('reset_code_user');
+        Session::forget('reset_code_for');
+        return Response::redirect('/reset-password?token=' . rawurlencode($token))->withHeader('Referrer-Policy', 'no-referrer');
+    }
+
+    /** SMS reset is offered when SMS is actually delivered (or, in development, written to the mail log). */
+    private static function smsAvailable(): bool
+    {
+        return \Waimart\Services\SmsGateway::enabled() || \Waimart\Services\NotificationService::mailConfig()['driver'] === 'log';
     }
 
     public function resetForm(Request $req): Response
@@ -70,7 +111,7 @@ final class AuthController extends Controller
     {
         $token = (string) $req->input('token', '');
         try {
-            (new AccountService())->resetPassword($token, $req->post);
+            $userId = (new AccountService())->resetPassword($token, $req->post);
         } catch (\Waimart\Core\ValidationException $e) {
             // The reset page sends no Referer (it carries the token), so redirect back explicitly.
             Session::flash('_errors', $e->errors);
@@ -78,7 +119,9 @@ final class AuthController extends Controller
             return Response::redirect('/reset-password?token=' . rawurlencode($token));
         }
         Session::flash('success', 'Your password has been changed. Please sign in with your new password.');
-        return Response::redirect('/login');
+        $staff = (int) \Waimart\Core\App::db()->value('SELECT is_staff FROM users WHERE id = ?', [$userId]) === 1;
+        Session::forget('reset_staff');
+        return Response::redirect($staff ? '/admin/login' : '/login');
     }
 
     /** Merges the guest cart, clears the guest cookie and returns to the intended page. */

@@ -28,7 +28,7 @@ final class MessagingController extends AdminController
     private const PER_PAGE = 25;
 
     /** Templates whose stored body is redacted (it held a code or link): never re-sent from the log. */
-    private const NO_RESEND = ['password_reset', 'order_claim_code', 'order_ready_for_collection', 'order_placed'];
+    private const NO_RESEND = ['password_reset', 'password_reset_code', 'order_claim_code', 'order_ready_for_collection', 'order_placed'];
 
     /** How long a fetched SMS balance is shown before asking the gateway again. */
     private const BALANCE_TTL = 120;

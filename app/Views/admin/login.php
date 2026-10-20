@@ -14,5 +14,6 @@
     <input id="password" name="password" type="password" autocomplete="current-password" required
            style="width:100%;padding:10px;border:1px solid #bbb;border-radius:4px;margin-bottom:16px">
     <button type="submit" style="width:100%;padding:11px;background:var(--wm-action);color:#fff;border:0;border-radius:4px;font-weight:700;cursor:pointer">Sign in</button>
+    <p style="text-align:center;margin:14px 0 0;font-size:.9rem"><a style="color:var(--wm-green,#005b3d);font-weight:600" href="<?= e(url('/forgot-password', ['staff' => 1])) ?>">Forgot your password?</a></p>
 </form>
 <p style="font-size:.85rem;color:#5f6368;margin-top:16px">Staff access only. Sign-in attempts are rate-limited and logged.</p>

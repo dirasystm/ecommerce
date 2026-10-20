@@ -36,6 +36,8 @@ $router->get('/register', [AuthController::class, 'registerForm'], ['guest'], 'r
 $router->post('/register', [AuthController::class, 'register'], ['guest', 'throttle:10,300']);
 $router->get('/forgot-password', [AuthController::class, 'forgotForm'], ['guest']);
 $router->post('/forgot-password', [AuthController::class, 'forgot'], ['guest', 'throttle:10,300']);
+$router->get('/forgot-password/code', [AuthController::class, 'codeForm'], ['guest']);
+$router->post('/forgot-password/code', [AuthController::class, 'code'], ['guest', 'throttle:20,300']);
 $router->get('/reset-password', [AuthController::class, 'resetForm']);
 $router->post('/reset-password', [AuthController::class, 'reset'], ['throttle:10,300']);
 
