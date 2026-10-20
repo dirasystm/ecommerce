@@ -51,6 +51,15 @@ final class OrderController extends Controller
 
     public function lookupForm(Request $req): Response
     {
+        $user = Auth::user();
+        if ($user !== null && empty($user['is_staff'])) {
+            // Signed-in customers track from their account area, with their phone number filled in.
+            return $this->view('account/track', [
+                'title' => 'Track order', 'section' => 'track',
+                'phone' => $user['phone'] ? Validator::displayPhone((string) $user['phone']) : '',
+                'orders' => array_slice((new OrderRepository(App::db()))->forUser((int) $user['id']), 0, 5),
+            ]);
+        }
         return $this->view('orders/lookup', ['title' => 'Track your order']);
     }
 

@@ -8,6 +8,7 @@ $u = Auth::user();
 $nav = [
     'overview' => ['/account', 'person', 'My account'],
     'orders' => ['/account/orders', 'box-seam', 'Orders'],
+    'track' => ['/track-order', 'truck', 'Track order'],
     'wishlist' => ['/account/wishlist', 'heart', 'Wishlist'],
     'reviews' => ['/account/reviews', 'star', 'Reviews'],
     'addresses' => ['/account/addresses', 'geo-alt', 'Addresses'],

@@ -166,6 +166,28 @@ final class OrderFlowTest extends FeatureTestCase
         $this->assertStringContainsString('G4S-1234567', $page);
     }
 
+    public function testSignedInCustomersFindTrackOrderInTheirAccount(): void
+    {
+        $this->post('/register', ['first_name' => 'Wanjiru', 'last_name' => 'K', 'email' => 'wk@example.com', 'phone' => '0711000009',
+            'password' => 'Secret123', 'password_confirmation' => 'Secret123', 'accept_terms' => '1'], '/register');
+        [$r] = $this->placeOrder([], '0711000009', 'wk@example.com');
+        preg_match('#(BM-[A-Z0-9]{8})#', $r['headers']['location'], $m);
+
+        $orders = $this->get('/account/orders')['body'];
+        $this->assertStringContainsString('Track an order', $orders);
+        $this->assertStringContainsString('href="/track-order"', $orders, 'in the account menu and above the orders');
+        $this->assertStringContainsString('Track order', $orders, 'on each order');
+
+        $track = $this->get('/track-order')['body'];
+        $this->assertStringContainsString('aria-current="page"', $track);
+        $this->assertMatchesRegularExpression('#<a class="list-group-item list-group-item-action active" href="/track-order"#', $track, 'menu item highlighted');
+        $this->assertStringContainsString('value="0711 000 009"', $track, 'phone filled in');
+        $this->assertStringContainsString($m[1], $track, 'recent orders listed');
+
+        $ok = $this->post('/track-order', ['order_number' => $m[1], 'phone' => '0711 000 009'], '/track-order');
+        $this->assertSame('/track/' . $m[1], $ok['headers']['location']);
+    }
+
     public function testCustomersCannotSeeEachOthersOrders(): void
     {
         $this->post('/register', ['first_name' => 'A', 'last_name' => 'One', 'email' => 'a1@example.com', 'phone' => '0711000001',
