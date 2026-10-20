@@ -15,7 +15,7 @@ use Waimart\Core\Logger;
 final class OrderNotifier
 {
     /** Statuses customers are told about; the wording is the template order_<status> (MessageTemplates). */
-    private const NOTIFY = ['confirmed', 'dispatched', 'out_for_delivery', 'delivered', 'ready_for_collection', 'collected', 'cancelled', 'expired', 'requires_resolution'];
+    private const NOTIFY = ['confirmed', 'processing', 'packed', 'dispatched', 'out_for_delivery', 'delivered', 'ready_for_collection', 'collected', 'cancelled', 'expired', 'requires_resolution'];
 
     public static function statusChanged(array $order): void
     {
@@ -39,6 +39,9 @@ final class OrderNotifier
             $ctx = ['user_id' => $order['user_id'] ? (int) $order['user_id'] : null, 'order_id' => (int) $order['id']];
             if ($order['status'] === 'dispatched') {
                 $vars['tracking_note'] = MessageTemplates::trackingNote((int) $order['id']);
+            }
+            if (in_array($order['status'], ['confirmed', 'processing', 'packed', 'dispatched'], true)) {
+                $vars['eta_note'] = OrderJourney::etaNote($order);
             }
 
             // Ready for collection: the code is essential, so the template is always sent (preferences apply to

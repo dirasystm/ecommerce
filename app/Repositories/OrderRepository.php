@@ -45,7 +45,7 @@ final class OrderRepository
         $order['groups'] = (new \Waimart\Services\SellerOrderService($this->db))->forOrder($id);
         $order['fulfilment'] = $this->db->one('SELECT * FROM order_fulfilment WHERE order_id = ?', [$id]) ?? [];
         $order['history'] = $this->db->all(
-            'SELECT to_status, note, created_at FROM order_status_history WHERE order_id = ? ORDER BY id',
+            'SELECT to_status, note, actor_type, actor_user_id, created_at FROM order_status_history WHERE order_id = ? ORDER BY id',
             [$id]
         );
         $order['payments'] = $this->db->all(

@@ -95,6 +95,9 @@ final class SettingsService
         'delivery_pickup_enabled' => ['Offer pickup stations', 'bool', 'Customers can collect orders from an open pickup station.', 'delivery', 'checkbox'],
         'free_delivery_threshold' => ['Free home delivery from (KSh)', 'nullable|decimal', 'Orders at or above this amount get free home delivery, in zones that have no free-delivery amount of their own. Leave blank for none.', 'delivery', 'text'],
         'delivery_checkout_note' => ['Note under home delivery at checkout', 'nullable|max:300', 'e.g. "Our rider calls before arriving." Shown to customers when they choose home delivery.', 'delivery', 'textarea'],
+        'dispatch_lead_days' => ['Days to prepare before dispatch', 'nullable|int|gte:0|lte:30', 'Working days between confirming an order and dispatching it, used for the estimated arrival date shown before dispatch. Blank: 1.', 'delivery', 'number'],
+        'pickup_ready_min_days' => ['Pickup orders ready after (from, days)', 'nullable|int|gte:0|lte:30', 'Shortest time, in working days after confirmation, until a pickup order is ready for collection. Blank: 1.', 'delivery', 'number'],
+        'pickup_ready_max_days' => ['Pickup orders ready after (to, days)', 'nullable|int|gte:0|lte:30', 'Longest time, in working days after confirmation. Customers see this range as the expected ready date. Blank: 3.', 'delivery', 'number'],
         'pickup_checkout_note' => ['Note under pickup at checkout', 'nullable|max:300', 'e.g. "Wait for our ready-for-collection message before going to the station."', 'delivery', 'textarea'],
 
         'product_moderation' => ['Require approval before seller products go live', 'bool', 'If off, products from approved sellers are published as soon as the seller submits them.', 'marketplace', 'checkbox'],
@@ -280,6 +283,10 @@ final class SettingsService
         }
         if (isset($fields['mail_driver']) && ($in['mail_driver'] ?? '') === 'smtp' && trim((string) ($in['smtp_host'] ?? '')) === '') {
             $errors['smtp_host'] = 'Enter the mail server to send through it.';
+        }
+        if (isset($fields['pickup_ready_min_days'], $fields['pickup_ready_max_days']) && !isset($errors['pickup_ready_min_days']) && !isset($errors['pickup_ready_max_days'])
+            && trim((string) ($in['pickup_ready_max_days'] ?? '')) !== '' && (int) $in['pickup_ready_max_days'] < (int) ($in['pickup_ready_min_days'] ?? 0)) {
+            $errors['pickup_ready_max_days'] = 'The longest time cannot be shorter than the shortest time.';
         }
         if (isset($fields['sms_driver']) && ($in['sms_driver'] ?? '') === 'talksasa' && trim((string) ($in['sms_sender_id'] ?? '')) === '') {
             $errors['sms_sender_id'] = 'Enter the sender ID approved on your Talksasa account.';

@@ -364,6 +364,30 @@ p a:not(.btn), li > a:not(.btn):not(.dropdown-item):not(.nav-link):not(.page-lin
 .wm-timeline { list-style: none; padding-left: 18px; border-left: 2px solid var(--wm-green-50); margin: 8px 0 0; }
 .wm-timeline li { position: relative; padding: 0 0 12px 10px; font-size: .875rem; }
 .wm-timeline li::before { content: ""; position: absolute; left: -25px; top: 4px; width: 12px; height: 12px; border-radius: 50%; background: var(--wm-green); }
+/* Order journey (orders/_journey): arrival estimate, then each step with the office handling it. */
+.wm-eta { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; border-radius: var(--wm-radius); background: var(--wm-green-50); border-left: 4px solid var(--wm-green); }
+.wm-eta > .bi { font-size: 1.6rem; color: var(--wm-green); line-height: 1; }
+.wm-eta-label { font-size: .75rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; color: var(--wm-muted); }
+.wm-eta-date { font-size: 1.25rem; font-weight: 800; color: var(--wm-green); line-height: 1.3; }
+.wm-eta-note { font-size: .8125rem; color: var(--wm-muted); margin-top: 2px; }
+.wm-eta-today { background: #fff4d6; border-left-color: var(--wm-action); }
+.wm-eta-today > .bi, .wm-eta-today .wm-eta-date { color: #7a3300; }
+.wm-journey { list-style: none; margin: 0; padding: 0; }
+.wm-journey-step { position: relative; display: flex; gap: 14px; padding-bottom: 18px; }
+.wm-journey-step:last-child { padding-bottom: 0; }
+.wm-journey-step:not(:last-child)::after { content: ""; position: absolute; left: 15px; top: 34px; bottom: 2px; width: 2px; background: var(--wm-border); }
+.wm-journey-step.is-done:not(:last-child)::after { background: var(--wm-green); }
+.wm-journey-marker { flex: 0 0 32px; height: 32px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: .8125rem; font-weight: 700; border: 2px solid var(--wm-border); background: #fff; color: var(--wm-muted); position: relative; z-index: 1; }
+.is-done .wm-journey-marker { background: var(--wm-green); border-color: var(--wm-green); color: #fff; }
+.is-current .wm-journey-marker { border-color: var(--wm-action); color: #7a3300; background: #fff4d6; box-shadow: 0 0 0 4px rgba(200, 82, 0, .15); }
+.is-stopped .wm-journey-marker { background: #f1f1f1; }
+.is-upcoming .wm-journey-title, .is-stopped .wm-journey-title { color: var(--wm-muted); }
+.is-stopped .wm-journey-title { text-decoration: line-through; }
+.wm-journey-body { min-width: 0; padding-top: 4px; }
+.wm-journey-office { color: var(--wm-muted); margin-top: 2px; }
+.wm-journey-office span { color: var(--bs-body-color, #202124); font-weight: 600; }
+@media (prefers-reduced-motion: no-preference) { .is-current .wm-journey-marker { animation: wm-pulse 2s ease-in-out infinite; } }
+@keyframes wm-pulse { 50% { box-shadow: 0 0 0 7px rgba(200, 82, 0, .08); } }
 .wm-order-row { display: flex; gap: 14px; align-items: center; padding: 12px; border: 1px solid var(--wm-border); border-radius: var(--wm-radius); margin-bottom: 10px; }
 .wm-order-row:hover { text-decoration: none; box-shadow: var(--wm-shadow-hover); }
 .wm-order-row img { width: 64px; height: 64px; object-fit: contain; background: #fafafa; border-radius: 4px; }

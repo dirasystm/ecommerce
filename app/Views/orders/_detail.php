@@ -30,6 +30,7 @@ $expires = $order['reservation_expires_at'];
                 <p class="small mt-2 mb-0"><i class="bi bi-truck" aria-hidden="true"></i> Tracking number<?= count($trackingNumbers) > 1 ? 's' : '' ?>:
                     <strong><?= e(implode(', ', $trackingNumbers)) ?></strong></p>
             <?php endif; ?>
+            <?= \Waimart\Core\View::partial('orders/_journey', ['journey' => \Waimart\Services\OrderJourney::build($order)]) ?>
 
             <?php if ($order['status'] === 'ready_for_collection'): ?>
                 <div class="wm-collect-box mt-3">
@@ -161,15 +162,6 @@ $expires = $order['reservation_expires_at'];
                 </details>
             <?php endif; ?>
 
-            <?php if ($order['history']): ?>
-                <h3 class="fs-6 fw-bold mt-4">Order history</h3>
-                <ol class="wm-timeline">
-                    <?php foreach ($order['history'] as $h): ?>
-                        <li><strong><?= e(OrderPresenter::status($h['to_status'])) ?></strong>
-                            <span class="text-muted small d-block"><?= e(date('j M Y, g:i a', strtotime($h['created_at']))) ?></span></li>
-                    <?php endforeach; ?>
-                </ol>
-            <?php endif; ?>
         </section>
 
         <?php
@@ -249,7 +241,7 @@ $expires = $order['reservation_expires_at'];
                 <?php endif; ?>
                 <p class="small mb-1"><?= e($f['town']) ?>, <?= e($f['county_name']) ?></p>
                 <?php if ($f['eta_min_days'] !== null): ?>
-                    <p class="small text-muted mb-0">Estimated <?= (int) $f['eta_min_days'] ?>–<?= (int) $f['eta_max_days'] ?> business days after dispatch (estimate).</p>
+                    <p class="small text-muted mb-0">Usually <?= (int) $f['eta_min_days'] ?>–<?= (int) $f['eta_max_days'] ?> working days after dispatch (Monday to Saturday).</p>
                 <?php endif; ?>
             <?php endif; ?>
             <h3 class="fs-6 fw-bold mt-3 mb-1">Customer</h3>
