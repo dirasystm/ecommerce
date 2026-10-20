@@ -64,6 +64,7 @@ $nav = [
         ['/admin/audit/sign-ins', 'door-open', 'Sign-in activity', 'audit.view'],
         ['/admin/account', 'person-gear', 'My account', null],   // every staff member
         ['/admin/settings', 'gear', 'Settings', 'settings.manage'],
+        ['/admin/messaging', 'chat-dots', 'Email & SMS', 'messaging.manage'],
         ['/admin/updates', 'cloud-arrow-up', 'Website updates', 'system.update'],
     ]],
 ];

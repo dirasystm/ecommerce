@@ -5,7 +5,7 @@
         <li class="nav-item"><a class="nav-link<?= $status === $k ? ' active' : '' ?>" href="<?= e(url('/admin/notifications', array_filter(['status' => $k]))) ?>"><?= e($l) ?></a></li>
     <?php endforeach; ?>
 </ul>
-<p class="small text-muted">Every customer message is recorded here with secrets (links, codes) redacted. SMS messages stay in the outbox until an SMS provider is connected.</p>
+<p class="small text-muted">Every customer message is recorded here with secrets (links, codes) redacted. SMS are delivered when the SMS gateway is switched on (Email &amp; SMS).</p>
 <div class="wm-panel"><div class="table-responsive">
     <table class="table table-sm align-top mb-0">
         <thead><tr><th>When</th><th>Channel</th><th>To</th><th>Template</th><th>Order</th><th>Message</th><th>Status</th><th></th></tr></thead>

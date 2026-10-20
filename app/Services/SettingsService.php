@@ -33,17 +33,19 @@ final class SettingsService
         'payments' => ['Payment methods', 'Where customers pay. Changes are logged separately in the audit trail.', 'credit-card', true],
         'delivery' => ['Delivery', 'Which fulfilment options are offered, free delivery and the notes customers see at checkout.', 'truck', false],
         'marketplace' => ['Marketplace', 'Seller products, payouts and onboarding documents.', 'shop-window', false],
-        'email' => ['Email & SMS', 'Who emails come from and how they are sent.', 'envelope', true],
+        'email' => ['Email', 'Who emails come from and how they are sent.', 'envelope', true],
+        'sms' => ['SMS', 'The SMS gateway (Talksasa): sender ID and API endpoint. Balance, tests and the message log are on the Email & SMS page.', 'phone', true],
         'security' => ['Security', 'Sign-in rules for staff accounts. Roles and permissions are under Staff & roles.', 'shield-lock', true],
         'maintenance' => ['Maintenance & announcement', 'Temporarily close the shop, or show a message across the top of every page.', 'megaphone', false],
     ];
 
     /** Groups edited on their own module page (with that module's permission) instead of under Admin → Settings. */
-    public const PAGES = ['payments' => '/admin/payment-methods', 'delivery' => '/admin/delivery-settings'];
+    public const PAGES = ['payments' => '/admin/payment-methods', 'delivery' => '/admin/delivery-settings', 'sms' => '/admin/messaging'];
 
     /** Choices for 'select' widgets. */
     public const OPTIONS = [
         'mail_driver' => ['' => 'Server setting (config.local.php)', 'smtp' => 'Send through a mail server (SMTP)', 'log' => 'Do not send: write to the mail log (testing)'],
+        'sms_driver' => ['' => 'Do not send: keep SMS in the message log only', 'talksasa' => 'Send through Talksasa bulk SMS'],
         'smtp_encryption' => ['tls' => 'STARTTLS (usually port 587)', 'ssl' => 'SSL/TLS (usually port 465)', 'none' => 'None (not recommended)'],
     ];
 
@@ -107,6 +109,9 @@ final class SettingsService
         'smtp_host' => ['Mail server (SMTP host)', 'nullable|max:190', 'e.g. smtp.yourprovider.com', 'email', 'text'],
         'smtp_port' => ['Port', 'required|int|gte:1|lte:65535', null, 'email', 'number'],
         'smtp_encryption' => ['Encryption', 'required|in:tls,ssl,none', null, 'email', 'select'],
+        'sms_driver' => ['How SMS is sent', 'nullable|in:talksasa', null, 'sms', 'select'],
+        'sms_sender_id' => ['Sender ID', 'nullable|max:11', 'The name customers see as the sender (up to 11 letters or digits), exactly as approved on your Talksasa account.', 'sms', 'text'],
+        'sms_api_url' => ['API endpoint', 'nullable|url|max:190', 'From Talksasa → Developers ("OAuth 2.0 API Endpoint"). Blank: ' . SmsGateway::DEFAULT_URL, 'sms', 'text'],
         'smtp_username' => ['Username', 'nullable|max:190', 'Usually the sender email. The password is stored encrypted, below.', 'email', 'text'],
 
         'staff_mfa_required' => ['Require two-step sign-in for all staff', 'bool', 'Staff without it are asked to set it up (with an authenticator app) before they can use the admin. Customers are not affected.', 'security', 'checkbox'],
@@ -275,6 +280,17 @@ final class SettingsService
         }
         if (isset($fields['mail_driver']) && ($in['mail_driver'] ?? '') === 'smtp' && trim((string) ($in['smtp_host'] ?? '')) === '') {
             $errors['smtp_host'] = 'Enter the mail server to send through it.';
+        }
+        if (isset($fields['sms_driver']) && ($in['sms_driver'] ?? '') === 'talksasa' && trim((string) ($in['sms_sender_id'] ?? '')) === '') {
+            $errors['sms_sender_id'] = 'Enter the sender ID approved on your Talksasa account.';
+        }
+        if (isset($fields['sms_sender_id']) && !isset($errors['sms_sender_id']) && trim((string) ($in['sms_sender_id'] ?? '')) !== ''
+            && !preg_match('/^[A-Za-z0-9 ._-]{1,11}$/', trim((string) $in['sms_sender_id']))) {
+            $errors['sms_sender_id'] = 'Use up to 11 letters, digits, spaces, dots, dashes or underscores.';
+        }
+        if (isset($fields['sms_api_url']) && !isset($errors['sms_api_url']) && ($u = trim((string) ($in['sms_api_url'] ?? ''))) !== ''
+            && !str_starts_with(strtolower($u), 'https://') && !preg_match('#^http://(127\.0\.0\.1|localhost)(:\d+)?/#i', $u)) {
+            $errors['sms_api_url'] = 'The API endpoint must start with https://';
         }
         if (($in['announcement_enabled'] ?? '') !== '' && !empty($in['announcement_enabled']) && trim((string) ($in['announcement_text'] ?? '')) === ''
             && array_key_exists('announcement_text', $fields)) {

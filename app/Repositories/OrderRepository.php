@@ -22,6 +22,20 @@ final class OrderRepository
         return $this->db->one('SELECT * FROM orders WHERE order_number = ?', [$number]);
     }
 
+    /** The order whose delivery tracking number (seller_orders.tracking_reference, set at dispatch) matches, for that phone. */
+    public function byTrackingNumber(string $tracking, string $phone): ?array
+    {
+        $tracking = trim($tracking);
+        if ($tracking === '' || mb_strlen($tracking) > 80) {
+            return null;
+        }
+        return $this->db->one(
+            'SELECT o.* FROM seller_orders so JOIN orders o ON o.id = so.order_id
+              WHERE so.tracking_reference = ? AND o.customer_phone = ? ORDER BY so.id DESC LIMIT 1',
+            [$tracking, $phone]
+        );
+    }
+
     /** @return array<string,mixed> order + items, fulfilment, history, reservation expiry */
     public function details(array $order): array
     {

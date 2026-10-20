@@ -54,19 +54,24 @@ final class OrderController extends Controller
         return $this->view('orders/lookup', ['title' => 'Track your order']);
     }
 
-    /** Order number + phone lookup. Rate-limited; one generic error for every failure. */
+    /**
+     * Order number (or the delivery tracking number given at dispatch) + phone lookup.
+     * Rate-limited; one generic error for every failure.
+     */
     public function lookup(Request $req): Response
     {
-        $number = strtoupper(trim((string) $req->input('order_number', '')));
+        $number = strtoupper(trim(mb_substr((string) $req->input('order_number', ''), 0, 80)));
         $phone = Validator::normalizePhone((string) $req->input('phone', ''));
         $rl = new RateLimiter(App::db());
         if (!$rl->attempt('track-ip|' . $req->ip(), 10, 900) || !$rl->attempt('track-order|' . $number, 10, 3600)) {
             throw ValidationException::withMessage('Too many attempts. Please wait 15 minutes and try again.');
         }
-        $order = (new OrderRepository(App::db()))->byNumber($number);
+        $repo = new OrderRepository(App::db());
+        $order = $repo->byNumber($number) ?? ($phone !== null ? $repo->byTrackingNumber($number, $phone) : null);
         if ($order === null || $phone === null || !hash_equals((string) $order['customer_phone'], $phone)) {
-            throw ValidationException::withMessage('We could not find an order matching those details. Check the order number and the phone number used at checkout.');
+            throw ValidationException::withMessage('We could not find an order matching those details. Check the order or tracking number and the phone number used at checkout.');
         }
+        $number = (string) $order['order_number'];
         OrderAccess::grant($number, 'lookup');
         return Response::redirect('/track/' . $number);
     }

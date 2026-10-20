@@ -20,6 +20,7 @@ final class SecretStore
     /** name => [label, what it is used for] */
     public const SLOTS = [
         'smtp_password' => ['SMTP password', 'Used to send email through the mail server set under Settings → Email & SMS.'],
+        'sms_api_token' => ['SMS API token', 'The Talksasa API token used to send SMS (Admin → Email & SMS).'],
     ];
 
     private Database $db;

@@ -131,7 +131,8 @@ $fields = SettingsService::fieldsOf($group);
                         <dt class="col-sm-4 fw-normal text-muted">Replies go to</dt>
                         <dd class="col-sm-8 mb-1"><?= e($mail['reply_to'] ?: '—') ?></dd>
                         <dt class="col-sm-4 fw-normal text-muted">SMS</dt>
-                        <dd class="col-sm-8 mb-1">No SMS provider is connected: SMS messages are kept in the message log (Customer service → Notifications) and are not delivered to phones.</dd>
+                        <dd class="col-sm-8 mb-1"><?= \Waimart\Services\SmsGateway::enabled() ? 'Sent through Talksasa bulk SMS' : 'Switched off: SMS are kept in the message log and not delivered to phones' ?>.
+                            <?php if (\Waimart\Core\Auth::can('messaging.manage')): ?><a href="<?= e(url('/admin/messaging')) ?>">SMS gateway, balance and message log</a><?php endif; ?></dd>
                     </dl>
                     <form method="post" action="<?= e(url('/admin/settings/email/test')) ?>">
                         <?= csrf_field() ?>

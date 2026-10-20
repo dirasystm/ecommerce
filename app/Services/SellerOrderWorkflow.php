@@ -325,6 +325,8 @@ final class SellerOrderWorkflow
                          'seller_name' => (string) $this->db->value('SELECT name FROM sellers WHERE id = ?', [$m['so']['seller_id']])] + MessageTemplates::orderVars($order);
                 if ($m['type'] === 'ready') {
                     $vars['collection_note'] = $m['code'] ? " Your collection code is {$m['code']}. Keep it private." : ' Use the collection code we sent you earlier.';
+                } elseif ($m['type'] === 'dispatched') {
+                    $vars['tracking_note'] = MessageTemplates::trackingNote((int) $order['id'], (int) $m['so']['id']);
                 } elseif ($m['type'] === 'withdrawn') {
                     $vars['reason'] = (string) $m['so']['reason'];
                     $vars['refund_note'] = in_array($order['payment_status'], ['refund_due'], true) ? ' We will refund you for it.' : ' You will not be charged for it.';

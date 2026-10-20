@@ -25,6 +25,11 @@ $expires = $order['reservation_expires_at'];
                 <span class="badge fs-6 <?= OrderPresenter::badgeClass($order['status']) ?>"><?= e(OrderPresenter::status($order['status'])) ?></span>
             </div>
             <p class="mt-3 mb-0" role="status"><?= e(OrderPresenter::nextStepText($order, $expires)) ?></p>
+            <?php $trackingNumbers = array_values(array_unique(array_filter(array_map(fn ($g) => trim((string) ($g['tracking_reference'] ?? '')), $order['groups'] ?? [])))); ?>
+            <?php if ($trackingNumbers): ?>
+                <p class="small mt-2 mb-0"><i class="bi bi-truck" aria-hidden="true"></i> Tracking number<?= count($trackingNumbers) > 1 ? 's' : '' ?>:
+                    <strong><?= e(implode(', ', $trackingNumbers)) ?></strong></p>
+            <?php endif; ?>
 
             <?php if ($order['status'] === 'ready_for_collection'): ?>
                 <div class="wm-collect-box mt-3">
@@ -180,7 +185,8 @@ $expires = $order['reservation_expires_at'];
                 <?php foreach ($groups as $g): ?>
                     <div class="px-3 pt-3 pb-1 d-flex flex-wrap justify-content-between gap-2 border-top mt-2">
                         <div class="small"><strong>Sold by <a href="<?= e(url('/store/' . $g['seller_slug'])) ?>"><?= e($g['seller_name']) ?></a></strong>
-                            <span class="text-muted">· <?= e($g['sub_number']) ?></span></div>
+                            <span class="text-muted">· <?= e($g['sub_number']) ?></span>
+                            <?php if (!empty($g['tracking_reference'])): ?><span class="text-muted">· Tracking number <?= e($g['tracking_reference']) ?></span><?php endif; ?></div>
                         <span class="badge badge-soft-<?= in_array($g['status'], ['cancelled', 'rejected'], true) ? 'danger' : (in_array($g['status'], ['delivered', 'collected'], true) ? 'success' : 'muted') ?>"><?= e(\Waimart\Services\OrderPresenter::sellerOrderStatus((string) $g['status'])) ?></span>
                     </div>
                     <?php foreach ($g['items'] as $it): ?>

@@ -47,8 +47,8 @@ final class MessageTemplates
             '{store}: order {order_number} placed. {next_step} Track: {track_url}'],
         'order_confirmed' => ['Order confirmed', 'orders', 'Sent when payment is verified or a cash-on-delivery order is confirmed.', 'order', ['status_label' => 'The status name'], ['email', 'sms'], [], false, [],
             'Order {order_number}: {status_label}', self::STATUS_EMAIL_A . 'Your order {order_number} has been confirmed.' . self::STATUS_EMAIL_B, '{store}: Your order {order_number} has been confirmed.'],
-        'order_dispatched' => ['Order dispatched', 'orders', null, 'order', ['status_label' => 'The status name'], ['email', 'sms'], [], false, [],
-            'Order {order_number}: {status_label}', self::STATUS_EMAIL_A . 'Your order {order_number} has been dispatched and is on its way.' . self::STATUS_EMAIL_B, '{store}: Your order {order_number} has been dispatched and is on its way.'],
+        'order_dispatched' => ['Order dispatched', 'orders', null, 'order', ['status_label' => 'The status name', 'tracking_note' => 'The delivery tracking number, when one was given at dispatch'], ['email', 'sms'], [], false, [],
+            'Order {order_number}: {status_label}', self::STATUS_EMAIL_A . 'Your order {order_number} has been dispatched and is on its way.{tracking_note}' . self::STATUS_EMAIL_B, '{store}: Your order {order_number} has been dispatched and is on its way.{tracking_note}'],
         'order_out_for_delivery' => ['Out for delivery', 'orders', null, 'order', ['status_label' => 'The status name'], ['email', 'sms'], [], false, [],
             'Order {order_number}: {status_label}', self::STATUS_EMAIL_A . 'Your order {order_number} is out for delivery today.' . self::STATUS_EMAIL_B, '{store}: Your order {order_number} is out for delivery today.'],
         'order_delivered' => ['Order delivered', 'orders', null, 'order', ['status_label' => 'The status name'], ['email', 'sms'], [], false, [],
@@ -73,9 +73,9 @@ final class MessageTemplates
         'order_requires_resolution' => ['Order under review', 'orders', null, 'order', ['status_label' => 'The status name'], ['email', 'sms'], [], false, [],
             'Order {order_number}: {status_label}', self::STATUS_EMAIL_A . 'Our team is reviewing your order {order_number} and will contact you about the next steps.' . self::STATUS_EMAIL_B,
             '{store}: Our team is reviewing your order {order_number} and will contact you about the next steps.'],
-        'seller_order_dispatched' => ['Part of an order dispatched', 'orders', 'For orders with items from several sellers.', 'order', ['part_number' => 'Number of this seller\'s part', 'seller_name' => 'Seller\'s store name'],
+        'seller_order_dispatched' => ['Part of an order dispatched', 'orders', 'For orders with items from several sellers.', 'order', ['part_number' => 'Number of this seller\'s part', 'seller_name' => 'Seller\'s store name', 'tracking_note' => 'The delivery tracking number, when one was given at dispatch'],
             ['email', 'sms'], [], false, [],
-            'Update on your order {order_number}', 'Part of your order {order_number} ({part_number}, sold by {seller_name}) has been dispatched.', 'Part of your order {order_number} ({part_number}, sold by {seller_name}) has been dispatched.'],
+            'Update on your order {order_number}', 'Part of your order {order_number} ({part_number}, sold by {seller_name}) has been dispatched.{tracking_note}', 'Part of your order {order_number} ({part_number}, sold by {seller_name}) has been dispatched.{tracking_note}'],
         'seller_order_ready' => ['Part of an order ready for collection', 'orders', 'Can carry the collection code, so it is always sent and cannot be switched off.', 'order',
             ['part_number' => 'Number of this seller\'s part', 'seller_name' => 'Seller\'s store name', 'collection_note' => 'The collection code, or a reminder to use the one sent earlier'],
             ['email', 'sms'], ['email', 'sms'], true, ['email' => ['collection_note'], 'sms' => ['collection_note']],
@@ -177,6 +177,21 @@ final class MessageTemplates
         ] + self::contactVars();
     }
 
+    /**
+     * " Tracking number: X." for the dispatch messages, or "" when no tracking number was given (one seller part, or the
+     * whole order). Customers can also use it on Track order.
+     */
+    public static function trackingNote(int $orderId, ?int $sellerOrderId = null): string
+    {
+        $refs = App::db()->all(
+            "SELECT DISTINCT tracking_reference FROM seller_orders WHERE order_id = ? AND tracking_reference IS NOT NULL AND tracking_reference <> ''"
+            . ($sellerOrderId !== null ? ' AND id = ?' : '') . ' ORDER BY id',
+            $sellerOrderId !== null ? [$orderId, $sellerOrderId] : [$orderId]
+        );
+        $refs = array_column($refs, 'tracking_reference');
+        return $refs ? ' Tracking number' . (count($refs) > 1 ? 's' : '') . ': ' . implode(', ', $refs) . '.' : '';
+    }
+
     /** @return array<string,string> */
     public static function contactVars(): array
     {
@@ -242,7 +257,7 @@ final class MessageTemplates
             'order_total' => Money::format('2450.00'), 'track_url' => rtrim((string) config('app.url'), '/') . '/track-order',
             'status_label' => OrderPresenter::status(substr($code, 6) ?: 'confirmed'), 'next_step' => 'Please pay KSh 2,450 by M-Pesa and submit your M-Pesa transaction code.',
             'collection_code' => '483920', 'pickup_location' => 'Moi Avenue Station, Moi Ave 12, Nairobi CBD (8 am – 6 pm)', 'hold_days' => (string) Settings::int('collection_hold_days', 7),
-            'refund_note' => '', 'part_number' => Brand::orderPrefix() . '-7K2L9XQ4-2', 'seller_name' => 'Example Electronics', 'collection_note' => ' Your collection code is 483920. Keep it private.',
+            'refund_note' => '', 'tracking_note' => ' Tracking number: G4S-1234567.', 'part_number' => Brand::orderPrefix() . '-7K2L9XQ4-2', 'seller_name' => 'Example Electronics', 'collection_note' => ' Your collection code is 483920. Keep it private.',
             'reason' => 'out of stock', 'transaction_code' => 'SGH7K2L9XQ', 'return_numbers' => 'RT-8HJ3K2PQ', 'return_number' => 'RT-8HJ3K2PQ', 'staff_note' => '',
             'refund_outcome' => 'A refund of KSh 1,200 has been approved and our team will send it to you.', 'refund_amount' => 'KSh 1,200', 'refund_method' => 'M-Pesa',
             'refund_reference' => 'SGH7K2L9XR', 'case_number' => 'CS-4MN8P2QR', 'sender' => 'Example Electronics', 'excerpt' => '"We have sent a replacement."',

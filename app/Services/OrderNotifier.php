@@ -37,6 +37,9 @@ final class OrderNotifier
                      'refund_note' => $order['status'] === 'cancelled' && $order['payment_status'] === 'refund_due'
                         ? ' Because your payment was already received, our team will arrange your refund.' : ''] + MessageTemplates::orderVars($order);
             $ctx = ['user_id' => $order['user_id'] ? (int) $order['user_id'] : null, 'order_id' => (int) $order['id']];
+            if ($order['status'] === 'dispatched') {
+                $vars['tracking_note'] = MessageTemplates::trackingNote((int) $order['id']);
+            }
 
             // Ready for collection: the code is essential, so the template is always sent (preferences apply to
             // optional updates only) and the code is redacted from the stored outbox copy.

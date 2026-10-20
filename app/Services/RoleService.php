@@ -31,7 +31,7 @@ final class RoleService
         'catalogue' => 'Catalogue & stock', 'inventory' => 'Catalogue & stock', 'products' => 'Catalogue & stock',
         'sellers' => 'Marketplace',
         'content' => 'Content & marketing', 'coupons' => 'Content & marketing', 'messages' => 'Content & marketing',
-        'settings' => 'Administration', 'users' => 'Administration', 'roles' => 'Administration', 'secrets' => 'Administration', 'system' => 'Administration',
+        'settings' => 'Administration', 'users' => 'Administration', 'roles' => 'Administration', 'secrets' => 'Administration', 'system' => 'Administration', 'messaging' => 'Administration',
     ];
 
     /** Permissions that change who can do what, or touch money destinations and credentials: highlighted in the matrix. */

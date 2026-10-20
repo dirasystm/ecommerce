@@ -12,14 +12,18 @@ use Waimart\Core\Settings;
 /**
  * Outbound notifications. Every message is recorded in `notifications` (with secrets
  * redacted). Email goes out via SMTP when configured; in development the "log" driver writes
- * the full message to storage/logs/mail-*.log instead. SMS is stored in the outbox only
- * (no SMS provider configured — see docs).
+ * the full message to storage/logs/mail-*.log instead. SMS goes out through the Talksasa gateway when it is switched on
+ * under Admin → Email & SMS (SmsGateway); otherwise it stays in the outbox (status "logged").
  *
  * How email is sent comes from Settings → Email & SMS when chosen there (password in the encrypted SecretStore), and
  * otherwise from the server configuration (config.local.php). Wording comes from MessageTemplates (sendTemplate).
  */
 final class NotificationService
 {
+    public function __construct(private ?SmsGateway $gateway = null)
+    {
+    }
+
     /**
      * Sends a message from its template. Recipients without an address/phone are skipped, a channel switched off in
      * the template is skipped, and customers' preferences are respected unless the template must always be sent.
@@ -99,9 +103,13 @@ final class NotificationService
         return $id;
     }
 
-    /** SMS outbox (no gateway yet). @param array{user_id?:?int,order_id?:?int,secrets?:list<string>} $ctx */
+    /**
+     * Sends an SMS through the gateway when it is switched on; otherwise records it in the outbox only ("logged").
+     * @param array{user_id?:?int,order_id?:?int,secrets?:list<string>} $ctx
+     */
     public function sms(string $phone, string $body, string $template, array $ctx = []): int
     {
+        $live = $this->gateway !== null || SmsGateway::enabled();
         $id = App::db()->insert('notifications', [
             'user_id' => $ctx['user_id'] ?? null,
             'order_id' => $ctx['order_id'] ?? null,
@@ -109,10 +117,27 @@ final class NotificationService
             'template' => $template,
             'recipient' => $phone,
             'body' => $this->redact($body, $ctx['secrets'] ?? []),
-            'status' => 'logged',
+            'status' => $live ? 'queued' : 'logged',
         ]);
-        if (self::mailConfig()['driver'] === 'log') {
-            $this->writeLog('sms', $phone, '', $body);
+        if (!$live) {
+            if (self::mailConfig()['driver'] === 'log') {
+                $this->writeLog('sms', $phone, '', $body);
+            }
+            return $id;
+        }
+        try {
+            $r = ($this->gateway ??= new SmsGateway())->send($phone, $body);
+        } catch (\Throwable $e) {
+            $r = ['ok' => false, 'ref' => null, 'status' => null, 'error' => 'SMS gateway error.'];
+            Logger::error('SMS send failed', ['notification_id' => $id, 'error' => $e->getMessage()]);
+        }
+        if ($r['ok']) {
+            App::db()->exec("UPDATE notifications SET status = 'sent', attempts = attempts + 1, sent_at = NOW(), provider_ref = ?, provider_status = ?, last_error = NULL WHERE id = ?",
+                [$r['ref'], $r['status'], $id]);
+        } else {
+            Logger::error('SMS send failed', ['notification_id' => $id, 'error' => $r['error']]);
+            App::db()->exec("UPDATE notifications SET status = 'failed', attempts = attempts + 1, last_error = ? WHERE id = ?",
+                [mb_substr((string) $r['error'], 0, 255), $id]);
         }
         return $id;
     }

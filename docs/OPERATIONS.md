@@ -83,8 +83,33 @@ Then restart MySQL from the XAMPP Control Panel. Phase 12 measurements are in `d
 - **Suspected compromise:**
   1. on their page, **Sign out everywhere**, then **Require a password change** (or email a reset link);
   2. review Sign-in activity and the audit log for that person.
-- **Credentials** (the SMTP password) live in the encrypted store, under Settings → Email & SMS. They are encrypted with the app key in `config.local.php`. If the key changes, the page says the password must be entered again.
+- **Credentials** (the SMTP password and the SMS API token) live in the encrypted store, under Settings → Email and Admin → Email & SMS. They are encrypted with the app key in `config.local.php`. If the key changes, the page says the password must be entered again.
 - The **audit log** and **sign-in activity** cannot be edited or deleted, even directly in the database (triggers refuse it).
+
+## Email & SMS (System → Email & SMS)
+
+One page for both channels (permission `messaging.manage`; changing the SMS token also needs `secrets.manage`).
+
+- **SMS gateway: Talksasa bulk SMS** (`https://bulksms.talksasa.com/api/v3/`). To set it up:
+  1. In Talksasa → Developers, click **Reveal token** and copy the API token. Paste it under **API token** and save. It is stored encrypted and never shown again. The page then shows the balance, which proves the token works.
+  2. Enter the **Sender ID** exactly as approved on the Talksasa account (up to 11 characters).
+  3. **Send a test SMS** to your own phone. This works while customer SMS is still off.
+  4. Choose **Send through Talksasa** and save. From then on, every customer and seller SMS goes out through Talksasa.
+  - While SMS is off, messages are only recorded in the log ("Not sent (log only)").
+- **Numbers at the top:** the SMS balance (refreshed every 2 minutes, or with **Refresh**) and, for SMS and for email, how many were sent, failed or only logged: in total, today and in the last 30 days.
+- **Delivery reports:** "Sent" means Talksasa accepted the SMS. **Check delivery reports** asks Talksasa about SMS from the last 3 days; any not delivered move to Failed with the reason.
+- **Message log:** search by phone (07… or 2547…), email, order number or text; filter by SMS/email and status.
+  - **Re-send** a failed message after fixing the cause (balance, token, sender ID).
+  - Messages that held a code or private link cannot be re-sent: repeat the original action instead.
+- **Test email** to any address uses the settings under Settings → Email.
+- SMS are sent while the page or action that triggers them runs. If Talksasa is slow or down, the message is marked Failed (with the reason) after about 12 seconds, and the order or other action still completes.
+
+## Order tracking numbers
+
+When staff dispatch a seller's part of an order, they can enter the courier's **delivery reference**. This becomes the customer's **tracking number**:
+- it is shown on the order page;
+- it is included in the "dispatched" email and SMS (placeholder `{tracking_note}`);
+- on **Track order**, customers can enter either the order number or the tracking number, together with the phone number used at checkout.
 
 ## Website updates (System → Website updates; super admins)
 

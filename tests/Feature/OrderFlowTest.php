@@ -146,6 +146,26 @@ final class OrderFlowTest extends FeatureTestCase
         $this->assertStringContainsString('Too many attempts', $blocked);
     }
 
+    public function testLookupByTrackingNumberAndPhone(): void
+    {
+        [$r] = $this->placeOrder([], '0733444556');
+        preg_match('#(BM-[A-Z0-9]{8})#', $r['headers']['location'], $m);
+        $number = $m[1];
+        $this->db->exec("UPDATE seller_orders so JOIN orders o ON o.id = so.order_id SET so.tracking_reference = 'G4S-1234567' WHERE o.order_number = ?", [$number]);
+        $this->freshSession();
+
+        $form = $this->get('/track-order')['body'];
+        $this->assertStringContainsString('Order or tracking number', $form);
+        $wrong = $this->follow($this->post('/track-order', ['order_number' => 'G4S-1234567', 'phone' => '0700000000'], '/track-order'))['body'];
+        $this->assertStringContainsString('We could not find an order matching those details', $wrong);
+
+        $ok = $this->post('/track-order', ['order_number' => 'g4s-1234567', 'phone' => '0733 444 556'], '/track-order');
+        $this->assertSame("/track/$number", $ok['headers']['location'], 'the tracking number opens its order');
+        $page = $this->get("/track/$number")['body'];
+        $this->assertStringContainsString('Tracking number', $page);
+        $this->assertStringContainsString('G4S-1234567', $page);
+    }
+
     public function testCustomersCannotSeeEachOthersOrders(): void
     {
         $this->post('/register', ['first_name' => 'A', 'last_name' => 'One', 'email' => 'a1@example.com', 'phone' => '0711000001',

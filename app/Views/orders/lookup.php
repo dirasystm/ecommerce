@@ -1,12 +1,12 @@
 <div class="container-wm">
     <div class="wm-auth-card wm-card">
         <h1>Track your order</h1>
-        <p class="text-muted small">Enter your order number (e.g. <code><?= e(\Waimart\Services\Brand::orderPrefix()) ?>-7K3F9Q2X</code>) and the phone number you used at checkout.</p>
+        <p class="text-muted small" id="trackHelp">Enter your order number (e.g. <code><?= e(\Waimart\Services\Brand::orderPrefix()) ?>-7K3F9Q2X</code>) or the tracking number we sent you when your order was dispatched, and the phone number you used at checkout.</p>
         <form method="post" action="<?= e(url('/track-order')) ?>" novalidate>
             <?= csrf_field() ?>
             <div class="mb-3">
-                <label class="form-label" for="order_number">Order number</label>
-                <input class="form-control text-uppercase" id="order_number" name="order_number" required maxlength="11" autocomplete="off" value="<?= e(old('order_number')) ?>">
+                <label class="form-label" for="order_number">Order or tracking number</label>
+                <input class="form-control text-uppercase" id="order_number" name="order_number" required maxlength="80" autocomplete="off" spellcheck="false" aria-describedby="trackHelp" value="<?= e(old('order_number')) ?>">
             </div>
             <div class="mb-3">
                 <label class="form-label" for="phone">Phone number</label>

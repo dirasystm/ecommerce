@@ -73,6 +73,8 @@ body.wm-admin { background: #f4f6f5; padding-bottom: 0; }
 
 /* Roles & permissions matrix: screen-reader labels in the cells are absolutely positioned; keep them inside the scroller. */
 .wm-matrix { position: relative; }
+/* Scrolling tables contain their visually-hidden labels (absolutely positioned), so the page never scrolls sideways. */
+.table-responsive { position: relative; }
 
 /* Outline danger buttons: Bootstrap's red sits on the 4.5:1 contrast edge (fails on light rows); a darker red reads clearly. */
 .btn-outline-danger { --bs-btn-color: #b02a37; --bs-btn-border-color: #b02a37; --bs-btn-hover-bg: #b02a37; --bs-btn-hover-border-color: #b02a37; --bs-btn-active-bg: #8f2330; --bs-btn-active-border-color: #8f2330; }

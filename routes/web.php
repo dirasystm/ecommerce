@@ -246,8 +246,8 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     $r->get('/settings/transfer', [Admin\SettingsController::class, 'transfer'], ['can:settings.manage']);
     $r->get('/settings/export', [Admin\SettingsController::class, 'export'], ['can:settings.manage', 'throttle:30,3600']);
     $r->post('/settings/import', [Admin\SettingsController::class, 'import'], ['can:settings.manage', 'throttle:10,3600']);
-    $r->get('/settings/{group:general|contact|social|seo|checkout|orders|payments|delivery|marketplace|email|security|maintenance}', [Admin\SettingsController::class, 'group'], ['can:settings.manage']);
-    $r->post('/settings/{group:general|contact|social|seo|checkout|orders|payments|delivery|marketplace|email|security|maintenance}', [Admin\SettingsController::class, 'saveGroup'], ['can:settings.manage']);
+    $r->get('/settings/{group:general|contact|social|seo|checkout|orders|payments|delivery|marketplace|email|sms|security|maintenance}', [Admin\SettingsController::class, 'group'], ['can:settings.manage']);
+    $r->post('/settings/{group:general|contact|social|seo|checkout|orders|payments|delivery|marketplace|email|sms|security|maintenance}', [Admin\SettingsController::class, 'saveGroup'], ['can:settings.manage']);
     $r->post('/settings/email/password', [Admin\SettingsController::class, 'smtpPassword'], ['can:settings.manage', 'can:secrets.manage', 'throttle:20,3600']);
     $r->post('/settings/email/test', [Admin\SettingsController::class, 'testEmail'], ['can:settings.manage', 'throttle:10,3600']);
     $r->get('/settings/branding', [Admin\BrandingController::class, 'edit'], ['can:settings.manage']);
@@ -264,6 +264,16 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     $r->get('/reports', [Admin\ReportController::class, 'index'], ['can:reports.view']);
     $r->get('/audit', [Admin\AuditController::class, 'index'], ['can:audit.view']);
     $r->get('/audit/sign-ins', [Admin\AuditController::class, 'signIns'], ['can:audit.view']);
+    // Email & SMS: SMS gateway (Talksasa), balance, sent/failed counts, test messages and the message log.
+    $r->group(['middleware' => ['can:messaging.manage']], function ($r) {
+        $r->get('/messaging', [Admin\MessagingController::class, 'index']);
+        $r->post('/messaging/sms', [Admin\MessagingController::class, 'saveSms']);
+        $r->post('/messaging/token', [Admin\MessagingController::class, 'token'], ['throttle:20,3600']);
+        $r->post('/messaging/test-sms', [Admin\MessagingController::class, 'testSms'], ['throttle:10,3600']);
+        $r->post('/messaging/test-email', [Admin\MessagingController::class, 'testEmail'], ['throttle:10,3600']);
+        $r->post('/messaging/delivery', [Admin\MessagingController::class, 'delivery'], ['throttle:30,3600']);
+        $r->post('/messaging/{id:\d+}/retry', [Admin\MessagingController::class, 'retry'], ['throttle:60,3600']);
+    });
     // Website updates: upload a project .zip, install it live, roll it back.
     $r->group(['middleware' => ['can:system.update']], function ($r) {
         $r->get('/updates', [Admin\UpdateController::class, 'index']);
