@@ -2,6 +2,10 @@
 
 // Router for `php -S` during feature tests: serve real files from public/, else the front controller.
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+if ($path === '/update-rescue.php') {   // the updater's emergency rollback runs on its own, like under Apache
+    require __DIR__ . '/../public/update-rescue.php';
+    return true;
+}
 $file = realpath(__DIR__ . '/../public' . $path);
 $public = realpath(__DIR__ . '/../public');
 if ($file !== false && is_file($file) && str_starts_with($file, $public) && !str_ends_with($file, '.php')) {

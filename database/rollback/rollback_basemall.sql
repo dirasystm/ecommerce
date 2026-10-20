@@ -1,8 +1,12 @@
--- ROLLBACK of the Basemall rebrand migrations (018 onwards; currently 018–024). Run only after taking a backup:
+-- ROLLBACK of the Basemall rebrand migrations (018 onwards; currently 018–025). Run only after taking a backup:
 --   php bin/backup.php
 --   C:\xampp\mysql\bin\mysql.exe -u root waimart < database\rollback\rollback_basemall.sql
 -- Restores the Waimart values only where they still hold the shipped Basemall values. Orders numbered BM- stay
 -- valid (the code that reads them is not removed by this script; only roll back the code together with it).
+
+-- 025 (website updates): the update history goes; the updates themselves stay installed (roll them back first if needed).
+DROP TABLE IF EXISTS system_updates;
+DELETE FROM permissions WHERE slug = 'system.update';
 
 -- 024 (roles and admin accounts): two-step sign-in, extra permissions and sign-in activity go away; custom roles
 -- created since stay (the older code shows and checks them), but staff given only a new built-in role lose that access.
@@ -63,4 +67,4 @@ UPDATE commission_rules SET note = 'Waimart Official Store (platform-owned)'
  WHERE scope = 'seller' AND seller_id = 1 AND note = 'Basemall Official Store (platform-owned)' AND is_active = 1;
 DROP TABLE seller_slug_aliases;
 
-DELETE FROM schema_migrations WHERE filename IN ('024_roles_mfa_security.sql', '023_payments_delivery_messages.sql', '022_content_management.sql', '021_normalise_setting_flags.sql', '020_unique_user_phone.sql', '019_settings_groups.sql', '018_basemall_brand.sql');
+DELETE FROM schema_migrations WHERE filename IN ('025_system_updates.sql', '024_roles_mfa_security.sql', '023_payments_delivery_messages.sql', '022_content_management.sql', '021_normalise_setting_flags.sql', '020_unique_user_phone.sql', '019_settings_groups.sql', '018_basemall_brand.sql');

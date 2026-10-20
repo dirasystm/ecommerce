@@ -264,6 +264,17 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     $r->get('/reports', [Admin\ReportController::class, 'index'], ['can:reports.view']);
     $r->get('/audit', [Admin\AuditController::class, 'index'], ['can:audit.view']);
     $r->get('/audit/sign-ins', [Admin\AuditController::class, 'signIns'], ['can:audit.view']);
+    // Website updates: upload a project .zip, install it live, roll it back.
+    $r->group(['middleware' => ['can:system.update']], function ($r) {
+        $r->get('/updates', [Admin\UpdateController::class, 'index']);
+        $r->post('/updates', [Admin\UpdateController::class, 'start'], ['throttle:20,3600']);
+        $r->post('/updates/{uuid:[a-f0-9]{32}}/chunk', [Admin\UpdateController::class, 'chunk']);
+        $r->post('/updates/{uuid:[a-f0-9]{32}}/step', [Admin\UpdateController::class, 'step']);
+        $r->get('/updates/{uuid:[a-f0-9]{32}}', [Admin\UpdateController::class, 'status']);
+        $r->post('/updates/{uuid:[a-f0-9]{32}}/approve', [Admin\UpdateController::class, 'approve'], ['throttle:10,900']);
+        $r->post('/updates/{uuid:[a-f0-9]{32}}/cancel', [Admin\UpdateController::class, 'cancel']);
+        $r->post('/updates/{uuid:[a-f0-9]{32}}/rollback', [Admin\UpdateController::class, 'rollback'], ['throttle:10,900']);
+    });
     // Roles and the permission matrix (Basemall Stage 5).
     $r->group(['middleware' => ['can:roles.manage']], function ($r) {
         $r->get('/roles', [Admin\RoleController::class, 'index']);

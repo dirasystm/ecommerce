@@ -15,3 +15,6 @@
 /storage/private/seller-docs/*
 !/storage/private/seller-docs/.gitkeep
 !/public/uploads/.htaccess
+/storage/updates/
+/storage/updates-test/
+/storage/updater-sandbox/

@@ -86,6 +86,37 @@ Then restart MySQL from the XAMPP Control Panel. Phase 12 measurements are in `d
 - **Credentials** (the SMTP password) live in the encrypted store, under Settings → Email & SMS. They are encrypted with the app key in `config.local.php`. If the key changes, the page says the password must be entered again.
 - The **audit log** and **sign-in activity** cannot be edited or deleted, even directly in the database (triggers refuse it).
 
+## Website updates (System → Website updates; super admins)
+
+Install a new version of the website from a **.zip of the project** while the shop stays open.
+
+1. **Upload:** choose the .zip and click **Upload and check**. It uploads in 2 MB pieces with a percentage, then is checked; nothing on the live site changes yet.
+   - The package must be this project (same `composer.json` name). It may sit inside a top folder (as GitHub's "Download ZIP" does). `vendor/` is optional.
+   - Every file is compared with the live one. **Only changed and new files are used; nothing is ever deleted.**
+   - **Never touched:** `config/config.local.php`, `storage/`, `public/uploads/`, `.git/`.
+   - Changed PHP files are syntax-checked.
+   - **Database:** only migrations not yet applied are considered. They may only add: new tables, new columns that are optional or have a default, named indexes and constraints, triggers, views and new reference rows. Anything that changes or deletes existing data, or changes existing columns, **blocks** the update before anything happens; install such migrations during a quiet period with `php bin/migrate.php` after a backup.
+2. **Review:** the number of changed, new and unchanged files, and the database additions (or the reasons it is blocked). Confirm with your password, or cancel.
+3. **Install:** a spinner, the current task and a percentage throughout. In order:
+   1. the database is backed up (only if it changes);
+   2. every file about to be replaced is backed up;
+   3. the new files are written beside the live ones under temporary names;
+   4. the database additions are applied, and all files are switched in one quick pass (each switch is an instant rename; the whole pass takes milliseconds);
+   5. the browser checks the home page and the health check, and the server checks that every changed class loads;
+   6. finish.
+4. **If anything fails after the first change,** everything is rolled back automatically:
+   - replaced files are restored and new files and folders removed;
+   - the tables, columns and other objects the update added are removed;
+   - existing data is never touched.
+   - If the new version is so broken that the admin cannot run, the page calls the **emergency rollback**, `public/update-rescue.php`, which works without the rest of the website.
+5. **Roll back by hand:** the most recent installed update has a **Roll back** button in the history (password required). Anything saved in tables or columns the update added is removed with them.
+
+**Last resort, on the server:** `php bin/update-rescue.php` lists recent updates; `php bin/update-rescue.php <id> --confirm` rolls one back without the website.
+
+- Each update's journal and backups are in `storage/updates/<id>/`. The three most recent are kept.
+- Every step is in the audit log (`system.update_*`) and the update history.
+- PHP's zip extension is **not** needed: the updater reads standard .zip files itself.
+
 ## Backups
 
 `php bin/backup.php` writes a consistent database dump plus copies of `public/uploads` and `config.local.php` to `storage/backups`, and keeps the newest 14. Scheduling, off-site copies, restore and rebuild procedures are in [BACKUP_RESTORE.md](BACKUP_RESTORE.md). Installation is in [INSTALL.md](INSTALL.md).

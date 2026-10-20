@@ -242,6 +242,18 @@ Default reservation window: **30 minutes** (`settings.reservation_minutes`).
 | Order status names | `order_status_labels` (edited ones only) | `StatusLabels` |
 | Credentials | `secrets` (AES-256-GCM with the app key, write-only) | `SecretStore` |
 
+## 12b. Website updates (SiteUpdater)
+
+- **Packages:** the admin uploads a .zip of the project in chunks; `Core\ZipReader` reads it without the zip extension and refuses unsafe archives (paths leaving the folder, links, encryption, ZIP64, zip bombs).
+- **Changes:**
+  - only changed and new files (by SHA-256) are applied; protected paths (`config.local.php`, `storage/`, `public/uploads/`) are never read or written;
+  - `UpdateSqlGuard` allows only additive migration statements and knows how to undo each object they create.
+- **Install:**
+  - new files are staged beside the live ones, then database additions run and files are switched by atomic renames in one pass (opcache entries invalidated);
+  - work runs in sub-second JSON steps, so the page shows progress and nothing times out;
+  - the journal (`storage/updates/<id>/journal.json`) records every change before it is made.
+- **Rollback:** `UpdateRescue` (no other dependencies) restores from the journal. It is used automatically on failure, by the manual rollback, by `public/update-rescue.php` (token-protected) and by `bin/update-rescue.php`. The rescue files themselves are switched last.
+
 ## 13. Testing strategy
 
 - **Unit:** Money, Validator, OrderWorkflow transition table, pricing.
