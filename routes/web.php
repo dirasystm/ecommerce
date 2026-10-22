@@ -270,6 +270,9 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     $r->group(['middleware' => ['can:messaging.manage']], function ($r) {
         $r->get('/messaging', [Admin\MessagingController::class, 'index']);
         $r->post('/messaging/sms', [Admin\MessagingController::class, 'saveSms']);
+        $r->post('/messaging/channels', [Admin\MessagingController::class, 'channels']);
+        $r->post('/messaging/email', [Admin\MessagingController::class, 'saveEmail']);
+        $r->post('/messaging/email-password', [Admin\MessagingController::class, 'emailPassword'], ['throttle:20,3600']);
         $r->post('/messaging/token', [Admin\MessagingController::class, 'token'], ['throttle:20,3600']);
         $r->post('/messaging/test-sms', [Admin\MessagingController::class, 'testSms'], ['throttle:10,3600']);
         $r->post('/messaging/test-email', [Admin\MessagingController::class, 'testEmail'], ['throttle:10,3600']);

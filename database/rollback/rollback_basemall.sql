@@ -1,8 +1,11 @@
--- ROLLBACK of the Basemall rebrand migrations (018 onwards; currently 018–028). Run only after taking a backup:
+-- ROLLBACK of the Basemall rebrand migrations (018 onwards; currently 018–029). Run only after taking a backup:
 --   php bin/backup.php
 --   C:\xampp\mysql\bin\mysql.exe -u root waimart < database\rollback\rollback_basemall.sql
 -- Restores the Waimart values only where they still hold the shipped Basemall values. Orders numbered BM- stay
 -- valid (the code that reads them is not removed by this script; only roll back the code together with it).
+
+-- 029 (how notifications are sent): back to sending both email and SMS.
+DELETE FROM settings WHERE setting_key = 'notify_channels';
 
 -- 028 (password reset by SMS code): pending SMS resets are cancelled; email links keep working.
 UPDATE password_resets SET used_at = NOW() WHERE used_at IS NULL AND code_hash IS NOT NULL;
@@ -81,4 +84,4 @@ UPDATE commission_rules SET note = 'Waimart Official Store (platform-owned)'
  WHERE scope = 'seller' AND seller_id = 1 AND note = 'Basemall Official Store (platform-owned)' AND is_active = 1;
 DROP TABLE seller_slug_aliases;
 
-DELETE FROM schema_migrations WHERE filename IN ('028_password_reset_sms.sql', '027_order_journey.sql', '026_messaging.sql', '025_system_updates.sql', '024_roles_mfa_security.sql', '023_payments_delivery_messages.sql', '022_content_management.sql', '021_normalise_setting_flags.sql', '020_unique_user_phone.sql', '019_settings_groups.sql', '018_basemall_brand.sql');
+DELETE FROM schema_migrations WHERE filename IN ('029_notify_channels.sql', '028_password_reset_sms.sql', '027_order_journey.sql', '026_messaging.sql', '025_system_updates.sql', '024_roles_mfa_security.sql', '023_payments_delivery_messages.sql', '022_content_management.sql', '021_normalise_setting_flags.sql', '020_unique_user_phone.sql', '019_settings_groups.sql', '018_basemall_brand.sql');

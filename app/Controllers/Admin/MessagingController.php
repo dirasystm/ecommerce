@@ -14,6 +14,7 @@ use Waimart\Core\Settings;
 use Waimart\Core\ValidationException;
 use Waimart\Core\Validator;
 use Waimart\Services\AuditLogger;
+use Waimart\Services\MessagingDiagnostics;
 use Waimart\Services\NotificationService;
 use Waimart\Services\SecretStore;
 use Waimart\Services\SettingsService;
@@ -82,6 +83,8 @@ final class MessagingController extends AdminController
         return $this->view('messaging/index', [
             'title' => 'Email & SMS', 'stats' => $stats, 'delivered' => $delivered,
             'sms' => SettingsService::values('sms'), 'token' => (new SecretStore())->status('sms_api_token'),
+            'emailValues' => SettingsService::values('email'), 'smtpSecret' => (new SecretStore())->status('smtp_password'),
+            'mode' => NotificationService::channelMode(),
             'mail' => NotificationService::mailConfig(), 'balance' => $this->balance(!empty($req->query['refresh'])),
             'rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => $pages, 'perPage' => $perPage,
             'channel' => $channel, 'status' => $status, 'search' => $search, 'noResend' => self::NO_RESEND,
@@ -91,9 +94,44 @@ final class MessagingController extends AdminController
     /** Gateway settings: on/off, sender ID, endpoint. */
     public function saveSms(Request $req): Response
     {
+        SettingsService::guardCredentialRouting($req->post, Auth::can('secrets.manage'));
         (new SettingsService())->save($req->post, $this->actor(), 'sms');
         Session::forget('sms_balance');
         return $this->success('SMS settings saved.', '/admin/messaging');
+    }
+
+    /** How notifications are sent: email only, SMS only or both. SMS needs a working gateway first. */
+    public function channels(Request $req): Response
+    {
+        $mode = (string) $req->input('notify_channels', '');
+        if (in_array($mode, ['sms', 'both'], true) && (!SmsGateway::enabled() || !(new SecretStore())->status('sms_api_token')['set'])) {
+            throw new ValidationException(['notify_channels' => 'Set up SMS first: save the Talksasa API token and sender ID, and choose "Send through Talksasa".']);
+        }
+        (new SettingsService())->saveKeys(['notify_channels' => $mode], $this->actor(), ['notify_channels']);
+        return $this->success('Notifications will now be sent by ' . strtolower(SettingsService::OPTIONS['notify_channels'][$mode] ?? 'both email and SMS') . '.', '/admin/messaging');
+    }
+
+    /** Email server (SMTP) and sender details: the same settings as Settings → Email, managed here too. */
+    public function saveEmail(Request $req): Response
+    {
+        SettingsService::guardCredentialRouting($req->post, Auth::can('secrets.manage'));
+        (new SettingsService())->save($req->post, $this->actor(), 'email');
+        return $this->success('Email settings saved.', '/admin/messaging#email');
+    }
+
+    /** The email account password (also needs secrets.manage): stored encrypted, never shown again. */
+    public function emailPassword(Request $req): Response
+    {
+        if (!Auth::can('secrets.manage')) {
+            throw HttpException::forbidden();
+        }
+        $store = new SecretStore();
+        if (!empty($req->post['remove'])) {
+            $store->clear('smtp_password', $this->actor());
+            return $this->success('The saved email password was removed.', '/admin/messaging#email');
+        }
+        $store->set('smtp_password', (string) ($req->post['secret_smtp_password'] ?? ''), $this->actor());
+        return $this->success('Email password saved (encrypted). Send a test email to check it.', '/admin/messaging#email');
     }
 
     /** The API token (also needs secrets.manage): stored encrypted, never shown again. */
@@ -127,14 +165,24 @@ final class MessagingController extends AdminController
         }
         $text = $text !== '' ? $text : 'Test SMS from ' . brand_name() . '. If you can read this, SMS sending works.';
         $id = (new NotificationService(new SmsGateway()))->sms($phone, $text, 'sms_test', ['user_id' => $this->actor()]);
-        $row = App::db()->one('SELECT status, last_error FROM notifications WHERE id = ?', [$id]);
+        $row = App::db()->one('SELECT status, last_error, provider_ref FROM notifications WHERE id = ?', [$id]);
         AuditLogger::log('messaging.test_sms', 'notification', $id, null, ['status' => $row['status'] ?? null], $this->actor());
         Session::forget('sms_balance');
+        $to = Validator::displayPhone($phone);
         if (($row['status'] ?? '') !== 'sent') {
-            return $this->failure('The test SMS was not sent: ' . ($row['last_error'] ?? 'unknown error'));
+            return $this->testResult('sms', ['ok' => false, 'to' => $to] + MessagingDiagnostics::sms((string) ($row['last_error'] ?? '')));
         }
-        return $this->success('Test SMS sent to ' . Validator::displayPhone($phone) . '.'
-            . (SmsGateway::enabled() ? '' : ' Customer SMS is still switched off: choose "Send through Talksasa" and save to start sending them.'), '/admin/messaging');
+        return $this->testResult('sms', ['ok' => true, 'to' => $to, 'title' => "Test SMS sent to $to.",
+            'fix' => 'Talksasa accepted it' . ($row['provider_ref'] ? ' (reference ' . $row['provider_ref'] . ')' : '') . '. It should arrive within a minute.'
+                . (SmsGateway::enabled() ? '' : ' Customer SMS is still switched off: choose "Send through Talksasa" under SMS gateway and save to start sending them.'),
+            'detail' => '']);
+    }
+
+    /** Keeps a test's outcome for the "Test your setup" panel (shown once, next to the form that sent it). */
+    private function testResult(string $channel, array $result): Response
+    {
+        Session::flash('test_' . $channel, $result + ['at' => date('H:i')]);
+        return Response::redirect('/admin/messaging#test');
     }
 
     public function testEmail(Request $req): Response
@@ -143,15 +191,21 @@ final class MessagingController extends AdminController
         if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
             throw new ValidationException(['email' => 'Enter a valid email address.']);
         }
+        $text = trim((string) $req->input('message', ''));
+        if (mb_strlen($text) > 2000) {
+            throw new ValidationException(['email_message' => 'Keep the test message under 2,000 characters.']);
+        }
         $id = (new NotificationService())->email($to, 'Test email from ' . brand_name(),
-            "This is a test email from the " . brand_name() . " admin (Email & SMS).\n\nIf you can read this, email sending works.\n\n" . brand_name(),
+            ($text !== '' ? $text : "This is a test email from the " . brand_name() . " admin (Email & SMS).\n\nIf you can read this, email sending works.") . "\n\n" . brand_name(),
             'mail_test', ['user_id' => $this->actor()]);
         $row = App::db()->one('SELECT status, last_error FROM notifications WHERE id = ?', [$id]);
         AuditLogger::log('messaging.test_email', 'notification', $id, null, ['status' => $row['status'] ?? null], $this->actor());
         return match ($row['status'] ?? '') {
-            'sent' => $this->success("Test email sent to $to. Check the inbox (and the spam folder).", '/admin/messaging'),
-            'logged' => $this->success('Email is not being sent: it was written to the mail log (storage/logs) instead. Choose "Send through a mail server" under Settings → Email to send real email.', '/admin/messaging'),
-            default => $this->failure('The test email could not be sent: ' . self::safeError((string) ($row['last_error'] ?? 'unknown error')) . ' Check the mail server settings under Settings → Email.'),
+            'sent' => $this->testResult('email', ['ok' => true, 'to' => $to, 'title' => "Test email sent to $to.",
+                'fix' => 'The mail server accepted it. Check the inbox, and the Spam or Promotions folder: new senders often land there at first. Mark it "Not spam" if so.', 'detail' => '']),
+            'logged' => $this->testResult('email', ['ok' => false, 'to' => $to, 'title' => 'Email is switched off, so nothing was sent.',
+                'fix' => 'It was written to the mail log on the server instead. Under Email server, set "How email is sent" to "Send through a mail server (SMTP)" and save.', 'detail' => '']),
+            default => $this->testResult('email', ['ok' => false, 'to' => $to] + MessagingDiagnostics::email(self::safeError((string) ($row['last_error'] ?? '')))),
         };
     }
 

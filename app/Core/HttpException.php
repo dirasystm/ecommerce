@@ -6,7 +6,8 @@ namespace Waimart\Core;
 
 class HttpException extends \RuntimeException
 {
-    public function __construct(public readonly int $status, string $message = '')
+    /** @param int|null $retryAfter seconds to wait (sent as Retry-After on 429 responses) */
+    public function __construct(public readonly int $status, string $message = '', public readonly ?int $retryAfter = null)
     {
         parent::__construct($message, $status);
     }
@@ -21,8 +22,8 @@ class HttpException extends \RuntimeException
         return new self(403, $message);
     }
 
-    public static function tooMany(string $message = 'Too many attempts. Please wait and try again.'): self
+    public static function tooMany(string $message = 'Too many attempts. Please wait and try again.', ?int $retryAfter = null): self
     {
-        return new self(429, $message);
+        return new self(429, $message, $retryAfter);
     }
 }

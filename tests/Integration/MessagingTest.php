@@ -71,6 +71,22 @@ final class MessagingTest extends DbTestCase
         $this->assertStringContainsString('not set up', (string) $row['last_error']);
     }
 
+    public function testSmsOnlyFallsBackToEmailWhileSmsIsSwitchedOff(): void
+    {
+        Settings::set('notify_channels', 'sms');
+        Settings::set('sms_driver', '');
+        $this->assertSame('both', NotificationService::channelMode(), 'SMS off: customers still get email');
+        $n = (new NotificationService())->sendTemplate('order_confirmed', ['order_number' => 'BM-1', 'store' => 'Basemall', 'customer_name' => 'A'],
+            ['email' => 'a@example.com', 'phone' => '254712345678']);
+        $this->assertSame(2, $n);
+        $this->assertSame(['email', 'sms'], array_column($this->db->all("SELECT channel FROM notifications ORDER BY channel"), 'channel'));
+
+        Settings::set('sms_driver', 'talksasa');
+        $this->assertSame('sms', NotificationService::channelMode());
+        Settings::set('notify_channels', 'both');
+        Settings::set('sms_driver', '');
+    }
+
     public function testTrackingNumberFindsTheOrderOnlyWithItsPhone(): void
     {
         $v = $this->makeVariant(5)['variant_id'];

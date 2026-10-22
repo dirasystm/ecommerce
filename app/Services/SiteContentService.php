@@ -38,6 +38,10 @@ final class SiteContentService
     private Database $db;
     /** @var array<string,list<array<string,mixed>>> per-request menu cache */
     private static array $menuCache = [];
+    /** @var array<string,list<array<string,mixed>>>|null every visible menu item, by menu slug: one query per request (audit P-2) */
+    private static ?array $menuRows = null;
+    /** @var array<string,string>|null menu titles by slug, one query per request */
+    private static ?array $menuTitles = null;
 
     public function __construct(?Database $db = null)
     {
@@ -47,6 +51,8 @@ final class SiteContentService
     public static function flushCache(): void
     {
         self::$menuCache = [];
+        self::$menuRows = null;
+        self::$menuTitles = null;
     }
 
     // ================================================================== pages
@@ -210,14 +216,21 @@ final class SiteContentService
         if (isset(self::$menuCache[$slug])) {
             return self::$menuCache[$slug];
         }
-        try {
-            $rows = $this->db->all(
-                'SELECT i.* FROM menu_items i JOIN menus m ON m.id = i.menu_id WHERE m.slug = ? AND i.is_visible = 1 ORDER BY i.parent_id IS NOT NULL, i.sort_order, i.id',
-                [$slug]
-            );
-        } catch (\Throwable) {
-            return self::$menuCache[$slug] = [];
+        if (self::$menuRows === null) {
+            // Header, footer and mobile menus appear on every page: load them all at once instead of one query each.
+            try {
+                self::$menuRows = [];
+                foreach ($this->db->all(
+                    'SELECT m.slug AS menu_slug, i.* FROM menu_items i JOIN menus m ON m.id = i.menu_id WHERE i.is_visible = 1 ORDER BY i.parent_id IS NOT NULL, i.sort_order, i.id'
+                ) as $r) {
+                    self::$menuRows[(string) $r['menu_slug']][] = $r;
+                }
+            } catch (\Throwable) {
+                self::$menuRows = null;
+                return self::$menuCache[$slug] = [];
+            }
         }
+        $rows = self::$menuRows[$slug] ?? [];
         $top = [];
         foreach ($rows as $r) {
             $r['label'] = brand_text((string) $r['label']);
@@ -240,11 +253,14 @@ final class SiteContentService
     /** A menu's own title (e.g. a footer column heading), {store} filled in. */
     public function menuTitle(string $slug): string
     {
-        try {
-            return brand_text((string) $this->db->value('SELECT title FROM menus WHERE slug = ?', [$slug]));
-        } catch (\Throwable) {
-            return '';
+        if (self::$menuTitles === null) {
+            try {
+                self::$menuTitles = array_column($this->db->all('SELECT slug, title FROM menus'), 'title', 'slug');
+            } catch (\Throwable) {
+                return '';
+            }
         }
+        return brand_text((string) (self::$menuTitles[$slug] ?? ''));
     }
 
     /** Public URL for a stored link (internal paths go through url()); '' when none or unsafe. */

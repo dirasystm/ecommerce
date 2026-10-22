@@ -38,16 +38,46 @@ final class NotificationService
         $prefs = $to['prefs'] ?? null;
         $log = $ctx['log_as'] ?? $code;
         unset($ctx['log_as']);
+        $canEmail = $msg['email'] !== null && (string) ($to['email'] ?? '') !== '' && ($msg['always'] || $prefs === null || (int) ($prefs['notify_email'] ?? 1) === 1);
+        $canSms = $msg['sms'] !== null && (string) ($to['phone'] ?? '') !== '' && ($msg['always'] || $prefs === null || (int) ($prefs['notify_sms'] ?? 1) === 1);
+        [$useEmail, $useSms] = self::pick(self::channelMode(), $canEmail, $canSms, $msg['always']);
         $n = 0;
-        if ($msg['email'] !== null && (string) ($to['email'] ?? '') !== '' && ($msg['always'] || $prefs === null || (int) ($prefs['notify_email'] ?? 1) === 1)) {
-            $this->email((string) $to['email'], (string) $msg['subject'], $msg['email'], $log, $ctx);
+        if ($useEmail) {
+            $this->email((string) $to['email'], (string) $msg['subject'], (string) $msg['email'], $log, $ctx);
             $n++;
         }
-        if ($msg['sms'] !== null && (string) ($to['phone'] ?? '') !== '' && ($msg['always'] || $prefs === null || (int) ($prefs['notify_sms'] ?? 1) === 1)) {
-            $this->sms((string) $to['phone'], $msg['sms'], $log, $ctx);
+        if ($useSms) {
+            $this->sms((string) $to['phone'], (string) $msg['sms'], $log, $ctx);
             $n++;
         }
         return $n;
+    }
+
+    /**
+     * How notifications are sent (Admin → Email & SMS): 'email', 'sms' or 'both' (the default). "SMS only" while SMS
+     * sending is switched off would reach nobody, so email is used as well until SMS is back on (audit A-3).
+     */
+    public static function channelMode(): string
+    {
+        $m = (string) Settings::get('notify_channels', '');
+        if ($m === 'sms' && !SmsGateway::enabled()) {
+            return 'both';
+        }
+        return in_array($m, ['email', 'sms'], true) ? $m : 'both';
+    }
+
+    /**
+     * Which channels to use. "Email only" / "SMS only" fall back to the other channel when the person cannot be
+     * reached on the chosen one (no email address, no phone, or no version of the message for it), so nobody misses
+     * an update. Messages that must arrive (codes, reset links) ignore the choice: they go the way they were asked for.
+     * @return array{0:bool,1:bool} [email, sms]
+     */
+    public static function pick(string $mode, bool $canEmail, bool $canSms, bool $always): array
+    {
+        if ($always || $mode === 'both') {
+            return [$canEmail, $canSms];
+        }
+        return $mode === 'email' ? [$canEmail, !$canEmail && $canSms] : [!$canSms && $canEmail, $canSms];
     }
 
     /**

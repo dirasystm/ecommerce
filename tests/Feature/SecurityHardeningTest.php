@@ -59,11 +59,25 @@ final class SecurityHardeningTest extends FeatureTestCase
         $this->assertStringNotContainsString('evil.example', $last);
     }
 
+    /** Audit L-1: a rate-limited response says how long to wait. */
+    public function testRateLimitedResponsesSayWhenToRetry(): void
+    {
+        $page = $this->get('/forgot-password')['body'];
+        preg_match('/name="_csrf" value="([^"]+)"/', $page, $m);
+        $last = [];
+        for ($i = 0; $i < 11; $i++) {      // the route allows 10 per 5 minutes
+            $last = $this->http('POST', '/forgot-password', ['_csrf' => html_entity_decode($m[1]), 'login' => 'nobody@example.com', 'channel' => 'email'], [], '/forgot-password');
+        }
+        $this->assertSame(429, $last['status']);
+        $this->assertSame('300', $last['headers']['retry-after'] ?? null);
+    }
+
     public function testSecurityHeadersOnAdminAndStorefront(): void
     {
         foreach (['/', '/admin/login', '/product/does-not-exist'] as $path) {
             $h = $this->get($path)['headers'];
             $this->assertSame('DENY', $h['x-frame-options'] ?? null, $path);
+            $this->assertArrayNotHasKey('x-powered-by', $h, "$path must not advertise the PHP version (audit A-1)");
             $this->assertSame('nosniff', $h['x-content-type-options'] ?? null, $path);
             $this->assertStringContainsString("script-src 'self'", $h['content-security-policy'] ?? '', $path);
             $this->assertStringNotContainsString("'unsafe-eval'", $h['content-security-policy'] ?? '', $path);

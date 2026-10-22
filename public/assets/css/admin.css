@@ -86,3 +86,12 @@ body.wm-admin { background: #f4f6f5; padding-bottom: 0; }
 .wm-update-step.now { color: #1f2933; font-weight: 600; }
 .wm-update-stat { border: 1px solid var(--wm-border); border-radius: var(--wm-radius); padding: 8px; font-size: .8125rem; color: #52606d; }
 .wm-update-stat span { display: block; font-size: 1.5rem; font-weight: 700; color: var(--wm-green); }
+/* Email & SMS → Test your setup: the outcome under each test form. */
+.wm-test-result { border-radius: 6px; padding: 12px 14px; font-size: .875rem; border: 1px solid #e3e3e3; }
+.wm-test-result.is-empty { border-style: dashed; background: #fafafa; }
+.wm-test-result.is-ok { background: #e9f6ee; border-color: #b7e0c6; color: #10462a; }
+.wm-test-result.is-ok > div > .bi { color: #1b7a43; font-size: 1.1rem; }
+.wm-test-result.is-error { background: #fdecec; border-color: #f2c2c2; color: #6e1414; }
+.wm-test-result.is-error > div > .bi { color: #b42318; font-size: 1.1rem; }
+.wm-test-result .text-muted { color: #5f6368 !important; }
+.wm-test-result code { color: #3c3c3c; background: rgba(255, 255, 255, .7); padding: 6px 8px; border-radius: 4px; }

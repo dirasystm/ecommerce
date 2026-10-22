@@ -10,3 +10,12 @@ RewriteRule ^ index.php [L,QSA]
         Header set Cache-Control "public, max-age=604800"
     </FilesMatch>
 </IfModule>
+
+# Compress text responses (pages, CSS, JS, JSON, SVG) when the server supports it: typically 70-85% smaller,
+# which matters on mobile data. Ignored where mod_deflate is not available. (Audit P-1.)
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/css text/xml application/javascript text/javascript application/json image/svg+xml application/manifest+json
+    <IfModule mod_headers.c>
+        Header append Vary Accept-Encoding
+    </IfModule>
+</IfModule>

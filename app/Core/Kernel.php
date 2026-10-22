@@ -48,6 +48,9 @@ final class Kernel
                 })();
         } catch (HttpException $e) {
             $response = $this->errorResponse($req, $e->status, $e->getMessage());
+            if ($e->retryAfter !== null) {
+                $response = $response->withHeader('Retry-After', (string) $e->retryAfter);   // audit L-1
+            }
         } catch (\Throwable $e) {
             Logger::error($e->getMessage(), [
                 'exception' => get_class($e),

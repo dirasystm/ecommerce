@@ -97,7 +97,7 @@ final class MessagingHttpTest extends FeatureTestCase
         $this->loginStaff('super_admin');
         $page = $this->get('/admin/messaging');
         $this->assertSame(200, $page['status']);
-        foreach (['SMS balance', 'Sent SMS', 'Failed SMS', 'Sent emails', 'Failed emails', 'Send a test SMS', 'Send a test email', 'Message log', '<strong>SMS is switched off.</strong>'] as $text) {
+        foreach (['SMS balance', 'Sent SMS', 'Failed SMS', 'Sent emails', 'Failed emails', 'How notifications are sent', 'SMS gateway (Talksasa)', 'Email server', 'Test your setup', 'Send test SMS', 'Send test email', 'The result of your test SMS appears here', 'Message log', '<strong>SMS is switched off.</strong>'] as $text) {
             $this->assertStringContainsString($text, $page['body']);
         }
         $this->assertSame(303, $this->get('/admin/settings/sms')['status'], 'the SMS settings group opens this page');
@@ -135,7 +135,11 @@ final class MessagingHttpTest extends FeatureTestCase
         $this->assertSame('Bearer good-token', $send[0]['auth']);
 
         $r = $this->flash($this->post('/admin/messaging/test-sms', ['phone' => '0700 000 000'], '/admin/messaging'));
-        $this->assertStringContainsString('The test SMS was not sent: Invalid phone number', $r);
+        // Shown under the test form in plain words, with the fix and the gateway's own message.
+        $this->assertStringContainsString('Talksasa did not accept the phone number.', $r);
+        $this->assertStringContainsString('What to do: </span>Use a Kenyan mobile number', $r);
+        $this->assertStringContainsString('Technical details</summary><code class="d-block text-break mt-1">Invalid phone number</code>', $r);
+        $this->assertStringContainsString('role="alert"', $r);
         $r = $this->flash($this->post('/admin/messaging/test-sms', ['phone' => '12'], '/admin/messaging'));
         $this->assertStringContainsString('Enter a Kenyan mobile number', $r);
 
@@ -173,6 +177,33 @@ final class MessagingHttpTest extends FeatureTestCase
         $this->assertStringContainsString('secret.updated', $audit);
         $this->assertStringNotContainsString('good-token', $audit);
         $this->assertStringNotContainsString('good-token', (string) $this->db->value('SELECT GROUP_CONCAT(COALESCE(last_error, \'\')) FROM notifications'));
+    }
+
+    /** Audit A-4: redirecting the mail server or SMS endpoint would hand over the stored password/token and reset codes. */
+    public function testOnlyCredentialManagersCanChangeWhereCredentialsAreSent(): void
+    {
+        $u = $this->loginStaff('support');
+        $this->db->exec("INSERT INTO user_permissions (user_id, permission_id) SELECT ?, id FROM permissions WHERE slug IN ('messaging.manage', 'settings.manage')", [$u['id']]);
+        Settings::set('smtp_host', 'mail.example.com');
+        $evil = ['mail_driver' => 'smtp', 'smtp_host' => 'attacker.example', 'smtp_port' => '587', 'smtp_encryption' => 'tls', 'smtp_username' => 'x'];
+
+        foreach (['/admin/messaging/email' => '/admin/messaging', '/admin/settings/email' => '/admin/settings/email'] as $action => $form) {
+            $r = $this->follow($this->post($action, $evil, $form))['body'];
+            $this->assertStringContainsString('Only staff allowed to manage credentials can change this', $r, $action);
+        }
+        $r = $this->follow($this->post('/admin/messaging/sms', ['sms_driver' => '', 'sms_sender_id' => 'X', 'sms_api_url' => 'https://attacker.example/api/'], '/admin/messaging'))['body'];
+        $this->assertStringContainsString('Only staff allowed to manage credentials can change this', $r);
+        $this->assertSame(['mail.example.com', 'https://bulksms.talksasa.com/api/v3/'], [(string) $this->db->value("SELECT setting_value FROM settings WHERE setting_key = 'smtp_host'"),
+            (string) $this->db->value("SELECT setting_value FROM settings WHERE setting_key = 'sms_api_url'")], 'nothing was redirected');
+
+        // Other email settings (sender name) can still be changed without credential rights.
+        $ok = $this->follow($this->post('/admin/messaging/email', ['mail_from_name' => 'Basemall Care', 'mail_driver' => 'smtp', 'smtp_host' => 'mail.example.com',
+            'smtp_port' => (string) Settings::get('smtp_port', '587'), 'smtp_encryption' => (string) Settings::get('smtp_encryption', 'tls'),
+            'smtp_username' => (string) Settings::get('smtp_username', '')], '/admin/messaging'))['body'];
+        $this->assertStringContainsString('Email settings saved', $ok);
+        Settings::set('smtp_host', '');
+        Settings::set('mail_driver', '');
+        Settings::set('mail_from_name', '');
     }
 
     public function testCustomerMessagesGoThroughTheGatewayOnceSwitchedOn(): void

@@ -101,7 +101,14 @@ One page for both channels (permission `messaging.manage`; changing the SMS toke
 - **Message log:** search by phone (07… or 2547…), email, order number or text; filter by SMS/email and status.
   - **Re-send** a failed message after fixing the cause (balance, token, sender ID).
   - Messages that held a code or private link cannot be re-sent: repeat the original action instead.
-- **Test email** to any address uses the settings under Settings → Email.
+- **How notifications are sent:** Email only, SMS only, or Both.
+  - If someone can't be reached the chosen way (e.g. SMS only, but no phone number), they get the other one.
+  - While SMS sending is switched off, "SMS only" also sends email, so customers are never left without updates.
+  - One-time codes and reset links always go the way the person asked for.
+- **Email server:** the mail server, port, encryption, username and sender details, with the account password stored encrypted. Settings → Email shows the same settings.
+- **Test your setup** (below the SMS gateway and email server): a Test SMS box and a Test email box.
+  - Each shows the outcome under the button in plain words: what went wrong and what to do (for example "The sender ID is not approved on your Talksasa account"), with the exact message from Talksasa or the mail server under *Technical details*.
+- **Credentials are protected:** changing where credentials are sent requires the right to manage credentials (`secrets.manage`). This covers the mail server, port, encryption, username and the SMS API endpoint, because the saved password or token, and every email or SMS including reset links and codes, would go there.
 - SMS are sent while the page or action that triggers them runs. If Talksasa is slow or down, the message is marked Failed (with the reason) after about 12 seconds, and the order or other action still completes.
 
 ## Forgotten passwords

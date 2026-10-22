@@ -4,6 +4,29 @@
 
     // (Confirmation prompts for form[data-confirm] are handled in app.js, loaded first.)
 
+    // Wide tables that scroll sideways must be reachable by keyboard (WCAG 2.1.1; audit A-5): focusable, labelled region.
+    function keyboardScroll() {
+        document.querySelectorAll('.table-responsive').forEach(function (box) {
+            var scrolls = box.scrollWidth > box.clientWidth + 1;
+            if (scrolls && !box.hasAttribute('tabindex')) {
+                var cap = box.querySelector('caption');
+                var head = box.closest('.wm-panel') && box.closest('.wm-panel').querySelector('.wm-panel-head');
+                var label = (cap && cap.textContent.trim()) || (head && head.textContent.trim()) || document.title.split(' — ')[0];
+                box.setAttribute('tabindex', '0');
+                box.setAttribute('role', 'region');
+                box.setAttribute('aria-label', label + ' (scrolls sideways)');
+                box.setAttribute('data-wm-scroll', '');
+            } else if (!scrolls && box.hasAttribute('data-wm-scroll')) {
+                box.removeAttribute('tabindex');
+                box.removeAttribute('role');
+                box.removeAttribute('aria-label');
+                box.removeAttribute('data-wm-scroll');
+            }
+        });
+    }
+    keyboardScroll();
+    window.addEventListener('resize', keyboardScroll);
+
     // Chart tooltips: same details on hover and keyboard focus; labels inserted as text, never HTML.
     document.querySelectorAll('[data-chart]').forEach(function (fig) {
         var tip = fig.querySelector('.wm-chart-tip');

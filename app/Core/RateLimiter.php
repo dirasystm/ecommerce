@@ -48,7 +48,7 @@ final class RateLimiter
     public function enforce(string $key, int $max, int $windowSeconds): void
     {
         if (!$this->attempt($key, $max, $windowSeconds)) {
-            throw HttpException::tooMany();
+            throw HttpException::tooMany('Too many attempts. Please wait and try again.', $windowSeconds);
         }
     }
 }

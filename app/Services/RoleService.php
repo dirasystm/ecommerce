@@ -35,7 +35,7 @@ final class RoleService
     ];
 
     /** Permissions that change who can do what, or touch money destinations and credentials: highlighted in the matrix. */
-    public const SENSITIVE = ['users.manage', 'roles.manage', 'settings.manage', 'secrets.manage', 'payments.configure', 'commissions.manage', 'payouts.manage', 'audit.view', 'system.update'];
+    public const SENSITIVE = ['users.manage', 'roles.manage', 'settings.manage', 'secrets.manage', 'payments.configure', 'commissions.manage', 'payouts.manage', 'audit.view', 'system.update', 'messaging.manage'];
 
     private Database $db;
 

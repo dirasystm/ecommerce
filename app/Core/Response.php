@@ -65,6 +65,7 @@ final class Response
     public function send(): void
     {
         if (!headers_sent()) {
+            header_remove('X-Powered-By');      // do not advertise the PHP version (audit A-1)
             http_response_code($this->status);
             foreach ($this->headers as $k => $v) {
                 header($k . ': ' . $v);

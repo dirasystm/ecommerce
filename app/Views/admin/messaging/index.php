@@ -24,6 +24,31 @@ $canSecrets = Auth::can('secrets.manage');
         Save the Talksasa API token and sender ID, send a test SMS, then choose “Send through Talksasa”.</div>
 <?php endif; ?>
 
+<section class="wm-panel mb-4" aria-labelledby="chTitle">
+    <div class="wm-panel-head" id="chTitle">How notifications are sent</div>
+    <div class="wm-panel-body">
+        <form method="post" action="<?= e(url('/admin/messaging/channels')) ?>" novalidate>
+            <?= csrf_field() ?>
+            <fieldset>
+                <legend class="visually-hidden">How notifications are sent</legend>
+                <div class="d-flex flex-wrap gap-4 mb-2">
+                    <?php $chosen = (string) fv('notify_channels', $mode); foreach (SettingsService::OPTIONS['notify_channels'] as $opt => $optLabel): ?>
+                        <div class="form-check">
+                            <input class="form-check-input<?= invalid('notify_channels') ?>" type="radio" name="notify_channels" id="ch_<?= e($opt) ?>" value="<?= e($opt) ?>" <?= $chosen === $opt ? 'checked' : '' ?> aria-describedby="chHelp">
+                            <label class="form-check-label fw-semibold" for="ch_<?= e($opt) ?>"><i class="bi bi-<?= ['email' => 'envelope', 'sms' => 'phone', 'both' => 'chat-dots'][$opt] ?>" aria-hidden="true"></i> <?= e($optLabel) ?></label>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <?= field_error('notify_channels') ?>
+                <p class="form-text mb-2" id="chHelp">Applies to every customer and seller message (orders, payments, deliveries, returns).
+                    If someone cannot be reached the chosen way (e.g. SMS only, but no phone number), they get the other one instead.
+                    One-time codes and password reset links always go the way the person asked for.</p>
+            </fieldset>
+            <button class="btn btn-wm-green btn-sm" type="submit">Save</button>
+        </form>
+    </div>
+</section>
+
 <h2 class="fs-6 fw-bold text-uppercase text-muted mb-2">SMS</h2>
 <div class="row g-3 mb-3">
     <div class="col-6 col-xl-3"><div class="wm-panel wm-stat h-100">
@@ -91,7 +116,7 @@ $canSecrets = Auth::can('secrets.manage');
             <div class="wm-panel-body">
                 <form method="post" action="<?= e(url('/admin/messaging/sms')) ?>" novalidate class="row g-3">
                     <?= csrf_field() ?>
-                    <?php foreach (SettingsService::fieldsOf('sms') as $key => [$label, $rule, $help, , $widget]): $val = (string) fv($key, $sms[$key] ?? ''); $hid = $help ? $key . 'Help' : null; ?>
+                    <?php foreach (SettingsService::fieldsOf('sms') as $key => [$label, $rule, $help, , $widget]): if ($widget === 'radio') { continue; } $val = (string) fv($key, $sms[$key] ?? ''); $hid = $help ? $key . 'Help' : null; ?>
                         <div class="col-12">
                             <label class="form-label" for="<?= e($key) ?>"><?= e($label) ?></label>
                             <?php if ($widget === 'select'): ?>
@@ -146,52 +171,141 @@ $canSecrets = Auth::can('secrets.manage');
         </section>
     </div>
     <div class="col-lg-6">
-        <section class="wm-panel mb-3" aria-labelledby="tsTitle">
-            <div class="wm-panel-head" id="tsTitle">Send a test SMS</div>
+        <section class="wm-panel h-100" id="email" aria-labelledby="emTitle">
+            <div class="wm-panel-head" id="emTitle">Email server</div>
             <div class="wm-panel-body">
-                <form method="post" action="<?= e(url('/admin/messaging/test-sms')) ?>" novalidate class="row g-2">
+                <form method="post" action="<?= e(url('/admin/messaging/email')) ?>" novalidate class="row g-3">
                     <?= csrf_field() ?>
-                    <div class="col-12">
-                        <label class="form-label" for="test_phone">Phone number</label>
-                        <input class="form-control<?= invalid('phone') ?>" id="test_phone" name="phone" type="tel" inputmode="tel" autocomplete="off" placeholder="0712 345 678" value="<?= e((string) old('phone')) ?>" required>
-                        <?= field_error('phone') ?>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label" for="test_message">Message <span class="text-muted small">(optional)</span></label>
-                        <textarea class="form-control<?= invalid('message') ?>" id="test_message" name="message" rows="2" maxlength="300" aria-describedby="testMsgHelp"><?= e((string) old('message')) ?></textarea>
-                        <div class="form-text" id="testMsgHelp">Sent through Talksasa with the saved token and sender ID, even while customer SMS is switched off. Uses your SMS credit.</div>
-                        <?= field_error('message') ?>
-                    </div>
-                    <div class="col-12"><button class="btn btn-outline-secondary" type="submit"<?= $token['set'] ? '' : ' disabled' ?>><i class="bi bi-send" aria-hidden="true"></i> Send test SMS</button>
-                        <?php if (!$token['set']): ?><span class="small text-muted ms-1">Save the API token first.</span><?php endif; ?></div>
+                    <?php foreach (SettingsService::fieldsOf('email') as $key => [$label, $rule, $help, , $widget]): $val = (string) fv($key, $emailValues[$key] ?? ''); $hid = $help ? 'em_' . $key . 'Help' : null; ?>
+                        <div class="col-sm-6">
+                            <label class="form-label" for="em_<?= e($key) ?>"><?= e($label) ?></label>
+                            <?php if ($widget === 'select'): ?>
+                                <select class="form-select<?= invalid($key) ?>" id="em_<?= e($key) ?>" name="<?= e($key) ?>"<?= $hid ? ' aria-describedby="' . e($hid) . '"' : '' ?>>
+                                    <?php foreach (SettingsService::OPTIONS[$key] as $opt => $optLabel): ?>
+                                        <option value="<?= e((string) $opt) ?>" <?= $val === (string) $opt ? 'selected' : '' ?>><?= e($optLabel) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            <?php else: ?>
+                                <input class="form-control<?= invalid($key) ?>" id="em_<?= e($key) ?>" name="<?= e($key) ?>" value="<?= e($val) ?>"
+                                    <?= $widget === 'number' ? 'inputmode="numeric"' : '' ?><?= str_contains($rule, 'email') ? ' type="email"' : '' ?><?= $hid ? ' aria-describedby="' . e($hid) . '"' : '' ?>>
+                            <?php endif; ?>
+                            <?php if ($help): ?><div class="form-text" id="<?= e($hid) ?>"><?= e($help) ?></div><?php endif; ?>
+                            <?= field_error($key) ?>
+                        </div>
+                    <?php endforeach; ?>
+                    <div class="col-12"><button class="btn btn-wm-green" type="submit">Save email settings</button></div>
                 </form>
-            </div>
-        </section>
-        <section class="wm-panel mb-3" aria-labelledby="teTitle">
-            <div class="wm-panel-head" id="teTitle">Send a test email</div>
-            <div class="wm-panel-body">
-                <form method="post" action="<?= e(url('/admin/messaging/test-email')) ?>" novalidate class="row g-2">
-                    <?= csrf_field() ?>
-                    <div class="col-12">
-                        <label class="form-label" for="test_email">Email address</label>
-                        <input class="form-control<?= invalid('email') ?>" id="test_email" name="email" type="email" autocomplete="off" value="<?= e((string) (old('email') ?: (Auth::user()['email'] ?? ''))) ?>" required>
-                        <?= field_error('email') ?>
-                    </div>
-                    <div class="col-12"><button class="btn btn-outline-secondary" type="submit"><i class="bi bi-envelope" aria-hidden="true"></i> Send test email</button>
-                        <span class="small text-muted ms-1">Uses the saved <a href="<?= e(url('/admin/settings/email')) ?>">email settings</a>.</span></div>
-                </form>
-            </div>
-        </section>
-        <section class="wm-panel" aria-labelledby="dlTitle">
-            <div class="wm-panel-head" id="dlTitle">Delivery reports</div>
-            <div class="wm-panel-body small">
-                <p class="mb-2">“Sent” means Talksasa accepted the SMS. Ask Talksasa whether recent SMS (last 3 days) reached the phones; any it reports as not delivered move to Failed.</p>
-                <form method="post" action="<?= e(url('/admin/messaging/delivery')) ?>"><?= csrf_field() ?>
-                    <button class="btn btn-sm btn-outline-secondary" type="submit"<?= $token['set'] ? '' : ' disabled' ?>><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Check delivery reports</button></form>
+
+                <hr>
+                <h3 class="fs-6 fw-bold">Email account password</h3>
+                <p class="small mb-2">
+                    <?php if (!$smtpSecret['set']): ?>
+                        <span class="badge badge-soft-muted">Not set</span>
+                    <?php elseif (!$smtpSecret['readable']): ?>
+                        <span class="badge badge-soft-danger">Cannot be read</span> The app key changed since it was saved. Enter the password again.
+                    <?php else: ?>
+                        <span class="badge badge-soft-success">Saved</span> <?= e(date('d M Y H:i', strtotime((string) $smtpSecret['updated_at']))) ?><?= $smtpSecret['updated_by'] ? ' by ' . e($smtpSecret['updated_by']) : '' ?>.
+                    <?php endif; ?>
+                    The password of the email account above. Stored encrypted and never shown again.
+                </p>
+                <?php if ($canSecrets): ?>
+                    <form class="row g-2 align-items-end" method="post" action="<?= e(url('/admin/messaging/email-password')) ?>" autocomplete="off" novalidate>
+                        <?= csrf_field() ?>
+                        <div class="col-md-6">
+                            <label class="form-label" for="secret_smtp_password"><?= $smtpSecret['set'] ? 'Replace the password' : 'Password' ?></label>
+                            <input class="form-control<?= invalid('secret_smtp_password') ?>" type="password" id="secret_smtp_password" name="secret_smtp_password" maxlength="500" autocomplete="new-password">
+                            <?= field_error('secret_smtp_password') ?>
+                        </div>
+                        <div class="col-md-auto"><button class="btn btn-wm-green text-nowrap" type="submit">Save password</button></div>
+                    </form>
+                <?php else: ?>
+                    <p class="small text-muted mb-0">Only staff allowed to manage credentials can change the password.</p>
+                <?php endif; ?>
             </div>
         </section>
     </div>
 </div>
+
+<?php
+$testSms = \Waimart\Core\Session::getFlash('test_sms');
+$testEmail = \Waimart\Core\Session::getFlash('test_email');
+$result = function (?array $r, string $what): string {
+    if (!is_array($r)) {
+        return '<div class="wm-test-result is-empty small text-muted">The result of your test ' . e($what) . ' appears here, with what to do if something is wrong.</div>';
+    }
+    $html = '<div class="wm-test-result ' . ($r['ok'] ? 'is-ok' : 'is-error') . '" role="' . ($r['ok'] ? 'status' : 'alert') . '">'
+        . '<div class="d-flex gap-2"><i class="bi bi-' . ($r['ok'] ? 'check-circle-fill' : 'exclamation-triangle-fill') . '" aria-hidden="true"></i><div>'
+        . '<strong class="d-block">' . e((string) $r['title']) . '</strong>'
+        . ($r['fix'] !== '' ? '<p class="mb-1 mt-1">' . ($r['ok'] ? '' : '<span class="fw-semibold">What to do: </span>') . e((string) $r['fix']) . '</p>' : '')
+        . '<span class="small text-muted">Tested at ' . e((string) $r['at']) . ($r['to'] ? ' · to ' . e((string) $r['to']) : '') . '</span>';
+    if (($r['detail'] ?? '') !== '') {
+        $html .= '<details class="small mt-1"><summary>Technical details</summary><code class="d-block text-break mt-1">' . e((string) $r['detail']) . '</code></details>';
+    }
+    return $html . '</div></div></div>';
+};
+?>
+<section class="mb-4" id="test" aria-labelledby="testTitle">
+    <h2 class="fs-5 fw-bold mb-1" id="testTitle">Test your setup</h2>
+    <p class="small text-muted">Send yourself a real message with the settings saved above. If it fails, the reason and the fix are shown under the button.</p>
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <section class="wm-panel h-100" aria-labelledby="tsTitle">
+                <div class="wm-panel-head" id="tsTitle"><span><i class="bi bi-phone" aria-hidden="true"></i> Test SMS</span></div>
+                <div class="wm-panel-body">
+                    <form method="post" action="<?= e(url('/admin/messaging/test-sms')) ?>" novalidate class="row g-2">
+                        <?= csrf_field() ?>
+                        <div class="col-12">
+                            <label class="form-label" for="test_phone">Phone number</label>
+                            <input class="form-control<?= invalid('phone') ?>" id="test_phone" name="phone" type="tel" inputmode="tel" autocomplete="off" placeholder="0712 345 678" value="<?= e((string) old('phone', is_array($testSms) ? (string) $testSms['to'] : '')) ?>" required>
+                            <?= field_error('phone') ?>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="test_message">Message</label>
+                            <textarea class="form-control<?= invalid('message') ?>" id="test_message" name="message" rows="3" maxlength="300" aria-describedby="testMsgHelp" placeholder="Test SMS from <?= e(brand_name()) ?>. If you can read this, SMS sending works."><?= e((string) old('message')) ?></textarea>
+                            <div class="form-text" id="testMsgHelp">Leave blank for the standard test message. Sent through Talksasa even while customer SMS is switched off, and uses SMS credit.</div>
+                            <?= field_error('message') ?>
+                        </div>
+                        <div class="col-12"><button class="btn btn-wm-green" type="submit"<?= $token['set'] ? '' : ' disabled' ?>><i class="bi bi-send" aria-hidden="true"></i> Send test SMS</button>
+                            <?php if (!$token['set']): ?><span class="small text-muted ms-1">Save the API token first.</span><?php endif; ?></div>
+                    </form>
+                    <div class="mt-3"><?= $result(is_array($testSms) ? $testSms : null, 'SMS') ?></div>
+                </div>
+            </section>
+        </div>
+        <div class="col-lg-6">
+            <section class="wm-panel h-100" aria-labelledby="teTitle">
+                <div class="wm-panel-head" id="teTitle"><span><i class="bi bi-envelope" aria-hidden="true"></i> Test email</span></div>
+                <div class="wm-panel-body">
+                    <form method="post" action="<?= e(url('/admin/messaging/test-email')) ?>" novalidate class="row g-2">
+                        <?= csrf_field() ?>
+                        <div class="col-12">
+                            <label class="form-label" for="test_email">Email address</label>
+                            <input class="form-control<?= invalid('email') ?>" id="test_email" name="email" type="email" autocomplete="off" value="<?= e((string) (old('email') ?: (is_array($testEmail) ? (string) $testEmail['to'] : (Auth::user()['email'] ?? '')))) ?>" required>
+                            <?= field_error('email') ?>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label" for="test_email_message">Message</label>
+                            <textarea class="form-control<?= invalid('email_message') ?>" id="test_email_message" name="message" rows="3" maxlength="2000" aria-describedby="testEmailHelp" placeholder="This is a test email from the <?= e(brand_name()) ?> admin. If you can read this, email sending works."></textarea>
+                            <div class="form-text" id="testEmailHelp">Leave blank for the standard test message. Sent with the email server settings above.</div>
+                            <?= field_error('email_message') ?>
+                        </div>
+                        <div class="col-12"><button class="btn btn-wm-green" type="submit"><i class="bi bi-send" aria-hidden="true"></i> Send test email</button></div>
+                    </form>
+                    <div class="mt-3"><?= $result(is_array($testEmail) ? $testEmail : null, 'email') ?></div>
+                </div>
+            </section>
+        </div>
+    </div>
+</section>
+
+<section class="wm-panel mb-4" aria-labelledby="dlTitle">
+    <div class="wm-panel-head" id="dlTitle">Delivery reports</div>
+    <div class="wm-panel-body small d-flex flex-wrap align-items-center gap-3">
+        <p class="mb-0 flex-grow-1" style="min-width:240px">“Sent” means Talksasa accepted the SMS. Ask Talksasa whether recent SMS (last 3 days) reached the phones; any it reports as not delivered move to Failed.</p>
+        <form method="post" action="<?= e(url('/admin/messaging/delivery')) ?>"><?= csrf_field() ?>
+            <button class="btn btn-sm btn-outline-secondary" type="submit"<?= $token['set'] ? '' : ' disabled' ?>><i class="bi bi-arrow-repeat" aria-hidden="true"></i> Check delivery reports</button></form>
+    </div>
+</section>
 
 <h2 class="fs-5 fw-bold mb-2" id="log">Message log</h2>
 <form class="d-flex flex-wrap gap-2 align-items-end mb-3" method="get" action="<?= e(url('/admin/messaging')) ?>#log" role="search">
@@ -214,7 +328,7 @@ $canSecrets = Auth::can('secrets.manage');
     <p class="small text-muted mb-0" role="status">Showing <?= number_format($first) ?>–<?= number_format($last) ?> of <?= number_format($total) ?><?= $search !== '' ? ' matching “' . e($search) . '”' : '' ?></p>
     <?= View::partial('partials/pagination', ['page' => $page, 'pages' => $pages, 'path' => '/admin/messaging', 'compact' => true]) ?>
 </div>
-<div class="wm-panel"><div class="table-responsive">
+<div class="wm-panel"><div class="table-responsive" tabindex="0" role="region" aria-label="Message log (scrolls sideways)">
     <table class="table table-sm align-top mb-0">
         <caption class="visually-hidden">Messages sent to customers, sellers and staff, newest first</caption>
         <thead><tr><th scope="col">When</th><th scope="col">Type</th><th scope="col">To</th><th scope="col">Message</th><th scope="col">Order</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>

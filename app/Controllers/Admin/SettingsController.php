@@ -85,6 +85,7 @@ final class SettingsController extends AdminController
     public function saveGroup(Request $req): Response
     {
         $group = $this->groupParam($req);
+        SettingsService::guardCredentialRouting($req->post, \Waimart\Core\Auth::can('secrets.manage'));
         (new SettingsService())->save($req->post, $this->actor(), $group);
         return $this->success(SettingsService::GROUPS[$group][0] . ' settings saved.', '/admin/settings/' . $group);
     }
@@ -92,6 +93,7 @@ final class SettingsController extends AdminController
     /** The full form (every registered setting at once), kept for scripts and older clients. */
     public function update(Request $req): Response
     {
+        SettingsService::guardCredentialRouting($req->post, \Waimart\Core\Auth::can('secrets.manage'));
         (new SettingsService())->save($req->post, $this->actor());
         return $this->success('Settings saved.', '/admin/settings');
     }

@@ -46,6 +46,7 @@ final class SettingsService
     public const OPTIONS = [
         'mail_driver' => ['' => 'Server setting (config.local.php)', 'smtp' => 'Send through a mail server (SMTP)', 'log' => 'Do not send: write to the mail log (testing)'],
         'sms_driver' => ['' => 'Do not send: keep SMS in the message log only', 'talksasa' => 'Send through Talksasa bulk SMS'],
+        'notify_channels' => ['email' => 'Email only', 'sms' => 'SMS only', 'both' => 'Both email and SMS'],
         'smtp_encryption' => ['tls' => 'STARTTLS (usually port 587)', 'ssl' => 'SSL/TLS (usually port 465)', 'none' => 'None (not recommended)'],
     ];
 
@@ -112,6 +113,7 @@ final class SettingsService
         'smtp_host' => ['Mail server (SMTP host)', 'nullable|max:190', 'e.g. smtp.yourprovider.com', 'email', 'text'],
         'smtp_port' => ['Port', 'required|int|gte:1|lte:65535', null, 'email', 'number'],
         'smtp_encryption' => ['Encryption', 'required|in:tls,ssl,none', null, 'email', 'select'],
+        'notify_channels' => ['How notifications are sent', 'nullable|in:email,sms,both', 'Applies to every customer and seller message. One-time codes and reset links always go the way the person asked for.', 'sms', 'radio'],
         'sms_driver' => ['How SMS is sent', 'nullable|in:talksasa', null, 'sms', 'select'],
         'sms_sender_id' => ['Sender ID', 'nullable|max:11', 'The name customers see as the sender (up to 11 letters or digits), exactly as approved on your Talksasa account.', 'sms', 'text'],
         'sms_api_url' => ['API endpoint', 'nullable|url|max:190', 'From Talksasa → Developers ("OAuth 2.0 API Endpoint"). Blank: ' . SmsGateway::DEFAULT_URL, 'sms', 'text'],
@@ -173,6 +175,30 @@ final class SettingsService
      * among $keys are saved as off; settings not in $keys are untouched.
      * @param array<string,mixed> $in @param list<string> $keys
      */
+    /** Settings that decide where stored credentials are sent (the SMTP password, the SMS token) — audit A-4. */
+    public const CREDENTIAL_ROUTING = ['smtp_host', 'smtp_port', 'smtp_encryption', 'smtp_username', 'sms_api_url'];
+
+    /**
+     * Changing where a stored credential is sent hands it (and every email or SMS, including reset links and codes)
+     * to that destination, so it needs the right to manage credentials, not only the page's own permission.
+     * @param array<string,mixed> $in submitted values
+     */
+    public static function guardCredentialRouting(array $in, bool $canManageSecrets): void
+    {
+        if ($canManageSecrets) {
+            return;
+        }
+        $errors = [];
+        foreach (self::CREDENTIAL_ROUTING as $key) {
+            if (array_key_exists($key, $in) && trim((string) $in[$key]) !== trim((string) Settings::get($key, ''))) {
+                $errors[$key] = 'Only staff allowed to manage credentials can change this, because the saved password or token is sent there.';
+            }
+        }
+        if ($errors) {
+            throw new ValidationException($errors);
+        }
+    }
+
     public function saveKeys(array $in, int $actorId, array $keys): void
     {
         [$before, $after] = $this->write($this->validateKeys($in, $keys));
