@@ -2,7 +2,7 @@
 use Waimart\Services\DisputeService;
 use Waimart\Services\ReturnService;
 
-/** @var string $filter @var list<array<string,mixed>> $cases @var list<array<string,mixed>> $returns */
+/** @var \Waimart\Core\ListParams $lp @var string $filter @var list<array<string,mixed>> $cases @var list<array<string,mixed>> $returns */
 $returnLabels = ['requested' => 'Requested', 'approved' => 'Approved — coming back', 'received' => 'Received — being inspected',
                  'completed' => 'Completed', 'rejected' => 'Not accepted', 'cancelled' => 'Cancelled'];
 ?>
@@ -17,8 +17,11 @@ $returnLabels = ['requested' => 'Requested', 'approved' => 'Approved — coming 
             <?php endforeach; ?>
         </ul>
     </div>
+    <div class="wm-panel-body pb-0"><?= \Waimart\Core\View::partial('partials/table/toolbar', ['id' => 'scases', 'path' => '/seller/disputes', 'lp' => $lp, 'label' => 'Search cases', 'placeholder' => 'Case or order number', 'keep' => ['show' => $filter]]) ?></div>
+    <div id="scases" class="wm-table-region" data-table-region data-loading-text="Loading cases…">
     <div class="table-responsive"><table class="table table-hover mb-0 align-middle">
-        <thead><tr><th>Case</th><th>Order</th><th>Customer</th><th>Problem</th><th>Updated</th><th>Status</th></tr></thead>
+        <caption class="visually-hidden">Cases</caption>
+        <thead><tr><th scope="col">Case</th><th scope="col">Order</th><th scope="col">Customer</th><th scope="col">Problem</th><?= sort_th('Updated', 'updated', $lp, '/seller/disputes') ?><th scope="col">Status</th></tr></thead>
         <tbody>
         <?php foreach ($cases as $c): ?>
             <tr><td><a class="fw-semibold" href="<?= e(url('/seller/disputes/' . $c['id'])) ?>"><?= e($c['dispute_number']) ?></a></td>
@@ -27,15 +30,17 @@ $returnLabels = ['requested' => 'Requested', 'approved' => 'Approved — coming 
                 <td class="small text-nowrap"><?= e(date('d M Y H:i', strtotime((string) $c['updated_at']))) ?></td>
                 <td><span class="badge <?= $c['status'] === 'awaiting_seller' ? 'text-bg-warning' : (in_array($c['status'], DisputeService::OPEN, true) ? 'badge-soft-warning' : 'badge-soft-muted') ?>"><?= e(brand_text(DisputeService::STATUS_LABELS[$c['status']])) ?></span></td></tr>
         <?php endforeach; ?>
-        <?php if (!$cases): ?><tr><td colspan="6" class="text-center text-muted py-3">No cases here.</td></tr><?php endif; ?>
+        <?php if (!$cases): ?><?= empty_row(6, $lp->q !== '', 'No cases here.') ?><?php endif; ?>
         </tbody>
     </table></div>
+    <?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/seller/disputes', 'id' => 'scases', 'noun' => 'cases']) ?>
+    </div>
 </section>
 
 <section class="wm-panel">
-    <div class="wm-panel-head">Returns</div>
+    <div class="wm-panel-head">Returns <span class="small text-muted fw-normal">latest 30 · each order page lists its returns</span></div>
     <div class="table-responsive"><table class="table table-sm mb-0 align-middle">
-        <thead><tr><th>Return</th><th>Order</th><th>Reason</th><th class="text-end">Units</th><th>Requested</th><th>Status</th><th class="text-end">Refund</th></tr></thead>
+        <thead><tr><th scope="col">Return</th><th scope="col">Order</th><th scope="col">Reason</th><th scope="col" class="text-end">Units</th><th scope="col">Requested</th><th scope="col">Status</th><th scope="col" class="text-end">Refund</th></tr></thead>
         <tbody>
         <?php foreach ($returns as $r): ?>
             <tr><td><?= e($r['return_number']) ?></td><td><a href="<?= e(url('/seller/orders/' . $r['so_id'])) ?>"><?= e($r['sub_number']) ?></a></td>

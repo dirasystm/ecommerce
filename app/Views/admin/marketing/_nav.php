@@ -7,6 +7,7 @@ $tabs = [
     ['/admin/marketing/campaigns', 'Campaigns & links', 'marketing.view'],
     ['/admin/marketing/leads', 'Leads', 'marketing.view'],
     ['/admin/marketing/segments', 'Segments', 'marketing.view'],
+    ['/admin/marketing/abandoned-carts', 'Abandoned carts', 'marketing.view'],
     ['/admin/marketing/automations', 'Automations', 'marketing.view'],
     ['/admin/marketing/recommendations', 'Recommendations', 'marketing.view'],
     ['/admin/marketing/consent', 'Consent', 'marketing.view'],

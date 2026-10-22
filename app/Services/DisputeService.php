@@ -273,6 +273,35 @@ final class DisputeService
     }
 
     /** @return list<array<string,mixed>> */
+    /**
+     * One page of cases, searchable by case, order or part number, seller (admin) and customer (admin).
+     * @return list<array<string,mixed>>
+     */
+    public function page(?int $sellerId, string $filter, \Waimart\Core\ListParams $lp): array
+    {
+        $where = [$filter === 'open' ? "d.status IN ('open','awaiting_seller','awaiting_customer')" : ($filter === 'closed' ? "d.status IN ('resolved','closed')" : '1 = 1')];
+        $params = [];
+        if ($sellerId !== null) {
+            $where[] = 'so.seller_id = ?';
+            $params[] = $sellerId;
+        }
+        if ($lp->q !== '') {
+            $where[] = $sellerId === null ? '(d.dispute_number LIKE ? OR so.sub_number LIKE ? OR o.order_number LIKE ? OR s.name LIKE ? OR o.customer_name LIKE ?)'
+                : '(d.dispute_number LIKE ? OR so.sub_number LIKE ? OR o.order_number LIKE ?)';
+            array_push($params, ...array_fill(0, $sellerId === null ? 5 : 3, $lp->like()));
+        }
+        $rows = $lp->fetch($this->db, 'SELECT d.*, so.sub_number, so.seller_id, s.name AS seller_name, o.order_number, o.customer_name',
+            'FROM seller_disputes d JOIN seller_orders so ON so.id = d.seller_order_id JOIN sellers s ON s.id = so.seller_id JOIN orders o ON o.id = d.order_id
+              WHERE ' . implode(' AND ', $where), $params, 'd.id DESC');
+        if ($sellerId !== null) {
+            foreach ($rows as &$r) {
+                $r['customer_name'] = self::firstName((string) $r['customer_name']);
+            }
+            unset($r);
+        }
+        return $rows;
+    }
+
     public function list(?int $sellerId, string $filter, ?int $orderId = null, int $limit = 300): array
     {
         $where = [$filter === 'open' ? "d.status IN ('open','awaiting_seller','awaiting_customer')" : ($filter === 'closed' ? "d.status IN ('resolved','closed')" : '1 = 1')];

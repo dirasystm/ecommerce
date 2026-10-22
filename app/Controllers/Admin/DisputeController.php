@@ -16,7 +16,9 @@ final class DisputeController extends AdminController
     public function index(Request $req): Response
     {
         $filter = in_array($req->query['show'] ?? 'open', ['open', 'closed', 'all'], true) ? (string) ($req->query['show'] ?? 'open') : 'open';
-        return $this->view('disputes/index', ['title' => 'Seller cases', 'filter' => $filter, 'rows' => (new DisputeService())->list(null, $filter)]);
+        $lp = \Waimart\Core\ListParams::from($req, ['status' => "FIELD(d.status, 'open', 'awaiting_seller', 'awaiting_customer', 'resolved', 'closed')", 'updated' => 'd.updated_at'], 'status', 'asc');
+        $rows = (new DisputeService())->page(null, $filter, $lp);
+        return $this->view('disputes/index', ['title' => 'Seller cases', 'filter' => $filter, 'rows' => $rows, 'lp' => $lp]);
     }
 
     public function show(Request $req): Response

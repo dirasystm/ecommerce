@@ -26,6 +26,12 @@
     }
     keyboardScroll();
     window.addEventListener('resize', keyboardScroll);
+    window.addEventListener('load', keyboardScroll);                       // after fonts and images change widths
+    document.addEventListener('wm:region-updated', keyboardScroll);        // live tables replaced their rows
+    if (window.ResizeObserver) {
+        var watchScroll = new ResizeObserver(keyboardScroll);
+        document.querySelectorAll('.table-responsive').forEach(function (box) { watchScroll.observe(box); });
+    }
 
     // Chart tooltips: same details on hover and keyboard focus; labels inserted as text, never HTML.
     document.querySelectorAll('[data-chart]').forEach(function (fig) {
@@ -64,20 +70,7 @@
         });
     });
 
-    // Prevent double submission of admin forms (the server is the real safeguard).
-    document.querySelectorAll('form[method="post"]').forEach(function (form) {
-        form.addEventListener('submit', function (e) {
-            if (e.defaultPrevented) { return; }
-            if (form.dataset.submitted === '1') { e.preventDefault(); return; }
-            form.dataset.submitted = '1';
-            // Disable on the next tick (defensive): some forms send their choice through the clicked
-            // button (e.g. outcome=restock). Chromium keeps it either way (verified by
-            // tests/Browser/submitter-check.mjs); deferring avoids relying on that engine detail.
-            setTimeout(function () {
-                form.querySelectorAll('button[type="submit"]').forEach(function (b) { b.disabled = true; });
-            }, 0);
-        });
-    });
+    // Double submission and loading states for every form: ui.js.
 
     // Marketing link studio: destination suggestions follow the chosen destination type.
     var destType = document.querySelector('[data-dest-type]');

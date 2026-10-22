@@ -17,25 +17,19 @@ final class PickupPointController extends AdminController
     {
         $where = ['1 = 1'];
         $params = [];
-        $q = trim((string) ($req->query['q'] ?? ''));
-        if ($q !== '') {
-            $like = '%' . addcslashes(mb_substr($q, 0, 60), '%_\\') . '%';
+        $lp = \Waimart\Core\ListParams::from($req, ['location' => 'p.is_active DESC, c.name, p.town', 'name' => 'p.name', 'code' => 'p.code', 'waiting' => 'awaiting_collection'], 'location', 'asc');
+        if ($lp->q !== '') {
             $where[] = '(p.name LIKE ? OR p.code LIKE ? OR p.town LIKE ? OR c.name LIKE ?)';
-            array_push($params, $like, $like, $like, $like);
+            array_push($params, $lp->like(), $lp->like(), $lp->like(), $lp->like());
         }
         $status = (string) ($req->query['status'] ?? '');
         if (in_array($status, ['active', 'inactive'], true)) {
             $where[] = 'p.is_active = ' . ($status === 'active' ? 1 : 0);
         }
-        $rows = App::db()->all(
-            "SELECT p.*, c.name AS county,
-                    (SELECT COUNT(*) FROM order_fulfilment f JOIN orders o ON o.id = f.order_id
-                      WHERE f.pickup_point_id = p.id AND o.status = 'ready_for_collection') AS awaiting_collection
-               FROM pickup_points p JOIN counties c ON c.id = p.county_id
-              WHERE " . implode(' AND ', $where) . ' ORDER BY p.is_active DESC, c.name, p.town, p.name',
-            $params
-        );
-        return $this->view('pickup/index', ['title' => 'Pickup points', 'rows' => $rows, 'status' => $status]);
+        $rows = $lp->fetch(App::db(), "SELECT p.*, c.name AS county, (SELECT COUNT(*) FROM order_fulfilment f JOIN orders o ON o.id = f.order_id
+                      WHERE f.pickup_point_id = p.id AND o.status = 'ready_for_collection') AS awaiting_collection",
+            'FROM pickup_points p JOIN counties c ON c.id = p.county_id WHERE ' . implode(' AND ', $where), $params, 'p.name, p.id');
+        return $this->view('pickup/index', ['title' => 'Pickup points', 'rows' => $rows, 'status' => $status, 'lp' => $lp]);
     }
 
     public function create(Request $req): Response

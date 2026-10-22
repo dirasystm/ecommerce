@@ -201,6 +201,25 @@ final class SellerOrderService
      * A seller's parts of CONFIRMED orders only (unpaid/unconfirmed orders are not shown to sellers).
      * @return list<array<string,mixed>>
      */
+    /** One page of a seller's confirmed parts, searchable by part or order number. @return list<array<string,mixed>> */
+    public function forSellerPage(int $sellerId, ?string $tab, \Waimart\Core\ListParams $lp): array
+    {
+        $params = [$sellerId];
+        $where = 'so.seller_id = ? AND o.confirmed_at IS NOT NULL';
+        $tab = $tab === 'with_waimart' ? 'with_platform' : $tab;
+        if ($tab !== null && isset(self::SELLER_TABS[$tab])) {
+            $where .= ' AND so.status IN (' . implode(',', array_fill(0, count(self::SELLER_TABS[$tab]), '?')) . ')';
+            array_push($params, ...self::SELLER_TABS[$tab]);
+        }
+        if ($lp->q !== '') {
+            $where .= ' AND (so.sub_number LIKE ? OR o.order_number LIKE ?)';
+            array_push($params, $lp->like(), $lp->like());
+        }
+        return $lp->fetch($this->db, 'SELECT so.id, so.sub_number, so.status, so.items_subtotal, so.commission_total, so.seller_net, so.created_at, o.confirmed_at,
+                    o.fulfilment_method, (SELECT SUM(quantity) FROM order_items oi WHERE oi.seller_order_id = so.id) AS units',
+            "FROM seller_orders so JOIN orders o ON o.id = so.order_id WHERE $where", $params, 'so.id DESC');
+    }
+
     public function forSeller(int $sellerId, ?string $tab = null, int $limit = 200): array
     {
         $params = [$sellerId];

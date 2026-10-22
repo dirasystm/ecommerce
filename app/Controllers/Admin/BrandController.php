@@ -14,10 +14,20 @@ final class BrandController extends AdminController
 {
     public function index(Request $req): Response
     {
-        $rows = App::db()->all(
-            'SELECT b.*, (SELECT COUNT(*) FROM products p WHERE p.brand_id = b.id) AS product_count FROM brands b ORDER BY b.name'
-        );
-        return $this->view('brands/index', ['title' => 'Brands', 'rows' => $rows]);
+        $lp = \Waimart\Core\ListParams::from($req, ['name' => 'b.name', 'products' => 'product_count'], 'name', 'asc');
+        $status = (string) ($req->query['status'] ?? '');
+        $where = ['1=1'];
+        $params = [];
+        if ($lp->q !== '') {
+            $where[] = '(b.name LIKE ? OR b.slug LIKE ?)';
+            array_push($params, $lp->like(), $lp->like());
+        }
+        if (in_array($status, ['active', 'hidden'], true)) {
+            $where[] = 'b.is_active = ' . ($status === 'active' ? 1 : 0);
+        }
+        $rows = $lp->fetch(App::db(), 'SELECT b.*, (SELECT COUNT(*) FROM products p WHERE p.brand_id = b.id) AS product_count',
+            'FROM brands b WHERE ' . implode(' AND ', $where), $params, 'b.id');
+        return $this->view('brands/index', ['title' => 'Brands', 'rows' => $rows, 'lp' => $lp, 'status' => $status]);
     }
 
     public function create(Request $req): Response

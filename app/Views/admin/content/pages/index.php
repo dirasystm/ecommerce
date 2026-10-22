@@ -2,7 +2,7 @@
 use Waimart\Services\ContentRenderer;
 use Waimart\Services\SiteContentService;
 
-/** @var list<array<string,mixed>> $rows */
+/** @var \Waimart\Core\ListParams $lp @var list<array<string,mixed>> $rows @var string $status */
 $now = time();
 $state = function (array $p) use ($now): array {
     if ($p['status'] !== 'published') {
@@ -22,9 +22,14 @@ $state = function (array $p) use ($now): array {
     <a class="btn btn-wm-green" href="<?= e(url('/admin/content/pages/new')) ?>"><i class="bi bi-plus-lg" aria-hidden="true"></i> New page</a>
 </div>
 <p class="small text-muted">Information and legal pages. Built-in pages keep their addresses and cannot be deleted. Every save keeps the previous version, so changes can be undone.</p>
-<div class="wm-panel"><div class="table-responsive">
+<?= \Waimart\Core\View::partial('partials/table/toolbar', ['id' => 'pages', 'path' => '/admin/content/pages', 'lp' => $lp, 'label' => 'Search pages', 'placeholder' => 'Title or address',
+    'filters' => [['name' => 'status', 'label' => 'Status', 'value' => $status, 'options' => ['' => 'Any status', 'published' => 'Published', 'draft' => 'Draft']]]]) ?>
+<div class="wm-panel">
+    <div id="pages" class="wm-table-region" data-table-region data-loading-text="Loading pages…">
+        <div class="table-responsive">
     <table class="table table-hover mb-0 align-middle">
-        <thead><tr><th>Page</th><th>Address</th><th>Status</th><th>Help menu</th><th>Last change</th><th></th></tr></thead>
+        <caption class="visually-hidden">Pages</caption>
+        <thead><tr><?= sort_th('Page', 'title', $lp, '/admin/content/pages') ?><th scope="col">Address</th><th scope="col">Status</th><th scope="col">Help menu</th><?= sort_th('Last change', 'updated', $lp, '/admin/content/pages') ?><th scope="col"></th></tr></thead>
         <tbody>
         <?php foreach ($rows as $p): [$cls, $label] = $state($p); $href = SiteContentService::pageUrl((string) $p['slug']); ?>
             <tr>
@@ -37,6 +42,10 @@ $state = function (array $p) use ($now): array {
                 <td class="text-end text-nowrap"><a class="btn btn-sm btn-outline-secondary" href="<?= e(url($href)) ?>" target="_blank" rel="noopener">View</a></td>
             </tr>
         <?php endforeach; ?>
+        <?php if (!$rows): ?><?= empty_row(6, true, 'No pages.') ?><?php endif; ?>
         </tbody>
     </table>
-</div></div>
+</div>
+        <?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/content/pages', 'id' => 'pages', 'noun' => 'pages']) ?>
+    </div>
+</div>

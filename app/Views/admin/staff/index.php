@@ -1,12 +1,20 @@
-<?php /** @var list<array<string,mixed>> $rows @var list<array<string,mixed>> $roles */ ?>
+<?php /** @var list<array<string,mixed>> $rows @var list<array<string,mixed>> $roles @var \Waimart\Core\ListParams $lp @var string $status @var string $role */
+$roleOpts = ['' => 'Any role'];
+foreach ($roles as $r) {
+    $roleOpts[(string) $r['id']] = (string) $r['name'];
+}
+?>
 <div class="wm-admin-head">
     <h1>Staff</h1>
     <a class="btn btn-wm-green" href="<?= e(url('/admin/staff/new')) ?>"><i class="bi bi-person-plus" aria-hidden="true"></i> Add staff member</a>
 </div>
+<?= \Waimart\Core\View::partial('partials/table/toolbar', ['id' => 'staff', 'path' => '/admin/staff', 'lp' => $lp, 'label' => 'Search staff', 'placeholder' => 'Name or email', 'filters' => [['name' => 'role', 'label' => 'Role', 'value' => $role, 'options' => $roleOpts], ['name' => 'status', 'label' => 'Status', 'value' => $status, 'options' => ['' => 'Any status', 'active' => 'Active', 'suspended' => 'Suspended']]]]) ?>
 <div class="wm-panel mb-4">
+    <div id="staff" class="wm-table-region" data-table-region data-loading-text="Loading staff…">
     <div class="table-responsive">
-        <table class="table table-hover">
-            <thead><tr><th>Name</th><th>Email</th><th>Roles</th><th>Two-step</th><th>Last sign-in</th><th>Status</th><th></th></tr></thead>
+        <table class="table table-hover mb-0 align-middle">
+            <caption class="visually-hidden">Staff</caption>
+            <thead><tr><?= sort_th('Name', 'name', $lp, '/admin/staff') ?><th scope="col">Email</th><th scope="col">Roles</th><th scope="col">Two-step</th><?= sort_th('Last sign-in', 'login', $lp, '/admin/staff') ?><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
             <tbody>
             <?php foreach ($rows as $s): ?>
                 <tr>
@@ -19,8 +27,11 @@
                     <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="<?= e(url('/admin/staff/' . $s['id'] . '/edit')) ?>">Manage</a></td>
                 </tr>
             <?php endforeach; ?>
+            <?php if (!$rows): ?><?= empty_row(7, true, 'No staff.', 'No staff match your search.') ?><?php endif; ?>
             </tbody>
         </table>
+    </div>
+    <?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/staff', 'id' => 'staff', 'noun' => 'staff members']) ?>
     </div>
 </div>
 <?php if (\Waimart\Core\Auth::can('roles.manage')): ?><p class="small"><a href="<?= e(url('/admin/roles')) ?>">Roles &amp; permissions: change what each role can do, or create a role</a></p><?php endif; ?>

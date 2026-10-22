@@ -14,13 +14,22 @@ final class CategoryController extends AdminController
 {
     public function index(Request $req): Response
     {
-        $rows = App::db()->all(
-            'SELECT c.*, p.name AS parent_name,
-                    (SELECT COUNT(*) FROM products x WHERE x.category_id = c.id) AS product_count
-               FROM categories c LEFT JOIN categories p ON p.id = c.parent_id
-              ORDER BY COALESCE(p.sort_order, c.sort_order), COALESCE(c.parent_id, c.id), c.parent_id IS NOT NULL, c.sort_order, c.name'
-        );
-        return $this->view('categories/index', ['title' => 'Categories', 'rows' => $rows]);
+        // Default order is the tree (each parent followed by its subcategories); search and filters keep that order.
+        $lp = \Waimart\Core\ListParams::from($req, ['tree' => 'COALESCE(p.sort_order, c.sort_order), COALESCE(c.parent_id, c.id), c.parent_id IS NOT NULL, c.sort_order, c.name',
+            'name' => 'c.name', 'products' => 'product_count'], 'tree', 'asc');
+        $status = (string) ($req->query['status'] ?? '');
+        $where = ['1=1'];
+        $params = [];
+        if ($lp->q !== '') {
+            $where[] = '(c.name LIKE ? OR c.slug LIKE ? OR p.name LIKE ?)';
+            array_push($params, $lp->like(), $lp->like(), $lp->like());
+        }
+        if (in_array($status, ['active', 'hidden'], true)) {
+            $where[] = 'c.is_active = ' . ($status === 'active' ? 1 : 0);
+        }
+        $rows = $lp->fetch(App::db(), 'SELECT c.*, p.name AS parent_name, (SELECT COUNT(*) FROM products x WHERE x.category_id = c.id) AS product_count',
+            'FROM categories c LEFT JOIN categories p ON p.id = c.parent_id WHERE ' . implode(' AND ', $where), $params, 'c.id');
+        return $this->view('categories/index', ['title' => 'Categories', 'rows' => $rows, 'lp' => $lp, 'status' => $status]);
     }
 
     public function create(Request $req): Response

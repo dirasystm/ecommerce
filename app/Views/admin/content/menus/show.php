@@ -17,7 +17,7 @@ $action = $editing ? '/admin/content/menus/' . $slug . '/items/' . $editing['id'
         <section class="wm-panel mb-3">
             <div class="wm-panel-head">Items</div>
             <div class="table-responsive"><table class="table table-sm mb-0 align-middle">
-                <thead><tr><th>Order</th><th>Item</th><th>Link</th><th></th></tr></thead>
+                <thead><tr><th scope="col">Order</th><th scope="col">Item</th><th scope="col">Link</th><th scope="col"></th></tr></thead>
                 <tbody>
                 <?php foreach ($items as $i): ?>
                     <tr class="<?= (int) $i['is_visible'] ? '' : 'text-muted' ?>">

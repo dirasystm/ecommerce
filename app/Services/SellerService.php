@@ -33,6 +33,25 @@ final class SellerService
     }
 
     /** @return list<array<string,mixed>> */
+    /** One page of sellers, searchable by store name, address or owner email. @return list<array<string,mixed>> */
+    public function page(?string $status, \Waimart\Core\ListParams $lp): array
+    {
+        $owner = "(SELECT u.email FROM seller_users su JOIN users u ON u.id = su.user_id WHERE su.seller_id = s.id AND su.role = 'owner' LIMIT 1)";
+        $where = ['1=1'];
+        $params = [];
+        if ($status !== null) {
+            $where[] = 's.status = ?';
+            $params[] = $status;
+        }
+        if ($lp->q !== '') {
+            $where[] = "(s.name LIKE ? OR s.slug LIKE ? OR $owner LIKE ?)";
+            array_push($params, $lp->like(), $lp->like(), $lp->like());
+        }
+        return $lp->fetch($this->db, "SELECT s.id, s.name, s.slug, s.status, s.is_platform, s.is_verified, s.approved_at, s.created_at,
+                    (SELECT COUNT(*) FROM products p WHERE p.seller_id = s.id) AS products, $owner AS owner_email",
+            'FROM sellers s WHERE ' . implode(' AND ', $where), $params, 's.id');
+    }
+
     public function list(?string $status = null): array
     {
         return $this->db->all(

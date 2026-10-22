@@ -164,6 +164,26 @@ final class PayoutService
     }
 
     /** @return list<array<string,mixed>> */
+    /** One page of payouts, searchable by payout number, seller or payment reference. @return list<array<string,mixed>> */
+    public function page(?int $sellerId, ?string $status, \Waimart\Core\ListParams $lp): array
+    {
+        $where = ['1 = 1'];
+        $params = [];
+        if ($sellerId !== null) {
+            $where[] = 'p.seller_id = ?';
+            $params[] = $sellerId;
+        }
+        if ($status !== null) {
+            $where[] = 'p.status = ?';
+            $params[] = $status;
+        }
+        if ($lp->q !== '') {
+            $where[] = '(p.payout_number LIKE ? OR s.name LIKE ? OR p.paid_reference LIKE ?)';
+            array_push($params, $lp->like(), $lp->like(), $lp->like());
+        }
+        return $lp->fetch($this->db, 'SELECT p.*, s.name AS seller_name', 'FROM seller_payouts p JOIN sellers s ON s.id = p.seller_id WHERE ' . implode(' AND ', $where), $params, 'p.id DESC');
+    }
+
     public function list(?int $sellerId, ?string $status, int $limit = 300): array
     {
         $where = ['1 = 1'];

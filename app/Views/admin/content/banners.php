@@ -1,11 +1,15 @@
-<?php /** @var list<array<string,mixed>> $rows */ ?>
+<?php /** @var \Waimart\Core\ListParams $lp @var list<array<string,mixed>> $rows */ ?>
 <div class="wm-admin-head">
     <h1>Home page banners</h1>
     <a class="btn btn-wm-green" href="<?= e(url('/admin/banners/new')) ?>"><i class="bi bi-plus-lg" aria-hidden="true"></i> New banner</a>
 </div>
-<div class="wm-panel"><div class="table-responsive">
+<?= \Waimart\Core\View::partial('partials/table/toolbar', ['id' => 'banners', 'path' => '/admin/banners', 'lp' => $lp, 'label' => 'Search banners', 'placeholder' => 'Title, subtitle or link']) ?>
+<div class="wm-panel">
+    <div id="banners" class="wm-table-region" data-table-region data-loading-text="Loading banners…">
+        <div class="table-responsive">
     <table class="table table-hover mb-0">
-        <thead><tr><th></th><th>Title</th><th>Link</th><th>Schedule</th><th class="text-end">Order</th><th>Status</th><th></th></tr></thead>
+        <caption class="visually-hidden">Home page banners</caption>
+        <thead><tr><th scope="col"></th><th scope="col">Title</th><th scope="col">Link</th><th scope="col">Schedule</th><th scope="col" class="text-end">Order</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
         <tbody>
         <?php foreach ($rows as $b): $live = (int) $b['is_active'] && (!$b['starts_at'] || strtotime($b['starts_at']) <= time()) && (!$b['ends_at'] || strtotime($b['ends_at']) > time()); ?>
             <tr>
@@ -18,7 +22,10 @@
                 <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="<?= e(url('/admin/banners/' . $b['id'])) ?>">Edit</a></td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$rows): ?><tr><td colspan="7" class="text-center text-muted py-4">No banners. The home page shows a welcome slide.</td></tr><?php endif; ?>
+        <?php if (!$rows): ?><?= empty_row(7, $lp->q !== '', 'No banners. The home page shows a welcome slide.') ?><?php endif; ?>
         </tbody>
     </table>
-</div></div>
+</div>
+        <?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/banners', 'id' => 'banners', 'noun' => 'banners']) ?>
+    </div>
+</div>

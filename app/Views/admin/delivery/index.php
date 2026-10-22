@@ -9,7 +9,7 @@
 <div class="wm-panel mb-3">
     <div class="table-responsive">
         <table class="table table-hover">
-            <thead><tr><th>Zone</th><th class="text-end">Fee</th><th class="text-end">Free over</th><th>ETA</th><th>COD</th><th>Covers</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th scope="col">Zone</th><th scope="col" class="text-end">Fee</th><th scope="col" class="text-end">Free over</th><th scope="col">ETA</th><th scope="col">COD</th><th scope="col">Covers</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
             <tbody>
             <?php foreach ($zones as $z): $l = $locs[(int) $z['id']] ?? []; ?>
                 <tr>

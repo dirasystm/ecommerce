@@ -1,7 +1,7 @@
 <?php
 use Waimart\Services\InventoryService;
 
-/** @var array<string,mixed> $v @var list<array<string,mixed>> $movements @var bool $canAdjust */
+/** @var array<string,mixed> $v @var list<array<string,mixed>> $movements @var bool $canAdjust @var \Waimart\Core\ListParams $lp @var string $type @var list<string> $types */
 $vid = (int) $v['id'];
 $available = (int) $v['on_hand'] - (int) $v['reserved'];
 $formErr = fn (string $f) => fv('_form', '') !== '' ? field_error($f) : '';
@@ -83,10 +83,15 @@ $formErr = fn (string $f) => fv('_form', '') !== '' ? field_error($f) : '';
 <?php endif; ?>
 
 <div class="wm-panel">
-    <div class="wm-panel-head">Stock ledger <span class="small text-muted fw-normal">latest 100</span></div>
+    <div class="wm-panel-head">Stock ledger</div>
+    <div class="wm-panel-body pb-0"><?= \Waimart\Core\View::partial('partials/table/toolbar', ['id' => 'movements', 'path' => '/admin/inventory/' . $v['id'], 'lp' => $lp,
+        'label' => 'Search stock movements', 'placeholder' => 'Reason, note, staff or order number',
+        'filters' => [['name' => 'type', 'label' => 'Type', 'value' => $type, 'options' => ['' => 'All types'] + array_combine($types, array_map(fn ($t) => ucfirst(str_replace('_', ' ', $t)), $types))]]]) ?></div>
+    <div id="movements" class="wm-table-region" data-table-region data-loading-text="Loading movements…">
     <div class="table-responsive">
-        <table class="table table-sm table-hover">
-            <thead><tr><th>When</th><th>Type</th><th>Reason / note</th><th class="text-end">On hand Δ</th><th class="text-end">Reserved Δ</th><th class="text-end">On hand</th><th class="text-end">Reserved</th><th>Order</th><th>By</th></tr></thead>
+        <table class="table table-sm table-hover mb-0">
+            <caption class="visually-hidden">Stock movements</caption>
+            <thead><tr><?= sort_th('When', 'when', $lp, '/admin/inventory/' . $v['id']) ?><th scope="col">Type</th><th scope="col">Reason / note</th><th scope="col" class="text-end">On hand Δ</th><th scope="col" class="text-end">Reserved Δ</th><th scope="col" class="text-end">On hand</th><th scope="col" class="text-end">Reserved</th><th scope="col">Order</th><th scope="col">By</th></tr></thead>
             <tbody>
             <?php foreach ($movements as $m): ?>
                 <tr>
@@ -101,8 +106,10 @@ $formErr = fn (string $f) => fv('_form', '') !== '' ? field_error($f) : '';
                     <td class="small"><?= e($m['first_name'] ? $m['first_name'] . ' ' . $m['last_name'] : ucfirst($m['actor_type'])) ?></td>
                 </tr>
             <?php endforeach; ?>
-            <?php if (!$movements): ?><tr><td colspan="9" class="text-center text-muted py-4">No movements recorded.</td></tr><?php endif; ?>
+            <?php if (!$movements): ?><?= empty_row(9, $lp->q !== '' || $type !== '', 'No movements recorded.') ?><?php endif; ?>
             </tbody>
         </table>
+    </div>
+    <?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/inventory/' . $v['id'] . '', 'id' => 'movements', 'noun' => 'movements']) ?>
     </div>
 </div>

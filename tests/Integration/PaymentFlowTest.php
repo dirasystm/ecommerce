@@ -271,7 +271,7 @@ final class PaymentFlowTest extends DbTestCase
                   'tracking_consent_mode' => 'opt_in', 'tracking_retention_days' => '180', 'guest_history_days' => '30', 'recs_weight_view' => '1', 'recs_weight_search' => '2',
                   'recs_weight_cart' => '3', 'recs_weight_wishlist' => '4', 'recs_weight_purchase' => '5', 'recs_half_life_days' => '14', 'marketing_max_per_day' => '1',
                   'marketing_max_per_week' => '3', 'marketing_quiet_start' => '20:00', 'marketing_quiet_end' => '08:00', 'segment_new_days' => '30', 'segment_inactive_days' => '60',
-                  'segment_high_value' => '20000', 'segment_frequent_views' => '10', 'attribution_window_days' => '30', 'price_drop_min_percent' => '5',
+                  'segment_high_value' => '20000', 'segment_frequent_views' => '10', 'attribution_window_days' => '30', 'price_drop_min_percent' => '5', 'cart_abandon_minutes' => '60', 'cart_reminder_link_days' => '7', 'marketing_max_attempts' => '3',
                   'delivery_home_enabled' => '1', 'delivery_pickup_enabled' => '1', 'smtp_port' => '587', 'smtp_encryption' => 'tls'];
         try {
             $svc->save(['mpesa_till_number' => '12ab'] + $valid, $this->staff);

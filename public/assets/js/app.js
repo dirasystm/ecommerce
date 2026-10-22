@@ -153,12 +153,12 @@
             if (!window.fetch) { return; }
             e.preventDefault();
             var btn = form.querySelector('[data-add-btn]');
-            btn.disabled = true;
+            window.WM.setButtonLoading(btn, 'Adding…');
             postForm(form.action, form).then(function (res) {
+                window.WM.clearButtonLoading(btn);
                 toast(res.message || (res.ok ? 'Added to cart.' : 'Could not add to cart.'), !!res.ok);
                 if (res.ok) { setCartCount(res.count); }
-            }).catch(function () { form.submit(); })
-              .finally(function () { btn.disabled = false; });
+            }).catch(function () { window.WM.clearButtonLoading(btn); form.submit(); });
         });
     });
 
@@ -167,7 +167,10 @@
         form.addEventListener('submit', function (e) {
             if (!window.fetch) { return; }
             e.preventDefault();
+            var heart = form.querySelector('button');
+            window.WM.setButtonLoading(heart, '');
             postForm(form.action, form).then(function (res) {
+                window.WM.clearButtonLoading(heart);
                 if (!res.ok) { return; }
                 var btn = form.querySelector('button');
                 var icon = btn.querySelector('i');
@@ -175,7 +178,7 @@
                 btn.setAttribute('aria-pressed', res.saved ? 'true' : 'false');
                 icon.className = 'bi bi-heart' + (res.saved ? '-fill' : '');
                 toast(res.saved ? 'Saved to your wishlist.' : 'Removed from your wishlist.', true);
-            });
+            }).catch(function () { window.WM.clearButtonLoading(heart); toast('Could not update your wishlist. Check your connection and try again.', false); });
         });
     });
 
@@ -276,10 +279,17 @@
             }
         }
 
+        var summaryBox = total ? (total.closest('.wm-panel, .card, aside, section') || total.parentElement) : null;
+        var quoteSeq = 0;
+
         function requestQuote() {
             clearTimeout(timer);
             timer = setTimeout(function () {
+                var mine = ++quoteSeq;                         // only the newest answer updates the totals
+                window.WM.showInlineLoader(summaryBox, 'Updating totals…');
                 postForm(quoteUrl, checkout).then(function (q) {
+                    if (mine !== quoteSeq) { return; }
+                    window.WM.hideInlineLoader(summaryBox);
                     fee.textContent = q.fee_display;
                     total.textContent = q.total_display;
                     var dRow = checkout.querySelector('[data-discount-row]');
@@ -301,6 +311,11 @@
                         if (blocked && cod.checked) { cod.checked = false; }
                         if (codReason) { codReason.hidden = !blocked; codReason.textContent = blocked ? (q.cod_reason || 'Not available for the selected location.') : ''; }
                     }
+                }).catch(function () {
+                    if (mine !== quoteSeq) { return; }
+                    window.WM.hideInlineLoader(summaryBox);
+                    msg.textContent = 'Could not update the delivery fee and total. Check your connection; the final amount is confirmed when you place the order.';
+                    msg.className = 'small mt-2 mb-0 text-danger';
                 });
             }, 250);
         }
@@ -492,29 +507,44 @@
     });
     // ---------------------------------------------------------------- privacy banner and "Not interested"
     // Both work without JavaScript (normal form posts); with it, they update in place.
-    var postForm = function (form, submitter) {
+    var postInPlace = function (form, submitter) {
         var data = new FormData(form);
         if (submitter && submitter.name) { data.append(submitter.name, submitter.value); }
         return fetch(form.action, { method: 'POST', body: data, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
     };
+    // While the banner is open, the page gets room below its content so nothing (e.g. "Add to cart") stays hidden behind it.
+    var privacyBanner = document.querySelector('[data-privacy-banner]');
+    var reserveBannerSpace = function () {
+        if (!privacyBanner || !privacyBanner.isConnected) { document.body.style.paddingBottom = ''; return; }
+        var r = privacyBanner.getBoundingClientRect();
+        document.body.style.paddingBottom = Math.ceil(window.innerHeight - r.top + 12) + 'px';
+    };
+    if (privacyBanner) {
+        reserveBannerSpace();
+        window.addEventListener('resize', reserveBannerSpace);
+    }
     document.querySelectorAll('[data-privacy-form]').forEach(function (form) {
         form.addEventListener('submit', function (e) {
             e.preventDefault();
-            postForm(form, e.submitter).then(function () {
+            if (e.submitter) { window.WM.setButtonLoading(e.submitter, 'Saving…'); }
+            postInPlace(form, e.submitter).then(function () {
                 var banner = form.closest('[data-privacy-banner]');
                 if (banner) { banner.remove(); }
-            }).catch(function () { form.submit(); });
+                reserveBannerSpace();
+            }).catch(function () { if (e.submitter) { window.WM.clearButtonLoading(e.submitter); } form.submit(); });
         });
     });
     document.addEventListener('submit', function (e) {
         var form = e.target.closest ? e.target.closest('[data-rec-dismiss]') : null;
         if (!form) { return; }
         e.preventDefault();
-        postForm(form, null).then(function () {
+        var dismissBtn = form.querySelector('button');
+        window.WM.setButtonLoading(dismissBtn, '');
+        postInPlace(form, null).then(function () {
             var card = form.closest('.wm-product');
             var rail = card ? card.parentElement : null;
             if (card) { card.remove(); }
             if (rail && rail.focus) { rail.focus(); }
-        }).catch(function () { form.submit(); });
+        }).catch(function () { window.WM.clearButtonLoading(dismissBtn); form.submit(); });
     });
 })();

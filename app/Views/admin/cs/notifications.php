@@ -1,4 +1,4 @@
-<?php /** @var list<array<string,mixed>> $rows @var string $status @var list<string> $noResend */ ?>
+<?php /** @var \Waimart\Core\ListParams $lp @var list<array<string,mixed>> $rows @var string $status @var string $channel @var list<string> $noResend */ ?>
 <div class="wm-admin-head"><h1>Notifications outbox</h1></div>
 <ul class="nav nav-pills mb-3 small">
     <?php foreach (['' => 'All', 'failed' => 'Failed', 'sent' => 'Sent', 'logged' => 'Logged (dev / SMS outbox)'] as $k => $l): ?>
@@ -6,9 +6,15 @@
     <?php endforeach; ?>
 </ul>
 <p class="small text-muted">Every customer message is recorded here with secrets (links, codes) redacted. SMS are delivered when the SMS gateway is switched on (Email &amp; SMS).</p>
-<div class="wm-panel"><div class="table-responsive">
+<?= \Waimart\Core\View::partial('partials/table/toolbar', ['id' => 'outbox', 'path' => '/admin/notifications', 'lp' => $lp, 'label' => 'Search notifications',
+    'placeholder' => 'Recipient, template, subject or order', 'keep' => ['status' => $status],
+    'filters' => [['name' => 'channel', 'label' => 'Channel', 'value' => $channel, 'options' => ['' => 'Email and SMS', 'email' => 'Email', 'sms' => 'SMS']]]]) ?>
+<div class="wm-panel">
+    <div id="outbox" class="wm-table-region" data-table-region data-loading-text="Loading messages…">
+        <div class="table-responsive">
     <table class="table table-sm align-top mb-0">
-        <thead><tr><th>When</th><th>Channel</th><th>To</th><th>Template</th><th>Order</th><th>Message</th><th>Status</th><th></th></tr></thead>
+        <caption class="visually-hidden">Notifications outbox</caption>
+        <thead><tr><th scope="col">When</th><th scope="col">Channel</th><th scope="col">To</th><th scope="col">Template</th><th scope="col">Order</th><th scope="col">Message</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
         <tbody>
         <?php foreach ($rows as $n): ?>
             <tr>
@@ -21,11 +27,14 @@
                 <td><span class="badge <?= ['sent' => 'badge-soft-success', 'failed' => 'badge-soft-danger', 'logged' => 'badge-soft-muted'][$n['status']] ?? 'badge-soft-warning' ?>"><?= e($n['status']) ?></span>
                     <?php if ($n['last_error']): ?><div class="small text-danger"><?= e($n['last_error']) ?></div><?php endif; ?></td>
                 <td><?php if ($n['status'] === 'failed' && $n['channel'] === 'email' && !in_array($n['template'], $noResend, true)): ?>
-                    <form method="post" action="<?= e(url('/admin/notifications/' . $n['id'] . '/resend')) ?>"><?= csrf_field() ?><button class="btn btn-sm btn-outline-secondary" type="submit">Re-send</button></form>
+                    <form method="post" action="<?= e(url('/admin/notifications/' . $n['id'] . '/resend')) ?>" data-loading-text="Sending…"><?= csrf_field() ?><button class="btn btn-sm btn-outline-secondary" type="submit">Re-send</button></form>
                 <?php endif; ?></td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$rows): ?><tr><td colspan="8" class="text-center text-muted py-4">No notifications.</td></tr><?php endif; ?>
+        <?php if (!$rows): ?><?= empty_row(8, $lp->q !== '' || $channel !== '', 'No notifications.') ?><?php endif; ?>
         </tbody>
     </table>
-</div></div>
+</div>
+        <?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/notifications', 'id' => 'outbox', 'noun' => 'messages']) ?>
+    </div>
+</div>

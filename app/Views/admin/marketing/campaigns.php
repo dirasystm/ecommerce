@@ -4,7 +4,7 @@ use Waimart\Core\View;
 use Waimart\Services\Marketing\CampaignService;
 
 /**
- * @var list<array<string,mixed>> $rows @var int $total @var int $page @var int $pages @var string $search @var string $sort
+ * @var list<array<string,mixed>> $rows @var \Waimart\Core\ListParams $lp @var string $search @var string $sort
  * @var string $label @var string $model @var array<string,string> $q
  */
 $pct = fn (?float $v) => $v === null ? '—' : number_format($v * 100, 1) . '%';
@@ -17,19 +17,11 @@ $sorts = ['recent' => 'Newest', 'name' => 'Name', 'clicks' => 'Most clicks', 'or
 </div>
 <?= View::partial('admin/marketing/_nav', ['active' => '/admin/marketing/campaigns']) ?>
 <?= View::partial('admin/marketing/_period', ['path' => '/admin/marketing/campaigns', 'q' => $q, 'model' => true, 'extra' => array_filter(['q' => $search, 'sort' => $sort !== 'recent' ? $sort : null])]) ?>
-<form class="d-flex flex-wrap gap-2 mb-3" method="get" action="<?= e(url('/admin/marketing/campaigns')) ?>" role="search">
-    <?php foreach ($q as $k => $v): ?><input type="hidden" name="<?= e($k) ?>" value="<?= e($v) ?>"><?php endforeach; ?>
-    <label class="visually-hidden" for="cq">Search campaigns</label>
-    <input class="form-control form-control-sm" type="search" id="cq" name="q" maxlength="100" placeholder="Name, channel or platform" value="<?= e($search) ?>" style="max-width:280px">
-    <label class="visually-hidden" for="sort">Sort by</label>
-    <select class="form-select form-select-sm" id="sort" name="sort" style="max-width:200px">
-        <?php foreach ($sorts as $k => $l): ?><option value="<?= e($k) ?>" <?= $sort === $k ? 'selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?>
-    </select>
-    <button class="btn btn-sm btn-outline-secondary" type="submit">Apply</button>
-</form>
-<p class="small text-muted"><?= (int) $total ?> campaign<?= $total === 1 ? '' : 's' ?> · results for <?= e($label) ?>, sales credited to the <?= $model === 'first' ? 'first' : 'last' ?> link clicked.</p>
-<?= View::partial('partials/pagination', ['page' => $page, 'pages' => $pages, 'path' => '/admin/marketing/campaigns', 'compact' => true]) ?>
-<div class="wm-panel"><div class="table-responsive">
+<?= View::partial('partials/table/toolbar', ['id' => 'campaigns', 'path' => '/admin/marketing/campaigns', 'lp' => $lp, 'label' => 'Search campaigns',
+    'placeholder' => 'Name, channel or platform', 'keep' => $q,
+    'filters' => [['name' => 'sort', 'label' => 'Sort by', 'value' => $sort, 'default' => 'recent', 'options' => $sorts]]]) ?>
+<p class="small text-muted">Results for <?= e($label) ?>, sales credited to the <?= $model === 'first' ? 'first' : 'last' ?> link clicked.</p>
+<div class="wm-panel"><div id="campaigns" class="wm-table-region" data-table-region data-loading-text="Loading campaigns…"><div class="table-responsive">
     <table class="table table-hover align-middle mb-0">
         <caption class="visually-hidden">Campaign performance</caption>
         <thead><tr>
@@ -51,9 +43,10 @@ $sorts = ['recent' => 'Newest', 'name' => 'Name', 'clicks' => 'Most clicks', 'or
                 <td class="text-end"><?= $r['roas'] === null ? '<span class="text-muted">—</span>' : e(number_format($r['roas'], 2)) . '×' ?></td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$rows): ?><tr><td colspan="12" class="text-center text-muted py-4"><?= $search !== '' ? 'No campaigns match your search.' : 'No campaigns yet. Create one, then create promotional links to share on social media, WhatsApp, SMS or posters.' ?></td></tr><?php endif; ?>
+        <?php if (!$rows): ?><?= empty_row(12, $search !== '', 'No campaigns yet. Create one, then create promotional links to share on social media, WhatsApp, SMS or posters.') ?><?php endif; ?>
         </tbody>
     </table>
+</div>
+<?= View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/marketing/campaigns', 'id' => 'campaigns', 'noun' => 'campaigns']) ?>
 </div></div>
-<?= View::partial('partials/pagination', ['page' => $page, 'pages' => $pages, 'path' => '/admin/marketing/campaigns']) ?>
 <p class="small text-muted mt-2">ROAS (return on ad spend) is shown only when you entered what the campaign actually cost. "Paid" means M-Pesa verified or cash on delivery collected.</p>

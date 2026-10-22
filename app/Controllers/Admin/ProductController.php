@@ -12,18 +12,16 @@ use Waimart\Services\CatalogueAdminService;
 
 final class ProductController extends AdminController
 {
-    private const PER_PAGE = 25;
 
     public function index(Request $req): Response
     {
         $db = App::db();
         $where = ['1 = 1'];
         $params = [];
-        $q = trim((string) ($req->query['q'] ?? ''));
-        if ($q !== '') {
-            $like = '%' . addcslashes(mb_substr($q, 0, 100), '%_\\') . '%';
+        $lp = \Waimart\Core\ListParams::from($req, ['newest' => 'p.id', 'name' => 'p.name', 'price' => 'min_price', 'available' => 'available'], 'newest', 'desc');
+        if ($lp->q !== '') {
             $where[] = '(p.name LIKE ? OR EXISTS (SELECT 1 FROM product_variants x WHERE x.product_id = p.id AND x.sku LIKE ?))';
-            array_push($params, $like, $like);
+            array_push($params, $lp->like(), $lp->like());
         }
         $cat = (string) ($req->query['category'] ?? '');
         if (ctype_digit($cat)) {
@@ -45,26 +43,18 @@ final class ProductController extends AdminController
             $params[] = $moderation;
         }
         $w = implode(' AND ', $where);
-        $total = (int) $db->value("SELECT COUNT(*) FROM products p JOIN categories c ON c.id = p.category_id WHERE $w", $params);
-        $pages = max(1, (int) ceil($total / self::PER_PAGE));
-        $page = max(1, min($pages, (int) ($req->query['page'] ?? 1)));
-        $rows = $db->all(
+        $rows = $lp->fetch($db,
             "SELECT p.id, p.name, p.slug, p.is_active, p.is_featured, p.moderation_status, c.name AS category, b.name AS brand,
                     s.name AS seller_name, s.is_platform, s.status AS seller_status,
                     (SELECT path FROM product_images pi WHERE pi.product_id = p.id ORDER BY sort_order, id LIMIT 1) AS image,
                     (SELECT MIN(v.price) FROM product_variants v WHERE v.product_id = p.id AND v.is_active = 1) AS min_price,
                     (SELECT COUNT(*) FROM product_variants v WHERE v.product_id = p.id) AS variants,
                     (SELECT COALESCE(SUM(i.on_hand - i.reserved), 0) FROM product_variants v JOIN inventory i ON i.variant_id = v.id
-                      WHERE v.product_id = p.id AND v.is_active = 1) AS available
-               FROM products p
-               JOIN categories c ON c.id = p.category_id
-               LEFT JOIN brands b ON b.id = p.brand_id
-               JOIN sellers s ON s.id = p.seller_id
-              WHERE $w ORDER BY p.id DESC LIMIT " . self::PER_PAGE . ' OFFSET ' . (($page - 1) * self::PER_PAGE),
-            $params
-        );
+                      WHERE v.product_id = p.id AND v.is_active = 1) AS available",
+            "FROM products p JOIN categories c ON c.id = p.category_id LEFT JOIN brands b ON b.id = p.brand_id JOIN sellers s ON s.id = p.seller_id WHERE $w",
+            $params, 'p.id DESC');
         return $this->view('products/index', [
-            'title' => 'Products', 'rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => $pages,
+            'title' => 'Products', 'rows' => $rows, 'lp' => $lp,
             'categories' => $db->all('SELECT id, name FROM categories WHERE parent_id IS NULL ORDER BY sort_order, name'),
             'sellers' => $db->all('SELECT id, name FROM sellers ORDER BY is_platform DESC, name'),
         ]);
@@ -75,9 +65,10 @@ final class ProductController extends AdminController
     {
         $status = (string) ($req->query['status'] ?? 'pending');
         $status = in_array($status, ['pending', 'rejected', 'published'], true) ? $status : 'pending';
+        $lp = \Waimart\Core\ListParams::from($req, ['date' => 'COALESCE(p.submitted_at, p.updated_at)'], 'date', $status === 'pending' ? 'asc' : 'desc');
         return $this->view('products/moderation', [
-            'title' => 'Product approvals', 'status' => $status,
-            'rows' => (new \Waimart\Services\SellerProductService())->moderationQueue($status),
+            'title' => 'Product approvals', 'status' => $status, 'lp' => $lp,
+            'rows' => (new \Waimart\Services\SellerProductService())->moderationPage($status, $lp),
         ]);
     }
 

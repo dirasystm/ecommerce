@@ -25,7 +25,7 @@ $saleForm = fv('_form', '') === 'sale';
             <section class="wm-panel">
                 <div class="wm-panel-head">Items in this sale (<?= count($items) ?>)</div>
                 <div class="table-responsive"><table class="table table-sm mb-0 wm-num">
-                    <thead><tr><th>SKU</th><th>Product</th><th class="text-end">Normal</th><th class="text-end">Sale</th><th class="text-end">Off</th><th class="text-end">Available</th><th></th></tr></thead>
+                    <thead><tr><th scope="col">SKU</th><th scope="col">Product</th><th scope="col" class="text-end">Normal</th><th scope="col" class="text-end">Sale</th><th scope="col" class="text-end">Off</th><th scope="col" class="text-end">Available</th><th scope="col"></th></tr></thead>
                     <tbody>
                     <?php foreach ($items as $it): ?>
                         <tr><td><code><?= e($it['sku']) ?></code></td><td class="small"><?= e($it['product']) ?><?= $it['variant'] !== 'Default' ? ' · ' . e($it['variant']) : '' ?></td>

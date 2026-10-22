@@ -2,7 +2,7 @@
 use Waimart\Core\View;
 use Waimart\Services\OrderPresenter;
 
-/** @var string $status @var array<string,int> $counts @var list<array<string,mixed>> $rows @var list<array<string,mixed>> $sellers */
+/** @var \Waimart\Core\ListParams $lp @var string $status @var array<string,int> $counts @var list<array<string,mixed>> $rows @var list<array<string,mixed>> $sellers */
 $req = View::shared('request');
 $sellerQ = (string) ($req->query['seller'] ?? '');
 $tabs = ['pending_acceptance', 'accepted', 'processing', 'packed', 'handed_over', 'dispatched', 'out_for_delivery', 'ready_for_collection', 'delivered', 'collected', 'rejected', 'cancelled'];
@@ -15,17 +15,13 @@ $tabs = ['pending_acceptance', 'accepted', 'processing', 'packed', 'handed_over'
             <span class="badge text-bg-light"><?= (int) ($counts[$k] ?? 0) ?></span></a></li>
     <?php endforeach; ?>
 </ul>
-<form class="mb-3 d-flex gap-2 align-items-end" method="get" action="<?= e(url('/admin/seller-orders')) ?>">
-    <input type="hidden" name="status" value="<?= e($status) ?>">
-    <div><label class="form-label small mb-1" for="seller">Seller</label>
-        <select class="form-select form-select-sm" id="seller" name="seller"><option value="">All sellers</option>
-            <?php foreach ($sellers as $s): ?><option value="<?= (int) $s['id'] ?>" <?= $sellerQ === (string) $s['id'] ? 'selected' : '' ?>><?= e($s['name']) ?></option><?php endforeach; ?>
-        </select></div>
-    <button class="btn btn-sm btn-outline-secondary" type="submit">Filter</button>
-</form>
-<div class="wm-panel"><div class="table-responsive">
+<?php $sellerOpts = ['' => 'All sellers']; foreach ($sellers as $s) { $sellerOpts[(string) $s['id']] = $s['name']; } ?>
+<?= View::partial('partials/table/toolbar', ['id' => 'parts', 'path' => '/admin/seller-orders', 'lp' => $lp, 'label' => 'Search seller orders', 'placeholder' => 'Part or order number, or seller',
+    'keep' => ['status' => $status], 'filters' => [['name' => 'seller', 'label' => 'Seller', 'value' => $sellerQ, 'options' => $sellerOpts]]]) ?>
+<div class="wm-panel"><div id="parts" class="wm-table-region" data-table-region data-loading-text="Fetching orders…"><div class="table-responsive">
     <table class="table table-hover mb-0 align-middle">
-        <thead><tr><th>Part</th><th>Seller</th><th>Fulfilment</th><th class="text-end">Value</th><th>Since</th><th>Seller's note</th><th></th></tr></thead>
+        <caption class="visually-hidden">Seller orders</caption>
+        <thead><tr><th scope="col">Part</th><th scope="col">Seller</th><th scope="col">Fulfilment</th><?= sort_th('Value', 'value', $lp, '/admin/seller-orders', 'text-end') ?><?= sort_th('Since', 'since', $lp, '/admin/seller-orders') ?><th scope="col">Seller's note</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
         <tbody>
         <?php foreach ($rows as $r): ?>
             <tr>
@@ -38,7 +34,9 @@ $tabs = ['pending_acceptance', 'accepted', 'processing', 'packed', 'handed_over'
                 <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="<?= e(url('/admin/orders/' . $r['order_id'])) ?>">Open order</a></td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$rows): ?><tr><td colspan="7" class="text-center text-muted py-4">Nothing here.</td></tr><?php endif; ?>
+        <?php if (!$rows): ?><?= empty_row(7, $lp->q !== '' || $sellerQ !== '', 'No seller orders here.') ?><?php endif; ?>
         </tbody>
     </table>
+</div>
+<?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/seller-orders', 'id' => 'parts', 'noun' => 'parts']) ?>
 </div></div>

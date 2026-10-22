@@ -1,0 +1,26 @@
+// Live table check: typing filters the table in place (no page load), page size changes in place, errors are shown.
+import puppeteer from 'puppeteer-core';
+import fs from 'node:fs';
+const B = process.env.WAIMART_URL || 'http://localhost/ecommerce';
+const EDGE = ['C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe', 'C:/Program Files/Microsoft/Edge/Application/msedge.exe'].find((p) => fs.existsSync(p));
+const browser = await puppeteer.launch({ executablePath: EDGE, headless: true });
+const page = await browser.newPage();
+await page.setViewport({ width: 1280, height: 900 });
+const errors = [];
+page.on('pageerror', (e) => errors.push(String(e)));
+await page.goto(B + '/admin/login', { waitUntil: 'networkidle0' });
+await page.type('#login', process.env.WAIMART_LOGIN_EMAIL); await page.type('#password', process.env.WAIMART_LOGIN_PASSWORD);
+await Promise.all([page.waitForNavigation({ waitUntil: 'networkidle0' }), page.$eval('#password', (el) => el.form.requestSubmit())]);
+await page.goto(B + '/admin/products', { waitUntil: 'networkidle0' });
+await page.evaluate(() => { window.__sameDocument = true; });
+const count = () => page.$eval('#products .wm-table-count', (el) => el.textContent.trim());
+console.log('• initial:', await count());
+await page.type('#products-q', 'nyota');
+await page.waitForFunction(() => /of \d+ products/.test(document.querySelector('#products .wm-table-count').textContent) && location.search.includes('q=nyota'), { timeout: 10000 });
+console.log('• after typing "nyota":', await count(), '| url:', page.url().replace(B, ''), '| same page:', await page.evaluate(() => window.__sameDocument === true));
+await page.select('#products-per', '15').catch(() => {});
+await page.click('[data-search-clear]');
+await page.waitForFunction(() => !location.search.includes('q='), { timeout: 10000 });
+console.log('• cleared:', await count(), '| same page:', await page.evaluate(() => window.__sameDocument === true));
+console.log(JSON.stringify({ errors }));
+await browser.close();

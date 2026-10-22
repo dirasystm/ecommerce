@@ -37,8 +37,11 @@ $statusLabels = ['requested' => ['badge-soft-warning', 'Requested'], 'approved' 
     <div class="col-lg-8">
         <section class="wm-panel mb-3">
             <div class="wm-panel-head">Ledger</div>
+            <div class="wm-panel-body pb-0"><?= \Waimart\Core\View::partial('partials/table/toolbar', ['id' => 'sledger', 'path' => '/seller/finance', 'lp' => $lp, 'label' => 'Search your ledger', 'placeholder' => 'Order part, payout or note', 'filters' => [['name' => 'bucket', 'label' => 'Balance', 'value' => $bucket, 'options' => ['' => 'All balances'] + \Waimart\Services\SellerLedgerService::BUCKET_LABELS]]]) ?></div>
+            <div id="sledger" class="wm-table-region" data-table-region data-loading-text="Loading your ledger…">
             <div class="table-responsive"><table class="table table-sm mb-0">
-                <thead><tr><th>Date</th><th>Entry</th><th>Reference</th><th>Balance</th><th class="text-end">Amount</th></tr></thead>
+                <caption class="visually-hidden">Your ledger</caption>
+                <thead><tr><th scope="col">Date</th><th scope="col">Entry</th><th scope="col">Reference</th><th scope="col">Balance</th><th scope="col" class="text-end">Amount</th></tr></thead>
                 <tbody>
                 <?php foreach ($entries as $en): ?>
                     <tr>
@@ -49,9 +52,11 @@ $statusLabels = ['requested' => ['badge-soft-warning', 'Requested'], 'approved' 
                         <td class="text-end text-nowrap <?= Money::cmp((string) $en['amount'], '0') < 0 ? 'text-danger' : '' ?>"><?= e(money($en['amount'])) ?></td>
                     </tr>
                 <?php endforeach; ?>
-                <?php if (!$entries): ?><tr><td colspan="5" class="text-center text-muted py-3">No entries yet. Earnings appear here once a customer's payment for your items is received.</td></tr><?php endif; ?>
+                <?php if (!$entries): ?><?= empty_row(5, $lp->q !== '' || $bucket !== '', "No entries yet. Earnings appear here once a customer's payment for your items is received.") ?><?php endif; ?>
                 </tbody>
             </table></div>
+            <?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/seller/finance', 'id' => 'sledger', 'noun' => 'entries']) ?>
+            </div>
             <div class="wm-panel-body small text-muted">Each line is a permanent record. Moving money between balances (for example from Pending to Available) shows as two lines that cancel out.</div>
         </section>
     </div>

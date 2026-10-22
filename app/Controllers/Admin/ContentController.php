@@ -15,7 +15,9 @@ final class ContentController extends AdminController
 {
     public function banners(Request $req): Response
     {
-        return $this->view('content/banners', ['title' => 'Banners', 'rows' => App::db()->all("SELECT * FROM banners ORDER BY is_active DESC, sort_order, id")]);
+        $lp = \Waimart\Core\ListParams::from($req, ['order' => 'is_active DESC, sort_order', 'title' => 'title'], 'order', 'asc');
+        [$where, $params] = $lp->q !== '' ? ['WHERE (title LIKE ? OR subtitle LIKE ? OR link_url LIKE ?)', [$lp->like(), $lp->like(), $lp->like()]] : ['', []];
+        return $this->view('content/banners', ['title' => 'Banners', 'lp' => $lp, 'rows' => $lp->fetch(App::db(), 'SELECT *', "FROM banners $where", $params, 'id')]);
     }
 
     public function bannerForm(Request $req): Response
@@ -40,8 +42,21 @@ final class ContentController extends AdminController
 
     public function sales(Request $req): Response
     {
-        $rows = App::db()->all('SELECT f.*, (SELECT COUNT(*) FROM flash_sale_items i WHERE i.flash_sale_id = f.id) AS items FROM flash_sales f ORDER BY f.ends_at DESC');
-        return $this->view('content/sales', ['title' => 'Flash sales', 'rows' => $rows]);
+        $lp = \Waimart\Core\ListParams::from($req, ['ends' => 'f.ends_at', 'starts' => 'f.starts_at', 'title' => 'f.title'], 'ends', 'desc');
+        $state = (string) ($req->query['state'] ?? '');
+        $where = ['1=1'];
+        $params = [];
+        if ($lp->q !== '') {
+            $where[] = 'f.title LIKE ?';
+            $params[] = $lp->like();
+        }
+        $where[] = match ($state) {
+            'live' => 'f.is_active = 1 AND f.starts_at <= NOW() AND f.ends_at > NOW()', 'scheduled' => 'f.is_active = 1 AND f.starts_at > NOW()',
+            'ended' => 'f.ends_at <= NOW()', 'off' => 'f.is_active = 0', default => '1=1',
+        };
+        $rows = $lp->fetch(App::db(), 'SELECT f.*, (SELECT COUNT(*) FROM flash_sale_items i WHERE i.flash_sale_id = f.id) AS items',
+            'FROM flash_sales f WHERE ' . implode(' AND ', $where), $params, 'f.id');
+        return $this->view('content/sales', ['title' => 'Flash sales', 'rows' => $rows, 'lp' => $lp, 'state' => $state]);
     }
 
     public function saleForm(Request $req): Response

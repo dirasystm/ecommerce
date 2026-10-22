@@ -33,8 +33,6 @@ final class OrderController extends AdminController
         // 'collected' is deliberately absent: it is only possible at the collection desk with the customer's code.
     ];
 
-    private const PER_PAGE = 30;
-
     public function index(Request $req): Response
     {
         $db = App::db();
@@ -50,26 +48,21 @@ final class OrderController extends AdminController
             $where[] = 'o.fulfilment_method = ?';
             $params[] = $method;
         }
-        $q = trim((string) ($req->query['q'] ?? ''));
-        if ($q !== '') {
-            $where[] = '(o.order_number LIKE ? OR o.customer_phone LIKE ? OR o.customer_name LIKE ?)';
-            $like = '%' . addcslashes(mb_substr($q, 0, 60), '%_\\') . '%';
-            array_push($params, $like, '%' . (\Waimart\Core\Validator::normalizePhone($q) ?? $like) . '%', $like);
+        $lp = \Waimart\Core\ListParams::from($req, ['placed' => 'o.placed_at', 'total' => 'o.grand_total', 'number' => 'o.order_number'], 'placed', 'desc');
+        $payment = (string) ($req->query['payment'] ?? '');
+        if (in_array($payment, ['unpaid', 'awaiting_verification', 'verified', 'rejected', 'cod_pending', 'cod_collected', 'refund_due', 'refunded'], true)) {
+            $where[] = 'o.payment_status = ?';
+            $params[] = $payment;
         }
-        $w = implode(' AND ', $where);
-        $total = (int) $db->value("SELECT COUNT(*) FROM orders o WHERE $w", $params);
-        $pages = max(1, (int) ceil($total / self::PER_PAGE));
-        $page = max(1, min($pages, (int) ($req->query['page'] ?? 1)));
-        $rows = $db->all(
-            "SELECT o.id, o.order_number, o.status, o.payment_method, o.payment_status, o.fulfilment_method, o.customer_name,
-                    o.grand_total, o.placed_at,
-                    (SELECT MIN(expires_at) FROM stock_reservations r WHERE r.order_id = o.id AND r.status = 'active') AS hold_until
-               FROM orders o WHERE $w ORDER BY o.placed_at DESC, o.id DESC
-              LIMIT " . self::PER_PAGE . ' OFFSET ' . (($page - 1) * self::PER_PAGE),
-            $params
-        );
+        if ($lp->q !== '') {
+            $where[] = '(o.order_number LIKE ? OR o.customer_phone LIKE ? OR o.customer_name LIKE ? OR o.customer_email LIKE ?)';
+            array_push($params, $lp->like(), '%' . (\Waimart\Core\Validator::normalizePhone($lp->q) ?? addcslashes($lp->q, '%_\\')) . '%', $lp->like(), $lp->like());
+        }
+        $rows = $lp->fetch($db, "SELECT o.id, o.order_number, o.status, o.payment_method, o.payment_status, o.fulfilment_method, o.customer_name,
+                    o.grand_total, o.placed_at, (SELECT MIN(expires_at) FROM stock_reservations r WHERE r.order_id = o.id AND r.status = 'active') AS hold_until",
+            'FROM orders o WHERE ' . implode(' AND ', $where), $params, 'o.id DESC');
         $counts = array_column($db->all('SELECT status, COUNT(*) AS n FROM orders GROUP BY status'), 'n', 'status');
-        return $this->view('orders/index', compact('rows', 'total', 'page', 'pages', 'counts', 'status') + ['title' => 'Orders']);
+        return $this->view('orders/index', compact('rows', 'lp', 'counts', 'status', 'method', 'payment') + ['title' => 'Orders']);
     }
 
     /** Staff step on one seller's part of an order (hand-over, dispatch, delivery, pickup readiness, part cancellation). */
@@ -104,16 +97,19 @@ final class OrderController extends AdminController
             $where .= ' AND so.seller_id = ?';
             $params[] = (int) $seller;
         }
+        $lp = \Waimart\Core\ListParams::from($req, ['since' => 'so.updated_at', 'value' => 'so.items_subtotal'], 'since', 'asc');
+        if ($lp->q !== '') {
+            $where .= ' AND (so.sub_number LIKE ? OR o.order_number LIKE ? OR s.name LIKE ?)';
+            array_push($params, $lp->like(), $lp->like(), $lp->like());
+        }
         return $this->view('orders/seller-orders', [
-            'title' => 'Seller orders', 'status' => $status,
+            'title' => 'Seller orders', 'status' => $status, 'lp' => $lp,
             'counts' => array_map('intval', array_column($db->all(
                 'SELECT so.status, COUNT(*) AS n FROM seller_orders so JOIN orders o ON o.id = so.order_id WHERE o.confirmed_at IS NOT NULL GROUP BY so.status'), 'n', 'status')),
-            'rows' => $db->all(
-                "SELECT so.id, so.order_id, so.sub_number, so.status, so.items_subtotal, so.updated_at, so.dispatch_note, s.name AS seller_name, s.id AS seller_id,
-                        o.fulfilment_method, o.order_number, f.pickup_name, f.town, f.county_name
-                   FROM seller_orders so JOIN orders o ON o.id = so.order_id JOIN sellers s ON s.id = so.seller_id
-                   LEFT JOIN order_fulfilment f ON f.order_id = o.id
-                  WHERE $where ORDER BY so.updated_at LIMIT 300", $params),
+            'rows' => $lp->fetch($db, 'SELECT so.id, so.order_id, so.sub_number, so.status, so.items_subtotal, so.updated_at, so.dispatch_note, s.name AS seller_name, s.id AS seller_id,
+                        o.fulfilment_method, o.order_number, f.pickup_name, f.town, f.county_name',
+                "FROM seller_orders so JOIN orders o ON o.id = so.order_id JOIN sellers s ON s.id = so.seller_id LEFT JOIN order_fulfilment f ON f.order_id = o.id WHERE $where",
+                $params, 'so.id'),
             'sellers' => $db->all('SELECT id, name FROM sellers ORDER BY is_platform DESC, name'),
         ]);
     }

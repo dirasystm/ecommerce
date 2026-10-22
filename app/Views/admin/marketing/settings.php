@@ -8,7 +8,8 @@ $sections = [
     'Shopping activity & privacy' => ['tracking_enabled', 'tracking_consent_mode', 'tracking_retention_days', 'guest_history_days'],
     'Recommendations' => ['recs_enabled', 'recs_home', 'recs_similar', 'recs_bought_together', 'recs_cart', 'recs_account', 'recs_confirmation', 'recs_email',
                           'recs_weight_view', 'recs_weight_search', 'recs_weight_cart', 'recs_weight_wishlist', 'recs_weight_purchase', 'recs_half_life_days'],
-    'Marketing messages' => ['marketing_paused', 'marketing_max_per_day', 'marketing_max_per_week', 'marketing_quiet_start', 'marketing_quiet_end', 'price_drop_min_percent'],
+    'Marketing messages' => ['marketing_paused', 'marketing_max_per_day', 'marketing_max_per_week', 'marketing_quiet_start', 'marketing_quiet_end', 'marketing_max_attempts', 'price_drop_min_percent'],
+    'Abandoned carts' => ['cart_abandon_minutes', 'cart_reminder_link_days', 'cart_recovery_guests'],
     'Segments & attribution' => ['segment_new_days', 'segment_inactive_days', 'segment_high_value', 'segment_frequent_views', 'attribution_window_days'],
 ];
 $listed = array_merge(...array_values($sections));

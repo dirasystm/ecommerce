@@ -37,7 +37,6 @@ final class Automation
         'discovery' => ['Product discovery', 'Weekly at most: picks from a category the customer keeps browsing without buying.', 'mkt_discovery'],
     ];
     private const LATE_DAYS = 3;
-    private const MAX_ATTEMPTS = 3;
 
     private Database $db;
 
@@ -103,8 +102,8 @@ final class Automation
                 foreach ($this->triggers($code, $a) as $t) {
                     foreach (explode(',', (string) $a['channels']) as $channel) {
                         $out[$code] += $this->db->exec(
-                            'INSERT IGNORE INTO marketing_messages (automation, trigger_key, channel, user_id, payload, scheduled_at) VALUES (?, ?, ?, ?, ?, ?)',
-                            [$code, $t['key'], $channel, $t['user_id'], json_encode($t['payload'] ?? []), $t['at']]);
+                            'INSERT IGNORE INTO marketing_messages (automation, trigger_key, channel, user_id, lead_id, payload, scheduled_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                            [$code, $t['key'], $channel, $t['user_id'], $t['lead_id'] ?? null, json_encode($t['payload'] ?? []), $t['at']]);
                     }
                 }
             } catch (\Throwable $e) {
@@ -114,7 +113,7 @@ final class Automation
         return $out;
     }
 
-    /** @return list<array{key:string,user_id:int,at:string,payload?:array<string,mixed>}> */
+    /** @return list<array{key:string,user_id:?int,lead_id?:int,at:string,payload?:array<string,mixed>}> */
     private function triggers(string $code, array $a): array
     {
         $h = (int) $a['delay_hours'];
@@ -127,13 +126,26 @@ final class Automation
                 }
                 break;
             case 'cart_recovery':
-                $steps = array_filter([1 => $h, 2 => $a['delay2_hours'] !== null ? (int) $a['delay2_hours'] : null], fn ($v) => $v !== null);
-                foreach ($this->db->all("SELECT c.id, c.user_id, c.updated_at FROM carts c JOIN users u ON u.id = c.user_id
-                        WHERE $consent AND c.updated_at > NOW() - INTERVAL 7 DAY AND EXISTS (SELECT 1 FROM cart_items ci WHERE ci.cart_id = c.id)
-                          AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.user_id = c.user_id AND o.placed_at > c.updated_at)") as $c) {
+                // Inactivity is measured from the cart's last activity on the server (adding, changing, opening the cart or checkout).
+                // Step 1 after "cart_abandon_minutes" (default 60); optional step 2 after delay2_hours. New activity starts a new cycle.
+                $first = max(15, Settings::int('cart_abandon_minutes', 60)) * 60;
+                $steps = array_filter([1 => $first, 2 => $a['delay2_hours'] !== null ? (int) $a['delay2_hours'] * 3600 : null], fn ($v) => $v !== null && $v >= $first);
+                $seen = "COALESCE(c.last_activity_at, c.updated_at)";
+                $carts = $this->db->all("SELECT c.id, c.user_id, NULL AS lead_id, $seen AS seen FROM carts c JOIN users u ON u.id = c.user_id
+                        WHERE $consent AND $seen > NOW() - INTERVAL 7 DAY AND $seen <= NOW() - INTERVAL ? SECOND AND EXISTS (SELECT 1 FROM cart_items ci WHERE ci.cart_id = c.id)
+                          AND NOT EXISTS (SELECT 1 FROM orders o WHERE o.user_id = c.user_id AND o.placed_at > $seen)", [$first]);
+                if (Settings::bool('cart_recovery_guests', true)) {
+                    // Guests: only a browser that signed up for the newsletter with consent (we have no other way to reach a guest).
+                    $carts = array_merge($carts, $this->db->all("SELECT c.id, NULL AS user_id, l.id AS lead_id, $seen AS seen FROM carts c
+                            JOIN marketing_leads l ON l.visitor_id = c.visitor_id AND l.user_id IS NULL AND (l.consent_email = 1 OR l.consent_sms = 1)
+                           WHERE c.user_id IS NULL AND c.visitor_id IS NOT NULL AND $seen > NOW() - INTERVAL 7 DAY AND $seen <= NOW() - INTERVAL ? SECOND
+                             AND EXISTS (SELECT 1 FROM cart_items ci WHERE ci.cart_id = c.id)", [$first]));
+                }
+                foreach ($carts as $c) {
                     foreach ($steps as $step => $delay) {
-                        $rows[] = ['key' => 'c' . $c['id'] . ':' . strtotime((string) $c['updated_at']) . ':' . $step, 'user_id' => (int) $c['user_id'],
-                            'at' => $this->plus((string) $c['updated_at'], $delay), 'payload' => ['cart_id' => (int) $c['id'], 'cart_at' => (string) $c['updated_at']]];
+                        $rows[] = ['key' => 'c' . $c['id'] . ':' . strtotime((string) $c['seen']) . ':' . $step, 'user_id' => $c['user_id'] !== null ? (int) $c['user_id'] : null,
+                            'lead_id' => $c['lead_id'] !== null ? (int) $c['lead_id'] : null,
+                            'at' => date('Y-m-d H:i:s', strtotime((string) $c['seen']) + $delay), 'payload' => ['cart_id' => (int) $c['id'], 'cart_at' => (string) $c['seen'], 'step' => $step]];
                     }
                 }
                 break;
@@ -222,24 +234,25 @@ final class Automation
         if (strtotime((string) $m['scheduled_at']) < $now - self::LATE_DAYS * 86400) {
             return $this->finish($m, 'cancelled', 'Too late to send');
         }
-        $u = $this->db->one("SELECT id, email, phone, first_name, status, is_staff, marketing_email, marketing_sms, marketing_frequency FROM users WHERE id = ?", [$m['user_id']]);
+        $u = $this->recipient($m);
         if ($u === null || $u['status'] !== 'active' || (int) $u['is_staff'] === 1) {
             return $this->finish($m, 'cancelled', 'Customer not active');
         }
+        $who = $u['kind'] === 'u' ? 'user_id' : 'lead_id';
         $channel = (string) $m['channel'];
         if (($channel === 'email' && (!(int) $u['marketing_email'] || (string) $u['email'] === '')) || ($channel === 'sms' && (!(int) $u['marketing_sms'] || (string) $u['phone'] === ''))) {
             return $this->finish($m, 'suppressed', 'No consent for ' . $channel);
         }
         $payload = (array) json_decode((string) $m['payload'], true);
-        $why = $this->stillRelevant((string) $m['automation'], (int) $u['id'], $payload);
+        $why = $this->stillRelevant((string) $m['automation'], $u['kind'] === 'u' ? (int) $u['id'] : null, $payload, $u);
         if ($why !== null) {
             return $this->finish($m, 'cancelled', $why);
         }
         // Frequency limits (all marketing, all channels) and quiet hours.
         $perDay = $u['marketing_frequency'] === 'less' ? 1 : max(0, Settings::int('marketing_max_per_day', 1));
         $perWeek = $u['marketing_frequency'] === 'less' ? 1 : max(0, Settings::int('marketing_max_per_week', 3));
-        $sentDay = (int) $this->db->value("SELECT COUNT(*) FROM marketing_messages WHERE user_id = ? AND status IN ('sent','logged') AND sent_at > NOW() - INTERVAL 1 DAY", [$u['id']]);
-        $sentWeek = (int) $this->db->value("SELECT COUNT(*) FROM marketing_messages WHERE user_id = ? AND status IN ('sent','logged') AND sent_at > NOW() - INTERVAL 7 DAY", [$u['id']]);
+        $sentDay = (int) $this->db->value("SELECT COUNT(*) FROM marketing_messages WHERE $who = ? AND status IN ('sent','logged') AND sent_at > NOW() - INTERVAL 1 DAY", [$u['id']]);
+        $sentWeek = (int) $this->db->value("SELECT COUNT(*) FROM marketing_messages WHERE $who = ? AND status IN ('sent','logged') AND sent_at > NOW() - INTERVAL 7 DAY", [$u['id']]);
         if ($sentWeek >= $perWeek) {
             return $this->defer($m, 24 * 3600, 'Weekly limit reached');
         }
@@ -249,10 +262,10 @@ final class Automation
         if (($wait = self::quietWait()) > 0) {
             return $this->defer($m, $wait, 'Quiet hours');
         }
-        [$code, $vars, $ctx] = $this->content((string) $m['automation'], $u, $payload, $channel);
+        [$code, $vars, $ctx] = $this->content((string) $m['automation'], $u, $payload, $channel, $m);
         $msg = (new MessageTemplates())->render($code, $vars);
         $notify = new NotificationService();
-        $ctx += ['user_id' => (int) $u['id']];
+        $ctx += $u['kind'] === 'u' ? ['user_id' => (int) $u['id']] : [];
         if ($channel === 'email') {
             if ($msg['email'] === null) {
                 return $this->finish($m, 'cancelled', 'Email switched off in the message wording');
@@ -277,16 +290,28 @@ final class Automation
     }
 
     /** Null when the message still makes sense; otherwise the reason not to send it. */
-    private function stillRelevant(string $code, int $userId, array $p): ?string
+    private function stillRelevant(string $code, ?int $userId, array $p, array $u = []): ?string
     {
         switch ($code) {
             case 'cart_recovery':
-                $cart = $this->db->one('SELECT updated_at FROM carts WHERE id = ? AND user_id = ?', [$p['cart_id'] ?? 0, $userId]);
-                if ($cart === null || !$this->db->value('SELECT 1 FROM cart_items WHERE cart_id = ? LIMIT 1', [$p['cart_id']])) {
+                $cart = $this->db->one('SELECT user_id, COALESCE(last_activity_at, updated_at) AS seen FROM carts WHERE id = ?', [$p['cart_id'] ?? 0]);
+                if ($cart === null || ($userId !== null && (int) $cart['user_id'] !== $userId) || ($userId === null && $cart['user_id'] !== null)
+                    || !$this->db->value('SELECT 1 FROM cart_items WHERE cart_id = ? LIMIT 1', [$p['cart_id']])) {
                     return 'Cart is empty now';
                 }
-                if ($this->db->value('SELECT 1 FROM orders WHERE user_id = ? AND placed_at > ? LIMIT 1', [$userId, $p['cart_at'] ?? $cart['updated_at']])) {
+                $since = (string) ($p['cart_at'] ?? $cart['seen']);
+                $ordered = $userId !== null
+                    ? $this->db->value('SELECT 1 FROM orders WHERE user_id = ? AND placed_at > ? LIMIT 1', [$userId, $since])
+                    : $this->db->value('SELECT 1 FROM orders WHERE placed_at > ? AND ((customer_email <> \'\' AND customer_email = ?) OR (customer_phone <> \'\' AND customer_phone = ?)) LIMIT 1',
+                        [$since, (string) ($u['email'] ?? ''), (string) ($u['phone'] ?? '')]);
+                if ($ordered) {
                     return 'Customer has ordered';
+                }
+                if (strtotime((string) $cart['seen']) > strtotime($since)) {
+                    return 'Customer came back to the cart (a new reminder is planned from the latest activity)';
+                }
+                if (!$this->cartItems((int) $p['cart_id'])) {
+                    return 'Items are no longer available';
                 }
                 return null;
             case 'reengage':
@@ -305,21 +330,22 @@ final class Automation
     }
 
     /** @return array{0:string,1:array<string,string>,2:array<string,mixed>} template code, placeholders, extra context */
-    private function content(string $code, array $u, array $p, string $channel): array
+    private function content(string $code, array $u, array $p, string $channel, array $m = []): array
     {
         $site = rtrim((string) config('app.url'), '/');
-        $vars = ['first_name' => (string) ($u['first_name'] ?: 'there'), 'unsubscribe_url' => Consent::unsubscribeUrl('u', (int) $u['id'], $channel),
+        $vars = ['first_name' => (string) ($u['first_name'] ?: 'there'), 'unsubscribe_url' => Consent::unsubscribeUrl($u['kind'] ?? 'u', (int) $u['id'], $channel),
                  'shop_url' => $site . '/'] + MessageTemplates::contactVars();
         $ctx = ['unsubscribe_url' => $vars['unsubscribe_url']];
         $rec = new Recommender($this->db);
         $picks = fn (array $cards) => $channel === 'email' && Recommender::enabled('email') ? array_slice($cards, 0, 4) : [];
         switch ($code) {
             case 'cart_recovery':
-                $items = $this->db->all('SELECT p.name, ci.quantity, COALESCE(fs.sale_price, v.price) AS price FROM cart_items ci JOIN product_variants v ON v.id = ci.variant_id
-                        JOIN products p ON p.id = v.product_id LEFT JOIN (' . PricingService::ACTIVE_FLASH_SQL . ') fs ON fs.variant_id = v.id WHERE ci.cart_id = ?', [$p['cart_id'] ?? 0]);
+                // Only items still on sale and in stock, at today's price; the link opens this cart (see CartRecovery).
+                $items = $this->cartItems((int) ($p['cart_id'] ?? 0));
                 $vars['cart_items'] = implode("\n", array_map(fn ($i) => '• ' . $i['name'] . ' × ' . (int) $i['quantity'] . ' — ' . Money::format((string) $i['price']), $items));
-                $vars['cart_url'] = $site . '/cart';
-                return ['mkt_cart', $vars, $ctx];
+                $vars['cart_url'] = $m ? CartRecovery::link((int) $m['id']) : $site . '/cart';
+                $cards = array_map(fn ($i) => ['name' => $i['name'] . ' × ' . (int) $i['quantity'], 'slug' => $i['slug'], 'image' => $i['image'], 'price' => $i['price'], 'was' => null], $items);
+                return ['mkt_cart', $vars, $ctx + ['products' => $channel === 'email' ? array_slice($cards, 0, 4) : []]];
             case 'post_purchase':
                 $vars['order_number'] = (string) $this->db->value('SELECT order_number FROM orders WHERE id = ?', [$p['order_id'] ?? 0]);
                 $ids = array_map('intval', array_column($this->db->all('SELECT product_id FROM order_items WHERE order_id = ?', [$p['order_id'] ?? 0]), 'product_id'));
@@ -355,7 +381,7 @@ final class Automation
     private function retry(array $m, string $error): string
     {
         $attempts = (int) $m['attempts'] + 1;
-        if ($attempts >= self::MAX_ATTEMPTS) {
+        if ($attempts >= max(1, min(10, Settings::int('marketing_max_attempts', 3)))) {
             $this->db->exec("UPDATE marketing_messages SET status = 'failed', attempts = ?, reason = ? WHERE id = ?", [$attempts, mb_substr($error, 0, 160), $m['id']]);
             return 'failed';
         }
@@ -391,6 +417,37 @@ final class Automation
             $endAt = $endAt->modify('+1 day');
         }
         return $endAt->getTimestamp() - $t->getTimestamp();
+    }
+
+    /**
+     * Who a message goes to: the customer, or (guest carts) the newsletter lead, in one shape.
+     * @return array<string,mixed>|null
+     */
+    private function recipient(array $m): ?array
+    {
+        if ($m['user_id'] !== null) {
+            $u = $this->db->one("SELECT id, email, phone, first_name, status, is_staff, marketing_email, marketing_sms, marketing_frequency FROM users WHERE id = ?", [$m['user_id']]);
+            return $u === null ? null : $u + ['kind' => 'u'];
+        }
+        $l = $m['lead_id'] !== null ? $this->db->one('SELECT id, email, phone, name, consent_email, consent_sms, user_id FROM marketing_leads WHERE id = ?', [$m['lead_id']]) : null;
+        if ($l === null) {
+            return null;
+        }
+        return ['kind' => 'l', 'id' => (int) $l['id'], 'email' => (string) $l['email'], 'phone' => (string) $l['phone'],
+                'first_name' => trim((string) strtok((string) $l['name'], ' ')), 'status' => 'active', 'is_staff' => 0,
+                'marketing_email' => (int) $l['consent_email'], 'marketing_sms' => (int) $l['consent_sms'], 'marketing_frequency' => 'normal'];
+    }
+
+    /** Cart items still on sale and in stock, with today's price. @return list<array<string,mixed>> */
+    private function cartItems(int $cartId): array
+    {
+        return $this->db->all('SELECT p.name, p.slug, ci.quantity, COALESCE(fs.sale_price, v.price) AS price,
+                    (SELECT pi.path FROM product_images pi WHERE pi.product_id = p.id ORDER BY pi.sort_order, pi.id LIMIT 1) AS image
+               FROM cart_items ci JOIN product_variants v ON v.id = ci.variant_id AND v.is_active = 1
+               JOIN products p ON p.id = v.product_id ' . CatalogueRepository::SELLER_JOIN . '
+               JOIN inventory i ON i.variant_id = v.id
+               LEFT JOIN (' . PricingService::ACTIVE_FLASH_SQL . ') fs ON fs.variant_id = v.id
+              WHERE ci.cart_id = ? AND ' . CatalogueRepository::PUBLIC_PRODUCT . ' AND (i.on_hand - i.reserved) > 0 ORDER BY ci.variant_id', [$cartId]);
     }
 
     private function plus(string $at, int $hours): string

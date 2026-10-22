@@ -1,7 +1,7 @@
 <?php
 use Waimart\Core\View;
 
-/** @var list<array<string,mixed>> $pending @var list<array<string,mixed>> $mine */
+/** @var list<array<string,mixed>> $pending @var list<array<string,mixed>> $mine @var \Waimart\Core\ListParams $lp */
 ob_start(); ?>
 <p class="small text-muted">Only items you have received can be reviewed — every review is marked as a verified purchase. Reviews are checked by our team before they appear.</p>
 <?php if ($pending): ?>
@@ -41,7 +41,7 @@ ob_start(); ?>
         <?php if ($r['body']): ?><p class="mb-0 mt-1"><?= nl2br(e($r['body'])) ?></p><?php endif; ?>
     </div>
 <?php endforeach; ?>
-<?php if (!$mine): ?><p class="small text-muted">You have not written any reviews yet.</p><?php endif; ?>
+<?php if (!$mine): ?><p class="small text-muted">You have not written any reviews yet.</p><?php else: ?><?= View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/account/reviews', 'id' => 'myreviews', 'noun' => 'reviews', 'form' => false]) ?><?php endif; ?>
 <?php
 $body = (string) ob_get_clean();
 echo View::partial('account/_layout', compact('title', 'section', 'body'));

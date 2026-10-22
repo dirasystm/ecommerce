@@ -46,6 +46,7 @@ $noindex = \Waimart\Core\Settings::bool('seo_noindex');
 <?= \Waimart\Core\View::partial('partials/bottom-nav') ?>
 
 <script src="<?= e(asset('vendor/bootstrap/bootstrap.bundle.min.js')) ?>"></script>
+<script src="<?= e(asset('js/ui.js')) ?>"></script>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 </body>
 </html>

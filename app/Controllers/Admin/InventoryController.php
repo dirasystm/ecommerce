@@ -13,18 +13,15 @@ use Waimart\Services\InventoryService;
 
 final class InventoryController extends AdminController
 {
-    private const PER_PAGE = 50;
-
     public function index(Request $req): Response
     {
         $db = App::db();
         $where = ['1 = 1'];
         $params = [];
-        $q = trim((string) ($req->query['q'] ?? ''));
-        if ($q !== '') {
-            $like = '%' . addcslashes(mb_substr($q, 0, 100), '%_\\') . '%';
-            $where[] = '(p.name LIKE ? OR v.sku LIKE ?)';
-            array_push($params, $like, $like);
+        $lp = \Waimart\Core\ListParams::from($req, ['available' => '(i.on_hand - i.reserved)', 'product' => 'p.name', 'sku' => 'v.sku', 'on_hand' => 'i.on_hand'], 'available', 'asc');
+        if ($lp->q !== '') {
+            $where[] = '(p.name LIKE ? OR v.sku LIKE ? OR v.name LIKE ?)';
+            array_push($params, $lp->like(), $lp->like(), $lp->like());
         }
         $filter = (string) ($req->query['filter'] ?? '');
         if ($filter === 'low') {
@@ -34,19 +31,11 @@ final class InventoryController extends AdminController
         } elseif ($filter === 'reserved') {
             $where[] = 'i.reserved > 0';
         }
-        $w = implode(' AND ', $where);
-        $total = (int) $db->value("SELECT COUNT(*) FROM inventory i JOIN product_variants v ON v.id = i.variant_id JOIN products p ON p.id = v.product_id WHERE $w", $params);
-        $pages = max(1, (int) ceil($total / self::PER_PAGE));
-        $page = max(1, min($pages, (int) ($req->query['page'] ?? 1)));
-        $rows = $db->all(
-            "SELECT v.id, v.sku, v.name AS variant_name, v.is_active, p.id AS product_id, p.name AS product_name,
-                    i.on_hand, i.reserved, i.on_hand - i.reserved AS available, i.low_stock_threshold, i.updated_at
-               FROM inventory i JOIN product_variants v ON v.id = i.variant_id JOIN products p ON p.id = v.product_id
-              WHERE $w ORDER BY (i.on_hand - i.reserved) ASC, p.name, v.sort_order
-              LIMIT " . self::PER_PAGE . ' OFFSET ' . (($page - 1) * self::PER_PAGE),
-            $params
-        );
-        return $this->view('inventory/index', ['title' => 'Inventory', 'rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => $pages, 'filter' => $filter]);
+        $rows = $lp->fetch($db, 'SELECT v.id, v.sku, v.name AS variant_name, v.is_active, p.id AS product_id, p.name AS product_name,
+                    i.on_hand, i.reserved, i.on_hand - i.reserved AS available, i.low_stock_threshold, i.updated_at',
+            'FROM inventory i JOIN product_variants v ON v.id = i.variant_id JOIN products p ON p.id = v.product_id WHERE ' . implode(' AND ', $where),
+            $params, 'p.name, v.sort_order, v.id');
+        return $this->view('inventory/index', ['title' => 'Inventory', 'rows' => $rows, 'lp' => $lp, 'filter' => $filter]);
     }
 
     public function show(Request $req): Response
@@ -59,15 +48,24 @@ final class InventoryController extends AdminController
               WHERE v.id = ?',
             [$vid]
         ) ?? throw HttpException::notFound();
-        $movements = $db->all(
-            'SELECT sm.*, u.first_name, u.last_name FROM stock_movements sm LEFT JOIN users u ON u.id = sm.actor_user_id
-              WHERE sm.variant_id = ? ORDER BY sm.id DESC LIMIT 100',
-            [$vid]
-        );
+        $lp = \Waimart\Core\ListParams::from($req, ['when' => 'sm.id'], 'when', 'desc');
+        $type = (string) ($req->query['type'] ?? '');
+        $where = 'sm.variant_id = ?';
+        $params = [$vid];
+        if (preg_match('/^[a-z_]{1,30}$/', $type)) {
+            $where .= ' AND sm.movement_type = ?';
+            $params[] = $type;
+        }
+        if ($lp->q !== '') {
+            $where .= " AND (sm.reason LIKE ? OR sm.note LIKE ? OR CONCAT_WS(' ', u.first_name, u.last_name) LIKE ? OR sm.order_id = ?)";
+            array_push($params, $lp->like(), $lp->like(), $lp->like(), ctype_digit(ltrim($lp->q, '#')) ? (int) ltrim($lp->q, '#') : 0);
+        }
+        $movements = $lp->fetch($db, 'SELECT sm.*, u.first_name, u.last_name', "FROM stock_movements sm LEFT JOIN users u ON u.id = sm.actor_user_id WHERE $where", $params);
+        $types = array_column($db->all('SELECT DISTINCT movement_type FROM stock_movements WHERE variant_id = ? ORDER BY movement_type', [$vid]), 'movement_type');
         return $this->view('inventory/show', [
             'title' => 'Stock: ' . $variant['sku'],
             'v' => $variant,
-            'movements' => $movements,
+            'movements' => $movements, 'lp' => $lp, 'type' => $type, 'types' => $types,
             'canAdjust' => Auth::can('inventory.adjust'),
         ]);
     }

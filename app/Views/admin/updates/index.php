@@ -110,7 +110,7 @@ $label = ['completed' => 'Installed', 'rolled_back' => 'Rolled back', 'failed' =
     <div class="wm-panel-head">Update history</div>
     <div class="table-responsive">
         <table class="table table-sm align-middle mb-0">
-            <thead><tr><th>When</th><th>Package</th><th>By</th><th>Changes</th><th>Status</th><th></th></tr></thead>
+            <thead><tr><th scope="col">When</th><th scope="col">Package</th><th scope="col">By</th><th scope="col">Changes</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
             <tbody>
             <?php foreach ($history as $h): ?>
                 <tr>

@@ -75,6 +75,30 @@ final class SellerProductService
     // ------------------------------------------------------------------ reading (seller-scoped)
 
     /** @return list<array<string,mixed>> */
+    /** One page of a seller's products, searchable by name, SKU or category. @return list<array<string,mixed>> */
+    public function listPage(int $sellerId, ?string $status, \Waimart\Core\ListParams $lp): array
+    {
+        $params = [$sellerId];
+        $where = 'p.seller_id = ?';
+        if ($status !== null) {
+            $where .= ' AND p.moderation_status = ?';
+            $params[] = $status;
+        }
+        if ($lp->q !== '') {
+            $where .= ' AND (p.name LIKE ? OR c.name LIKE ? OR EXISTS (SELECT 1 FROM product_variants x WHERE x.product_id = p.id AND x.sku LIKE ?))';
+            array_push($params, $lp->like(), $lp->like(), $lp->like());
+        }
+        return $lp->fetch($this->db, "SELECT p.id, p.name, p.slug, p.is_active, p.moderation_status, p.moderation_note, p.updated_at, c.name AS category,
+                    (SELECT path FROM product_images pi WHERE pi.product_id = p.id ORDER BY sort_order, id LIMIT 1) AS image,
+                    (SELECT MIN(v.price) FROM product_variants v WHERE v.product_id = p.id AND v.is_active = 1) AS min_price,
+                    (SELECT COUNT(*) FROM product_variants v WHERE v.product_id = p.id) AS variants,
+                    (SELECT COALESCE(SUM(i.on_hand - i.reserved), 0) FROM product_variants v JOIN inventory i ON i.variant_id = v.id
+                      WHERE v.product_id = p.id AND v.is_active = 1) AS available,
+                    (SELECT COUNT(*) FROM product_variants v JOIN inventory i ON i.variant_id = v.id
+                      WHERE v.product_id = p.id AND v.is_active = 1 AND i.on_hand - i.reserved <= i.low_stock_threshold) AS low_variants",
+            "FROM products p JOIN categories c ON c.id = p.category_id WHERE $where", $params, 'p.id DESC');
+    }
+
     public function list(int $sellerId, ?string $status = null): array
     {
         $params = [$sellerId];
@@ -289,6 +313,22 @@ final class SellerProductService
     // ------------------------------------------------------------------ Waimart moderation (products.moderate)
 
     /** @return list<array<string,mixed>> */
+    /** One page of the approval queue, searchable by product, seller or category. @return list<array<string,mixed>> */
+    public function moderationPage(string $status, \Waimart\Core\ListParams $lp): array
+    {
+        $where = 'p.moderation_status = ?';
+        $params = [$status];
+        if ($lp->q !== '') {
+            $where .= ' AND (p.name LIKE ? OR s.name LIKE ? OR c.name LIKE ?)';
+            array_push($params, $lp->like(), $lp->like(), $lp->like());
+        }
+        return $lp->fetch($this->db, 'SELECT p.id, p.name, p.slug, p.moderation_status, p.moderation_note, p.submitted_at, p.moderated_at, s.id AS seller_id, s.name AS seller_name,
+                    s.status AS seller_status, c.name AS category,
+                    (SELECT path FROM product_images pi WHERE pi.product_id = p.id ORDER BY sort_order, id LIMIT 1) AS image,
+                    (SELECT MIN(v.price) FROM product_variants v WHERE v.product_id = p.id AND v.is_active = 1) AS min_price',
+            "FROM products p JOIN sellers s ON s.id = p.seller_id JOIN categories c ON c.id = p.category_id WHERE $where", $params, 'p.id');
+    }
+
     public function moderationQueue(string $status = 'pending'): array
     {
         return $this->db->all(

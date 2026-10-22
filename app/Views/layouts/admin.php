@@ -63,6 +63,7 @@ $nav = [
         ['/admin/marketing/campaigns', 'megaphone', 'Campaigns & links', 'marketing.view'],
         ['/admin/marketing/leads', 'person-lines-fill', 'Leads', 'marketing.view'],
         ['/admin/marketing/segments', 'people-fill', 'Segments', 'marketing.view'],
+        ['/admin/marketing/abandoned-carts', 'cart-x', 'Abandoned carts', 'marketing.view'],
         ['/admin/marketing/automations', 'robot', 'Automations', 'marketing.view'],
         ['/admin/marketing/recommendations', 'stars', 'Recommendations', 'marketing.view'],
         ['/admin/marketing/settings', 'sliders2', 'Marketing settings', 'marketing.manage'],
@@ -153,6 +154,7 @@ $renderNav = function () use ($nav, $active): string {
     </main>
 </div>
 <script src="<?= e(asset('vendor/bootstrap/bootstrap.bundle.min.js')) ?>"></script>
+<script src="<?= e(asset('js/ui.js')) ?>"></script>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <?php if (str_starts_with($path, '/admin/marketing/links/')): ?><script src="<?= e(asset('vendor/qrcode/qrcode.js')) ?>"></script><?php endif; ?>
 <script src="<?= e(asset('js/admin.js')) ?>"></script>

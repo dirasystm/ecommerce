@@ -25,15 +25,17 @@ final class CustomerServiceController extends AdminController
     public function returns(Request $req): Response
     {
         $status = (string) ($req->query['status'] ?? 'open');
-        $where = $status === 'open' ? "r.status IN ('requested','approved','received')" : (in_array($status, ['completed', 'rejected'], true) ? 'r.status = ?' : '1 = 1');
-        $rows = App::db()->all(
-            "SELECT r.*, o.order_number, o.customer_name, so.sub_number, s.name AS seller_name, (SELECT SUM(quantity) FROM return_items ri WHERE ri.return_id = r.id) AS units
-               FROM return_requests r JOIN orders o ON o.id = r.order_id
-               LEFT JOIN seller_orders so ON so.id = r.seller_order_id LEFT JOIN sellers s ON s.id = so.seller_id
-              WHERE $where ORDER BY r.requested_at DESC LIMIT 200",
-            in_array($status, ['completed', 'rejected'], true) ? [$status] : []
-        );
-        return $this->view('cs/returns', ['title' => 'Returns', 'rows' => $rows, 'status' => $status, 'reasons' => ReturnService::REASONS]);
+        $lp = \Waimart\Core\ListParams::from($req, ['requested' => 'r.requested_at', 'number' => 'r.return_number'], 'requested', 'desc');
+        $where = [$status === 'open' ? "r.status IN ('requested','approved','received')" : (in_array($status, ['completed', 'rejected'], true) ? 'r.status = ?' : '1 = 1')];
+        $params = in_array($status, ['completed', 'rejected'], true) ? [$status] : [];
+        if ($lp->q !== '') {
+            $where[] = '(r.return_number LIKE ? OR o.order_number LIKE ? OR o.customer_name LIKE ? OR s.name LIKE ?)';
+            array_push($params, $lp->like(), $lp->like(), $lp->like(), $lp->like());
+        }
+        $rows = $lp->fetch(App::db(), 'SELECT r.*, o.order_number, o.customer_name, so.sub_number, s.name AS seller_name, (SELECT SUM(quantity) FROM return_items ri WHERE ri.return_id = r.id) AS units',
+            'FROM return_requests r JOIN orders o ON o.id = r.order_id LEFT JOIN seller_orders so ON so.id = r.seller_order_id LEFT JOIN sellers s ON s.id = so.seller_id
+              WHERE ' . implode(' AND ', $where), $params, 'r.id DESC');
+        return $this->view('cs/returns', ['title' => 'Returns', 'rows' => $rows, 'status' => $status, 'reasons' => ReturnService::REASONS, 'lp' => $lp]);
     }
 
     public function returnShow(Request $req): Response
@@ -142,12 +144,24 @@ final class CustomerServiceController extends AdminController
     public function notifications(Request $req): Response
     {
         $status = (string) ($req->query['status'] ?? '');
-        $where = in_array($status, ['queued', 'sent', 'failed', 'logged'], true) ? 'WHERE n.status = ?' : '';
-        $rows = App::db()->all(
-            "SELECT n.*, o.order_number FROM notifications n LEFT JOIN orders o ON o.id = n.order_id $where ORDER BY n.id DESC LIMIT 200",
-            $where ? [$status] : []
-        );
-        return $this->view('cs/notifications', ['title' => 'Notifications', 'rows' => $rows, 'status' => $status, 'noResend' => self::NO_RESEND]);
+        $channel = (string) ($req->query['channel'] ?? '');
+        $lp = \Waimart\Core\ListParams::from($req, ['when' => 'n.id'], 'when', 'desc');
+        $where = ['1=1'];
+        $params = [];
+        if (in_array($status, ['queued', 'sent', 'failed', 'logged'], true)) {
+            $where[] = 'n.status = ?';
+            $params[] = $status;
+        }
+        if (in_array($channel, ['email', 'sms'], true)) {
+            $where[] = 'n.channel = ?';
+            $params[] = $channel;
+        }
+        if ($lp->q !== '') {
+            $where[] = '(n.recipient LIKE ? OR n.template LIKE ? OR n.subject LIKE ? OR o.order_number LIKE ?)';
+            array_push($params, $lp->like(), $lp->like(), $lp->like(), $lp->like());
+        }
+        $rows = $lp->fetch(App::db(), 'SELECT n.*, o.order_number', 'FROM notifications n LEFT JOIN orders o ON o.id = n.order_id WHERE ' . implode(' AND ', $where), $params);
+        return $this->view('cs/notifications', ['title' => 'Notifications', 'rows' => $rows, 'status' => $status, 'channel' => $channel, 'noResend' => self::NO_RESEND, 'lp' => $lp]);
     }
 
     public function resend(Request $req): Response

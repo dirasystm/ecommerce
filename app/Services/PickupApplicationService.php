@@ -147,6 +147,22 @@ final class PickupApplicationService
     }
 
     /** @return list<array<string,mixed>> */
+    /** One page of applications (see list()). @return list<array<string,mixed>> */
+    public function page(string $status, \Waimart\Core\ListParams $lp): array
+    {
+        $where = ['1=1'];
+        $params = [];
+        if (isset(self::STATUSES[$status])) {
+            $where[] = 'a.status = ?';
+            $params[] = $status;
+        }
+        if ($lp->q !== '') {
+            $where[] = '(a.reference LIKE ? OR a.business_name LIKE ? OR a.town LIKE ? OR c.name LIKE ? OR a.contact_name LIKE ? OR a.phone LIKE ?)';
+            array_push($params, ...array_fill(0, 6, $lp->like()));
+        }
+        return $lp->fetch($this->db, 'SELECT a.*, c.name AS county_name', 'FROM pickup_station_applications a JOIN counties c ON c.id = a.county_id WHERE ' . implode(' AND ', $where), $params, 'a.id DESC');
+    }
+
     public function list(string $status = 'pending', string $search = ''): array
     {
         $where = ['1=1'];

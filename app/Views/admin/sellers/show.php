@@ -41,7 +41,7 @@ $canManage = Auth::can('sellers.manage') && !$platform;
         <section class="wm-panel">
             <div class="wm-panel-head">Team</div>
             <div class="table-responsive"><table class="table table-sm mb-0">
-                <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Account</th></tr></thead>
+                <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Account</th></tr></thead>
                 <tbody>
                 <?php foreach ($members as $m): ?>
                     <tr><td><?= e($m['first_name'] . ' ' . $m['last_name']) ?></td><td class="small"><?= e($m['email']) ?></td><td><?= e(ucfirst($m['role'])) ?></td><td><?= e(ucfirst($m['status'])) ?></td></tr>

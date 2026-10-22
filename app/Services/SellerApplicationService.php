@@ -73,6 +73,20 @@ final class SellerApplicationService
     }
 
     /** @return list<array<string,mixed>> */
+    /** One page of applications, searchable by number, store, county or applicant. @return list<array<string,mixed>> */
+    public function page(?string $status, \Waimart\Core\ListParams $lp): array
+    {
+        $where = [$status !== null ? 'a.status = ?' : "a.status <> 'draft'"];
+        $params = $status !== null ? [$status] : [];
+        if ($lp->q !== '') {
+            $where[] = '(a.application_number LIKE ? OR a.store_name LIKE ? OR c.name LIKE ?)';
+            array_push($params, $lp->like(), $lp->like(), $lp->like());
+        }
+        return $lp->fetch($this->db, 'SELECT a.id, a.application_number, a.store_name, a.business_type, a.status, a.submitted_at, a.reviewed_at, c.name AS county_name,
+                    (SELECT COUNT(*) FROM seller_documents d WHERE d.application_id = a.id) AS documents',
+            'FROM seller_applications a JOIN counties c ON c.id = a.county_id WHERE ' . implode(' AND ', $where), $params, 'a.id DESC');
+    }
+
     public function list(?string $status, int $limit = 200): array
     {
         $where = $status !== null ? 'WHERE a.status = ?' : "WHERE a.status <> 'draft'";

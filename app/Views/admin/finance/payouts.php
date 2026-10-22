@@ -1,10 +1,10 @@
 <?php
-/** @var string $status @var list<array<string,mixed>> $rows @var array<string,int> $counts @var array<string,mixed> $liability */
+/** @var \Waimart\Core\ListParams $lp @var string $status @var list<array<string,mixed>> $rows @var array<string,int> $counts @var array<string,mixed> $liability */
 $labels = ['requested' => 'Requested', 'approved' => 'Approved — to pay', 'paid' => 'Paid', 'rejected' => 'Rejected', 'cancelled' => 'Cancelled'];
 ?>
 <div class="wm-admin-head">
     <h1>Seller payouts</h1>
-    <a class="btn btn-outline-secondary" href="<?= e(url('/admin/payouts', ['status' => $status, 'format' => 'csv'])) ?>"><i class="bi bi-download" aria-hidden="true"></i> CSV</a>
+    <a class="btn btn-outline-secondary" href="<?= e(url('/admin/payouts', ['status' => $status, 'format' => 'csv'])) ?>"><i class="bi bi-download" aria-hidden="true"></i> Export CSV</a>
 </div>
 <div class="row g-3 mb-3">
     <?php foreach ([['pending', 'Earned, not yet payable'], ['available', 'Payable, not requested'], ['reserved', 'In payout requests'], ['paid', 'Paid out (all time)']] as [$k, $l]): ?>
@@ -19,9 +19,11 @@ $labels = ['requested' => 'Requested', 'approved' => 'Approved — to pay', 'pai
         <li class="nav-item"><a class="nav-link<?= $status === $k ? ' active' : '' ?>" href="<?= e(url('/admin/payouts', ['status' => $k])) ?>"><?= e($l) ?> <span class="badge text-bg-light"><?= (int) ($counts[$k] ?? 0) ?></span></a></li>
     <?php endforeach; ?>
 </ul>
-<div class="wm-panel"><div class="table-responsive">
+<?= \Waimart\Core\View::partial('partials/table/toolbar', ['id' => 'payouts', 'path' => '/admin/payouts', 'lp' => $lp, 'label' => 'Search payouts', 'placeholder' => 'Payout number, seller or payment reference', 'keep' => ['status' => $status]]) ?>
+<div class="wm-panel"><div id="payouts" class="wm-table-region" data-table-region data-loading-text="Loading payouts…"><div class="table-responsive">
     <table class="table table-hover mb-0 align-middle">
-        <thead><tr><th>Payout</th><th>Seller</th><th class="text-end">Amount</th><th>Requested</th><th>To</th><th>Reference</th><th></th></tr></thead>
+        <caption class="visually-hidden">Seller payouts</caption>
+        <thead><tr><th scope="col">Payout</th><th scope="col">Seller</th><?= sort_th('Amount', 'amount', $lp, '/admin/payouts', 'text-end') ?><?= sort_th('Requested', 'requested', $lp, '/admin/payouts') ?><th scope="col">To</th><th scope="col">Reference</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
         <tbody>
         <?php foreach ($rows as $p): ?>
             <tr><td><code><?= e($p['payout_number']) ?></code></td><td><?= e($p['seller_name']) ?></td><td class="text-end fw-semibold"><?= e(money($p['amount'])) ?></td>
@@ -29,7 +31,9 @@ $labels = ['requested' => 'Requested', 'approved' => 'Approved — to pay', 'pai
                 <td class="small"><?= e((string) $p['paid_reference']) ?></td>
                 <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="<?= e(url('/admin/payouts/' . $p['id'])) ?>">Open</a></td></tr>
         <?php endforeach; ?>
-        <?php if (!$rows): ?><tr><td colspan="7" class="text-center text-muted py-4">Nothing here.</td></tr><?php endif; ?>
+        <?php if (!$rows): ?><?= empty_row(7, $lp->q !== '', 'No payouts here.') ?><?php endif; ?>
         </tbody>
     </table>
+</div>
+<?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/payouts', 'id' => 'payouts', 'noun' => 'payouts']) ?>
 </div></div>

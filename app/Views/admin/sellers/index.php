@@ -1,4 +1,4 @@
-<?php /** @var ?string $status @var list<array<string,mixed>> $rows */ ?>
+<?php /** @var ?string $status @var list<array<string,mixed>> $rows @var \Waimart\Core\ListParams $lp */ ?>
 <div class="wm-admin-head">
     <h1>Sellers</h1>
     <a class="btn btn-wm-green" href="<?= e(url('/admin/sellers/applications')) ?>"><i class="bi bi-inbox" aria-hidden="true"></i> Applications</a>
@@ -8,9 +8,11 @@
         <li class="nav-item"><a class="nav-link<?= (string) $status === $k ? ' active' : '' ?>" href="<?= e(url('/admin/sellers', array_filter(['status' => $k]))) ?>"><?= e($l) ?></a></li>
     <?php endforeach; ?>
 </ul>
-<div class="wm-panel"><div class="table-responsive">
-    <table class="table table-hover mb-0">
-        <thead><tr><th>Store</th><th>Owner</th><th class="text-end">Products</th><th>Approved</th><th>Status</th><th></th></tr></thead>
+<?= \Waimart\Core\View::partial('partials/table/toolbar', ['id' => 'sellers', 'path' => '/admin/sellers', 'lp' => $lp, 'label' => 'Search sellers', 'placeholder' => 'Store name, address or owner email', 'keep' => ['status' => (string) $status]]) ?>
+<div class="wm-panel"><div id="sellers" class="wm-table-region" data-table-region data-loading-text="Loading sellers…"><div class="table-responsive">
+    <table class="table table-hover mb-0 align-middle">
+        <caption class="visually-hidden">Sellers</caption>
+        <thead><tr><?= sort_th('Store', 'name', $lp, '/admin/sellers') ?><th scope="col">Owner</th><?= sort_th('Products', 'products', $lp, '/admin/sellers', 'text-end') ?><?= sort_th('Approved', 'approved', $lp, '/admin/sellers') ?><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
         <tbody>
         <?php foreach ($rows as $s): ?>
             <tr>
@@ -25,6 +27,9 @@
                 <td class="text-end"><a class="btn btn-sm btn-outline-secondary" href="<?= e(url('/admin/sellers/' . $s['id'])) ?>">Manage</a></td>
             </tr>
         <?php endforeach; ?>
+        <?php if (!$rows): ?><?= empty_row(6, $lp->q !== '', 'No sellers here.') ?><?php endif; ?>
         </tbody>
     </table>
+</div>
+<?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/sellers', 'id' => 'sellers', 'noun' => 'sellers']) ?>
 </div></div>

@@ -107,8 +107,13 @@ final class LeadService
         $params = [];
         if (($q = trim(mb_substr((string) ($f['q'] ?? ''), 0, 100))) !== '') {
             $like = '%' . addcslashes($q, '%_\\') . '%';
-            $where[] = '(l.email LIKE ? OR l.name LIKE ? OR l.phone LIKE ?)';
-            array_push($params, $like, $like, $like);
+            if (!empty($f['name_only'])) {         // staff without contact access cannot probe emails or phones
+                $where[] = 'l.name LIKE ?';
+                $params[] = $like;
+            } else {
+                $where[] = '(l.email LIKE ? OR l.name LIKE ? OR l.phone LIKE ?)';
+                array_push($params, $like, $like, $like);
+            }
         }
         if (in_array($f['consent'] ?? '', ['email', 'sms'], true)) {
             $where[] = 'l.consent_' . $f['consent'] . ' = 1';

@@ -24,9 +24,10 @@ final class SellerController extends AdminController
         $status = (string) ($req->query['status'] ?? 'submitted');
         $status = in_array($status, self::STATUSES, true) ? $status : 'submitted';
         $service = new SellerApplicationService();
+        $lp = \Waimart\Core\ListParams::from($req, ['submitted' => 'COALESCE(a.submitted_at, a.created_at)', 'store' => 'a.store_name'], 'submitted', 'desc');
         return $this->view('sellers/applications', [
-            'title' => 'Seller applications', 'status' => $status,
-            'rows' => $service->list($status), 'counts' => $service->counts(),
+            'title' => 'Seller applications', 'status' => $status, 'lp' => $lp,
+            'rows' => $service->page($status, $lp), 'counts' => $service->counts(),
         ]);
     }
 
@@ -79,7 +80,8 @@ final class SellerController extends AdminController
     {
         $status = (string) ($req->query['status'] ?? '');
         $status = in_array($status, ['active', 'suspended', 'closed'], true) ? $status : null;
-        return $this->view('sellers/index', ['title' => 'Sellers', 'status' => $status, 'rows' => (new SellerService())->list($status)]);
+        $lp = \Waimart\Core\ListParams::from($req, ['name' => 's.is_platform DESC, s.name', 'products' => 'products', 'approved' => 's.approved_at'], 'name', 'asc');
+        return $this->view('sellers/index', ['title' => 'Sellers', 'status' => $status, 'lp' => $lp, 'rows' => (new SellerService())->page($status, $lp)]);
     }
 
     public function show(Request $req): Response

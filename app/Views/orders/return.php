@@ -17,7 +17,7 @@
         <?= field_error('items') ?>
         <div class="table-responsive">
             <table class="table align-middle">
-                <thead><tr><th>Item</th><th class="text-end">Received</th><th style="width:140px">Return qty</th></tr></thead>
+                <thead><tr><th scope="col">Item</th><th scope="col" class="text-end">Received</th><th scope="col" style="width:140px">Return qty</th></tr></thead>
                 <tbody>
                 <?php foreach ($items as $it): ?>
                     <tr>

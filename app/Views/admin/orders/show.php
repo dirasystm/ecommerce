@@ -71,7 +71,7 @@ $labels = ['confirmed' => 'Confirm order', 'processing' => 'Start processing', '
         <section class="wm-panel mb-3">
             <div class="wm-panel-head">Items</div>
             <div class="table-responsive"><table class="table table-sm">
-                <thead><tr><th>SKU</th><th>Product</th><th class="text-end">Qty</th><th class="text-end">Fulfilled</th><th class="text-end">Unit</th><th class="text-end">Total</th></tr></thead>
+                <thead><tr><th scope="col">SKU</th><th scope="col">Product</th><th scope="col" class="text-end">Qty</th><th scope="col" class="text-end">Fulfilled</th><th scope="col" class="text-end">Unit</th><th scope="col" class="text-end">Total</th></tr></thead>
                 <tbody>
                 <?php foreach ($order['items'] as $it): ?>
                     <tr><td><code><?= e($it['sku']) ?></code></td><td><?= e($it['product_name']) ?><?= $it['variant_name'] !== 'Default' ? ' · ' . e($it['variant_name']) : '' ?></td>
@@ -85,7 +85,7 @@ $labels = ['confirmed' => 'Confirm order', 'processing' => 'Start processing', '
         <section class="wm-panel mb-3" aria-labelledby="soTitle">
             <div class="wm-panel-head"><span id="soTitle">Seller sub-orders</span><span class="small text-muted fw-normal"><?= count($order['groups'] ?? []) ?></span></div>
             <div class="table-responsive"><table class="table table-sm mb-0">
-                <thead><tr><th>Sub-order</th><th>Seller</th><th>Status</th><th class="text-end">Merchandise</th><th class="text-end">Discount share</th>
+                <thead><tr><th scope="col">Sub-order</th><th scope="col">Seller</th><th scope="col">Status</th><th scope="col" class="text-end">Merchandise</th><th scope="col" class="text-end">Discount share</th>
                     <th class="text-end">Commission</th><th class="text-end">Seller net</th></tr></thead>
                 <tbody>
                 <?php foreach ($order['groups'] ?? [] as $g): $rates = array_unique(array_filter(array_column($g['items'], 'commission_rate'), fn ($r) => $r !== null)); ?>
@@ -138,7 +138,7 @@ $labels = ['confirmed' => 'Confirm order', 'processing' => 'Start processing', '
         <section class="wm-panel mb-3">
             <div class="wm-panel-head">Stock reservations</div>
             <div class="table-responsive"><table class="table table-sm">
-                <thead><tr><th>#</th><th>SKU</th><th class="text-end">Qty</th><th>Status</th><th>Created</th><th>Expires</th><th>Released / consumed</th><th>Reason</th></tr></thead>
+                <thead><tr><th scope="col">#</th><th scope="col">SKU</th><th scope="col" class="text-end">Qty</th><th scope="col">Status</th><th scope="col">Created</th><th scope="col">Expires</th><th scope="col">Released / consumed</th><th scope="col">Reason</th></tr></thead>
                 <tbody>
                 <?php foreach ($reservations as $r): ?>
                     <tr><td><?= (int) $r['id'] ?></td><td><code><?= e($r['sku']) ?></code></td><td class="text-end"><?= (int) $r['quantity'] ?></td>
@@ -154,7 +154,7 @@ $labels = ['confirmed' => 'Confirm order', 'processing' => 'Start processing', '
         <section class="wm-panel mb-3">
             <div class="wm-panel-head">Stock ledger for this order</div>
             <div class="table-responsive"><table class="table table-sm">
-                <thead><tr><th>When</th><th>SKU</th><th>Type</th><th class="text-end">On hand Δ</th><th class="text-end">Reserved Δ</th><th>By</th></tr></thead>
+                <thead><tr><th scope="col">When</th><th scope="col">SKU</th><th scope="col">Type</th><th scope="col" class="text-end">On hand Δ</th><th scope="col" class="text-end">Reserved Δ</th><th scope="col">By</th></tr></thead>
                 <tbody>
                 <?php foreach ($movements as $m): ?>
                     <tr><td class="small"><?= e(date('d M H:i:s', strtotime($m['created_at']))) ?></td><td><code><?= e($m['sku']) ?></code></td><td><?= e($m['movement_type']) ?></td>

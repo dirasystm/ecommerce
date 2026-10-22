@@ -1,7 +1,7 @@
 <?php
 use Waimart\Services\OrderPresenter;
 
-/** @var string $tab @var list<array<string,mixed>> $rows @var array<string,int> $counts */
+/** @var \Waimart\Core\ListParams $lp @var string $tab @var list<array<string,mixed>> $rows @var array<string,int> $counts */
 $tabs = ['new' => 'New — accept or decline', 'preparing' => 'Preparing', 'handover' => 'Ready to hand over', 'with_platform' => 'With ' . brand_name(),
          'completed' => 'Completed', 'cancelled' => 'Cancelled / declined'];
 ?>
@@ -13,9 +13,11 @@ $tabs = ['new' => 'New — accept or decline', 'preparing' => 'Preparing', 'hand
     <?php endforeach; ?>
 </ul>
 <p class="small text-muted">You see orders once the customer has paid (M-Pesa verified) or a cash order has been confirmed. Accept or decline new orders promptly, prepare and pack the items, then hand them to <?= e(brand_name()) ?> for delivery or pickup.</p>
-<div class="wm-panel"><div class="table-responsive">
+<?= \Waimart\Core\View::partial('partials/table/toolbar', ['id' => 'sorders', 'path' => '/seller/orders', 'lp' => $lp, 'label' => 'Search your orders', 'placeholder' => 'Order number', 'keep' => ['tab' => $tab]]) ?>
+<div class="wm-panel"><div id="sorders" class="wm-table-region" data-table-region data-loading-text="Fetching your orders…"><div class="table-responsive">
     <table class="table table-hover mb-0 align-middle">
-        <thead><tr><th>Order</th><th>Confirmed</th><th>Fulfilment</th><th class="text-end">Items</th><th class="text-end">Value</th><th class="text-end">Your earnings</th><th>Status</th></tr></thead>
+        <caption class="visually-hidden">Your orders</caption>
+        <thead><tr><th scope="col">Order</th><?= sort_th('Confirmed', 'confirmed', $lp, '/seller/orders') ?><th scope="col">Fulfilment</th><th scope="col" class="text-end">Items</th><?= sort_th('Value', 'value', $lp, '/seller/orders', 'text-end') ?><th scope="col" class="text-end">Your earnings</th><th scope="col">Status</th></tr></thead>
         <tbody>
         <?php foreach ($rows as $r): ?>
             <tr>
@@ -28,8 +30,10 @@ $tabs = ['new' => 'New — accept or decline', 'preparing' => 'Preparing', 'hand
                 <td><span class="badge <?= in_array($r['status'], ['cancelled', 'rejected'], true) ? 'badge-soft-danger' : ($r['status'] === 'pending_acceptance' ? 'badge-soft-warning' : 'badge-soft-muted') ?>"><?= e(OrderPresenter::sellerOrderStatus((string) $r['status'])) ?></span></td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$rows): ?><tr><td colspan="7" class="text-center text-muted py-4">No orders here.</td></tr><?php endif; ?>
+        <?php if (!$rows): ?><?= empty_row(7, $lp->q !== '', 'No orders here.') ?><?php endif; ?>
         </tbody>
     </table>
+</div>
+<?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/seller/orders', 'id' => 'sorders', 'noun' => 'orders']) ?>
 </div></div>
 <p class="small text-muted mt-2">"Your earnings" is the order value less <?= e(brand_name()) ?>'s commission. It becomes payable only after the customer has received the items and the holding period has passed.</p>

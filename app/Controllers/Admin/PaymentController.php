@@ -19,18 +19,23 @@ final class PaymentController extends AdminController
     {
         $tab = (string) ($req->query['tab'] ?? 'pending');
         $db = App::db();
-        $where = $tab === 'decided' ? "s.status <> 'pending'" : "s.status = 'pending'";
-        $rows = $db->all(
-            "SELECT s.*, o.order_number, o.grand_total, o.status AS order_status, o.customer_name, o.payment_method,
+        // To verify: the oldest stock hold first, so nothing expires unnoticed. Decided: newest first.
+        $lp = \Waimart\Core\ListParams::from($req, ['queue' => 'COALESCE(hold_until, s.submitted_at)', 'when' => 's.id'], $tab === 'decided' ? 'when' : 'queue', $tab === 'decided' ? 'desc' : 'asc');
+        $where = [$tab === 'decided' ? "s.status <> 'pending'" : "s.status = 'pending'"];
+        $params = [];
+        if ($lp->q !== '') {
+            $where[] = '(s.transaction_code LIKE ? OR o.order_number LIKE ? OR o.customer_name LIKE ? OR s.payer_phone LIKE ?)';
+            array_push($params, $lp->like(), $lp->like(), $lp->like(), '%' . (\Waimart\Core\Validator::normalizePhone($lp->q) ?? addcslashes($lp->q, '%_\\')) . '%');
+        }
+        $from = 'FROM payment_submissions s JOIN orders o ON o.id = s.order_id LEFT JOIN payment_verifications v ON v.submission_id = s.id
+                 LEFT JOIN users u ON u.id = v.actor_user_id WHERE ' . implode(' AND ', $where);
+        $lp->fit((int) $db->value("SELECT COUNT(*) $from", $params));
+        $rows = $db->all("SELECT * FROM (SELECT s.*, o.order_number, o.grand_total, o.status AS order_status, o.customer_name, o.payment_method,
                     v.decision, v.amount_confirmed, v.note AS decision_note, v.created_at AS decided_at, u.first_name AS decided_by,
-                    (SELECT MIN(expires_at) FROM stock_reservations r WHERE r.order_id = o.id AND r.status = 'active') AS hold_until
-               FROM payment_submissions s JOIN orders o ON o.id = s.order_id
-               LEFT JOIN payment_verifications v ON v.submission_id = s.id
-               LEFT JOIN users u ON u.id = v.actor_user_id
-              WHERE $where ORDER BY " . ($tab === 'decided' ? 's.id DESC LIMIT 100' : 'COALESCE(hold_until, s.submitted_at), s.id')
-        );
+                    (SELECT MIN(expires_at) FROM stock_reservations r WHERE r.order_id = o.id AND r.status = 'active') AS hold_until $from) s
+              ORDER BY " . $lp->orderSql('s.id') . ' ' . $lp->limitSql(), $params);
         return $this->view('payments/index', [
-            'title' => 'Payments', 'rows' => $rows, 'tab' => $tab, 'canVerify' => Auth::can('payments.verify'),
+            'title' => 'Payments', 'rows' => $rows, 'tab' => $tab, 'lp' => $lp, 'canVerify' => Auth::can('payments.verify'),
             'reasons' => PaymentService::REJECT_REASONS,
         ]);
     }
@@ -83,17 +88,20 @@ final class PaymentController extends AdminController
 
     public function cod(Request $req): Response
     {
-        $rows = App::db()->all(
-            "SELECT o.id, o.order_number, o.customer_name, o.grand_total, o.status, o.fulfilment_method, o.completed_at
-               FROM orders o LEFT JOIN cod_collections c ON c.order_id = o.id
-              WHERE o.payment_method = 'cod' AND o.status IN ('" . implode("','", CodService::COLLECTABLE) . "') AND c.id IS NULL
-              ORDER BY o.completed_at IS NULL, o.completed_at, o.id"
-        );
+        $lp = \Waimart\Core\ListParams::from($req, ['due' => 'o.completed_at IS NULL, o.completed_at', 'total' => 'o.grand_total'], 'due', 'asc');
+        $where = "o.payment_method = 'cod' AND o.status IN ('" . implode("','", CodService::COLLECTABLE) . "') AND c.id IS NULL";
+        $params = [];
+        if ($lp->q !== '') {
+            $where .= ' AND (o.order_number LIKE ? OR o.customer_name LIKE ?)';
+            array_push($params, $lp->like(), $lp->like());
+        }
+        $rows = $lp->fetch(App::db(), 'SELECT o.id, o.order_number, o.customer_name, o.grand_total, o.status, o.fulfilment_method, o.completed_at',
+            "FROM orders o LEFT JOIN cod_collections c ON c.order_id = o.id WHERE $where", $params, 'o.id');
         $recent = App::db()->all(
             'SELECT c.*, o.order_number, u.first_name FROM cod_collections c JOIN orders o ON o.id = c.order_id
                JOIN users u ON u.id = c.collected_by ORDER BY c.id DESC LIMIT 30'
         );
-        return $this->view('payments/cod', ['title' => 'Cash on delivery', 'rows' => $rows, 'recent' => $recent]);
+        return $this->view('payments/cod', ['title' => 'Cash on delivery', 'rows' => $rows, 'recent' => $recent, 'lp' => $lp]);
     }
 
     public function recordCod(Request $req): Response

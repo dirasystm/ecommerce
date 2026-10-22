@@ -54,7 +54,7 @@ $active = $seller['status'] === 'active';
         <section class="wm-panel mb-3">
             <div class="wm-panel-head">Items</div>
             <div class="table-responsive"><table class="table table-sm mb-0">
-                <thead><tr><th>Product</th><th>SKU</th><th class="text-end">Qty</th><th class="text-end">Price</th><th class="text-end">Total</th><th class="text-end">Commission</th><th class="text-end">You earn</th></tr></thead>
+                <thead><tr><th scope="col">Product</th><th scope="col">SKU</th><th scope="col" class="text-end">Qty</th><th scope="col" class="text-end">Price</th><th scope="col" class="text-end">Total</th><th scope="col" class="text-end">Commission</th><th scope="col" class="text-end">You earn</th></tr></thead>
                 <tbody>
                 <?php foreach ($so['items'] as $it): ?>
                     <tr>

@@ -26,8 +26,6 @@ use Waimart\Services\SettingsService;
  */
 final class MarketingIntelligenceController extends AdminController
 {
-    private const PER = 25;
-
     /** @return array{0:string,1:string,2:string,3:string,4:array<string,string>} from, to, label, model, query for links */
     private function period(Request $req): array
     {
@@ -56,13 +54,15 @@ final class MarketingIntelligenceController extends AdminController
     public function campaigns(Request $req): Response
     {
         [$from, $to, $label, $model, $q] = $this->period($req);
-        $page = max(1, (int) ($req->query['page'] ?? 1));
-        $search = (string) ($req->query['q'] ?? '');
-        $sort = (string) ($req->query['sort'] ?? 'recent');
-        $res = (new Analytics())->campaigns($from, $to, $model, $search, $sort, $page, self::PER);
+        $lp = \Waimart\Core\ListParams::from($req, ['recent' => 'recent', 'name' => 'name', 'clicks' => 'clicks', 'orders' => 'orders', 'sales' => 'sales', 'conversion' => 'conversion'], 'recent');
+        $res = (new Analytics())->campaigns($from, $to, $model, $lp->q, $lp->sort, $lp->page, $lp->per);
+        $lp->fit($res['total']);
+        if (!$res['rows'] && $res['total'] > 0) {
+            $res = (new Analytics())->campaigns($from, $to, $model, $lp->q, $lp->sort, $lp->page, $lp->per);
+        }
         return $this->view('marketing/campaigns', [
-            'title' => 'Campaigns', 'rows' => $res['rows'], 'total' => $res['total'], 'page' => $page, 'pages' => (int) ceil($res['total'] / self::PER),
-            'search' => $search, 'sort' => $sort, 'label' => $label, 'model' => $model, 'q' => $q,
+            'title' => 'Campaigns', 'rows' => $res['rows'], 'lp' => $lp,
+            'search' => $lp->q, 'sort' => $lp->sort, 'label' => $label, 'model' => $model, 'q' => $q,
         ]);
     }
 
@@ -169,10 +169,16 @@ final class MarketingIntelligenceController extends AdminController
     public function leads(Request $req): Response
     {
         $f = array_intersect_key($req->query, array_flip(['q', 'stage', 'consent', 'campaign']));
-        $page = max(1, (int) ($req->query['page'] ?? 1));
-        $res = (new LeadService())->list($f, $page, self::PER);
+        $lp = \Waimart\Core\ListParams::from($req);
+        $f['q'] = $lp->q;
+        $f['name_only'] = !Auth::can('marketing.leads');
+        $res = (new LeadService())->list($f, $lp->page, $lp->per);
+        $lp->fit($res['total']);
+        if (!$res['rows'] && $res['total'] > 0) {
+            $res = (new LeadService())->list($f, $lp->page, $lp->per);
+        }
         return $this->view('marketing/leads', [
-            'title' => 'Leads', 'rows' => $res['rows'], 'total' => $res['total'], 'page' => $page, 'pages' => (int) ceil($res['total'] / self::PER), 'f' => $f,
+            'title' => 'Leads', 'rows' => $res['rows'], 'lp' => $lp, 'f' => $f,
             'full' => Auth::can('marketing.leads'), 'campaigns' => App::db()->all('SELECT id, name FROM marketing_campaigns ORDER BY created_at DESC LIMIT 100'),
         ]);
     }
@@ -206,11 +212,15 @@ final class MarketingIntelligenceController extends AdminController
         if (!isset($summary[$code])) {
             throw HttpException::notFound();
         }
-        $page = max(1, (int) ($req->query['page'] ?? 1));
-        $res = $s->members($code, $page, self::PER);
+        $lp = \Waimart\Core\ListParams::from($req);
+        $res = $s->members($code, $lp->page, $lp->per);
+        $lp->fit($res['total']);
+        if (!$res['rows'] && $res['total'] > 0) {
+            $res = $s->members($code, $lp->page, $lp->per);
+        }
         return $this->view('marketing/segment', [
             'title' => $summary[$code]['name'] . ' — Segment', 'code' => $code, 'seg' => $summary[$code], 'rows' => $res['rows'],
-            'page' => $page, 'pages' => (int) ceil($res['total'] / self::PER), 'full' => Auth::can('marketing.leads'),
+            'lp' => $lp, 'full' => Auth::can('marketing.leads'),
         ]);
     }
 
@@ -218,15 +228,21 @@ final class MarketingIntelligenceController extends AdminController
     public function consent(Request $req): Response
     {
         $db = App::db();
-        $page = max(1, (int) ($req->query['page'] ?? 1));
-        $total = (int) $db->value('SELECT COUNT(*) FROM marketing_consents');
+        $lp = \Waimart\Core\ListParams::from($req);
+        $channel = in_array($req->query['channel'] ?? '', ['email', 'sms', 'personalisation'], true) ? (string) $req->query['channel'] : '';
+        $where = $channel !== '' ? 'WHERE mc.channel = ?' : 'WHERE 1=1';
+        $params = $channel !== '' ? [$channel] : [];
+        if ($lp->q !== '' && Auth::can('marketing.leads')) {
+            $where .= ' AND (u.email LIKE ? OR ml.email LIKE ?)';
+            array_push($params, $lp->like(), $lp->like());
+        }
         return $this->view('marketing/consent', [
             'title' => 'Consent & suppression', 'full' => Auth::can('marketing.leads'),
             'counts' => $db->one("SELECT SUM(marketing_email = 1) AS email, SUM(marketing_sms = 1) AS sms, SUM(personalisation = 0) AS no_personal, COUNT(*) AS customers
                                   FROM users WHERE is_staff = 0 AND status = 'active'"),
-            'rows' => $db->all('SELECT mc.*, u.email AS user_email, ml.email AS lead_email FROM marketing_consents mc LEFT JOIN users u ON u.id = mc.user_id
-                                LEFT JOIN marketing_leads ml ON ml.id = mc.lead_id ORDER BY mc.id DESC LIMIT ' . self::PER . ' OFFSET ' . ($page - 1) * self::PER),
-            'page' => $page, 'pages' => (int) ceil($total / self::PER),
+            'rows' => $lp->fetch($db, 'SELECT mc.*, u.email AS user_email, ml.email AS lead_email',
+                "FROM marketing_consents mc LEFT JOIN users u ON u.id = mc.user_id LEFT JOIN marketing_leads ml ON ml.id = mc.lead_id $where", $params, 'mc.id DESC'),
+            'lp' => $lp, 'channel' => $channel,
             'suppressed' => $db->all("SELECT reason, channel, COUNT(*) AS n, MAX(created_at) AS latest FROM marketing_messages
                                       WHERE status IN ('suppressed','cancelled','failed') AND created_at > NOW() - INTERVAL 30 DAY GROUP BY reason, channel ORDER BY n DESC LIMIT 20"),
         ]);
@@ -261,6 +277,48 @@ final class MarketingIntelligenceController extends AdminController
             'title' => 'Recommendations', 'rows' => (new Analytics())->placements($from, $to), 'label' => $label, 'q' => $q,
             'pairs' => (int) App::db()->value('SELECT COUNT(*) FROM product_pairs'),
         ]);
+    }
+
+    /** Abandoned cart recovery: figures, abandoned carts, the reminder log and the recovery settings. */
+    public function abandonedCarts(Request $req): Response
+    {
+        [$from, $to, $label, , $q] = $this->period($req);
+        $view = in_array($req->query['view'] ?? '', ['log', 'settings'], true) ? (string) $req->query['view'] : 'carts';
+        $cr = new \Waimart\Services\Marketing\CartRecovery();
+        $lp = \Waimart\Core\ListParams::from($req);
+        $data = ['title' => 'Abandoned carts', 'view' => $view, 'label' => $label, 'q' => $q, 'stats' => $cr->stats($from, $to), 'lp' => $lp,
+                 'full' => Auth::can('marketing.leads'), 'automation' => (new Automation())->all()['cart_recovery'] ?? null,
+                 'values' => SettingsService::values('intelligence'), 'channel' => '', 'status' => ''];
+        if ($view === 'carts') {
+            $res = $cr->carts($from, $to, $lp->q, $lp->page, $lp->per);
+            $lp->fit($res['total']);
+            if ($lp->page > 1 && !$res['rows'] && $res['total'] > 0) {
+                $res = $cr->carts($from, $to, $lp->q, $lp->page, $lp->per);
+            }
+            $data['rows'] = $res['rows'];
+        } elseif ($view === 'log') {
+            $data['channel'] = (string) ($req->query['channel'] ?? '');
+            $data['status'] = (string) ($req->query['status'] ?? '');
+            $res = $cr->log($from, $to, $lp->q, $data['channel'], $data['status'], $lp->page, $lp->per);
+            $lp->fit($res['total']);
+            if ($lp->page > 1 && !$res['rows'] && $res['total'] > 0) {
+                $res = $cr->log($from, $to, $lp->q, $data['channel'], $data['status'], $lp->page, $lp->per);
+            }
+            $data['rows'] = $res['rows'];
+        }
+        return $this->view('marketing/abandoned-carts', $data);
+    }
+
+    public function saveCartSettings(Request $req): Response
+    {
+        $svc = new SettingsService();
+        $keys = ['cart_abandon_minutes', 'cart_reminder_link_days', 'cart_recovery_guests', 'marketing_max_attempts'];
+        $in = $req->post + ['cart_recovery_guests' => ''];
+        $svc->saveKeys($in, $this->actor(), $keys);
+        $a = (new Automation())->all()['cart_recovery'];
+        (new Automation())->save('cart_recovery', ['is_enabled' => $req->post['is_enabled'] ?? '', 'channels' => (array) ($req->post['channels'] ?? []),
+            'delay_hours' => (string) $a['delay_hours'], 'delay2_hours' => (string) ($req->post['delay2_hours'] ?? '')], $this->actor());
+        return $this->success('Abandoned cart settings saved.', '/admin/marketing/abandoned-carts?view=settings');
     }
 
     public function settings(Request $req): Response

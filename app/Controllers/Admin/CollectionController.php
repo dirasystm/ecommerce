@@ -29,22 +29,17 @@ final class CollectionController extends AdminController
             $where[] = 'f.pickup_point_id = ?';
             $params[] = (int) $point;
         }
-        $q = strtoupper(trim((string) ($req->query['q'] ?? '')));
-        if ($q !== '') {
-            $where[] = 'o.order_number LIKE ?';
-            $params[] = '%' . addcslashes(mb_substr($q, 0, 20), '%_\\') . '%';
+        $lp = \Waimart\Core\ListParams::from($req, ['ready' => 'f.ready_at', 'order' => 'o.order_number'], 'ready', 'asc');
+        if ($lp->q !== '') {
+            $where[] = '(o.order_number LIKE ? OR o.customer_name LIKE ?)';
+            array_push($params, '%' . addcslashes(strtoupper($lp->q), '%_\\') . '%', $lp->like());
         }
         $holdDays = Settings::int('collection_hold_days', 7);
-        $rows = $db->all(
-            'SELECT o.id, o.order_number, o.customer_name, o.payment_method, o.payment_status, o.grand_total,
-                    f.pickup_name, f.pickup_code, f.ready_at, f.collection_code_status,
-                    (f.ready_at < NOW() - INTERVAL ? DAY) AS overdue
-               FROM orders o JOIN order_fulfilment f ON f.order_id = o.id
-              WHERE ' . implode(' AND ', $where) . ' ORDER BY f.ready_at',
-            [$holdDays, ...$params]
-        );
+        $rows = $lp->fetch($db, 'SELECT o.id, o.order_number, o.customer_name, o.payment_method, o.payment_status, o.grand_total,
+                    f.pickup_name, f.pickup_code, f.ready_at, f.collection_code_status, (f.ready_at < NOW() - INTERVAL ' . (int) $holdDays . ' DAY) AS overdue',
+            'FROM orders o JOIN order_fulfilment f ON f.order_id = o.id WHERE ' . implode(' AND ', $where), $params, 'o.id');
         return $this->view('collections/index', [
-            'title' => 'Collection desk', 'rows' => $rows, 'holdDays' => $holdDays,
+            'title' => 'Collection desk', 'rows' => $rows, 'holdDays' => $holdDays, 'lp' => $lp, 'point' => $point,
             'points' => $db->all('SELECT id, name, code FROM pickup_points ORDER BY name'),
         ]);
     }

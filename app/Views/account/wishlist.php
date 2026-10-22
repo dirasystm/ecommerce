@@ -1,7 +1,7 @@
 <?php
 use Waimart\Core\View;
 
-/** @var list<array<string,mixed>> $items */
+/** @var list<array<string,mixed>> $items @var \Waimart\Core\ListParams $lp */
 ob_start(); ?>
 <?php if (!$items): ?>
     <div class="text-center py-4">
@@ -21,6 +21,7 @@ ob_start(); ?>
             </div>
         <?php endforeach; ?>
     </div>
+    <?= View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/account/wishlist', 'id' => 'wishlist', 'noun' => 'saved products', 'form' => false]) ?>
 <?php endif; ?>
 <?php
 $body = (string) ob_get_clean();

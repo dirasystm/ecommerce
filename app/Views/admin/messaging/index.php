@@ -7,12 +7,12 @@ use Waimart\Services\SmsGateway;
 /**
  * @var array<string,array<string,array{total:int,today:int,month:int}>> $stats channel => status => counts
  * @var int $delivered @var array<string,string> $sms @var array<string,mixed> $token @var array<string,mixed> $mail @var array<string,mixed> $balance
- * @var list<array<string,mixed>> $rows @var int $total @var int $page @var int $pages @var int $perPage
+ * @var list<array<string,mixed>> $rows @var \Waimart\Core\ListParams $lp
  * @var string $channel @var string $status @var string $search @var list<string> $noResend
  */
 $n = fn (string $ch, string $st, string $period = 'total'): int => (int) ($stats[$ch][$st][$period] ?? 0);
 $live = ($sms['sms_driver'] ?? '') === 'talksasa';
-$filters = array_filter(['channel' => $channel, 'status' => $status, 'q' => $search, 'page' => $page > 1 ? (string) $page : '', 'per' => $perPage !== 25 ? (string) $perPage : '']);
+$filters = array_filter(['channel' => $channel, 'status' => $status, 'q' => $search, 'page' => $lp->page > 1 ? (string) $lp->page : '', 'per' => $lp->per !== \Waimart\Core\ListParams::DEFAULT_SIZE ? (string) $lp->per : '']);
 $statusLabel = ['sent' => 'Sent', 'failed' => 'Failed', 'logged' => 'Not sent (log only)', 'queued' => 'Sending'];
 $statusClass = ['sent' => 'badge-soft-success', 'failed' => 'badge-soft-danger', 'logged' => 'badge-soft-muted', 'queued' => 'badge-soft-warning'];
 $canSecrets = Auth::can('secrets.manage');
@@ -308,27 +308,13 @@ $result = function (?array $r, string $what): string {
 </section>
 
 <h2 class="fs-5 fw-bold mb-2" id="log">Message log</h2>
-<form class="d-flex flex-wrap gap-2 align-items-end mb-3" method="get" action="<?= e(url('/admin/messaging')) ?>#log" role="search">
-    <div class="flex-grow-1" style="min-width:220px;max-width:340px"><label class="form-label small mb-0" for="q">Search</label>
-        <input class="form-control form-control-sm" type="search" id="q" name="q" maxlength="100" value="<?= e($search) ?>" placeholder="Phone, email, order number, text…"></div>
-    <div><label class="form-label small mb-0" for="channel">Type</label>
-        <select class="form-select form-select-sm" id="channel" name="channel">
-            <?php foreach (['' => 'SMS and email', 'sms' => 'SMS', 'email' => 'Email'] as $k => $l): ?><option value="<?= e($k) ?>" <?= $channel === $k ? 'selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
-    <div><label class="form-label small mb-0" for="status">Status</label>
-        <select class="form-select form-select-sm" id="status" name="status">
-            <?php foreach (['' => 'Any'] + $statusLabel as $k => $l): ?><option value="<?= e($k) ?>" <?= $status === $k ? 'selected' : '' ?>><?= e($l) ?></option><?php endforeach; ?></select></div>
-    <div><label class="form-label small mb-0" for="per">Per page</label>
-        <select class="form-select form-select-sm" id="per" name="per"><?php foreach ([25, 50, 100] as $pp): ?><option value="<?= $pp ?>" <?= $perPage === $pp ? 'selected' : '' ?>><?= $pp ?></option><?php endforeach; ?></select></div>
-    <button class="btn btn-sm btn-outline-secondary" type="submit">Search</button>
-    <?php if ($channel !== '' || $status !== '' || $search !== ''): ?><a class="btn btn-sm btn-link" href="<?= e(url('/admin/messaging')) ?>#log">Clear</a><?php endif; ?>
-</form>
-
-<?php $first = $total ? ($page - 1) * $perPage + 1 : 0; $last = min($total, $page * $perPage); ?>
-<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
-    <p class="small text-muted mb-0" role="status">Showing <?= number_format($first) ?>–<?= number_format($last) ?> of <?= number_format($total) ?><?= $search !== '' ? ' matching “' . e($search) . '”' : '' ?></p>
-    <?= View::partial('partials/pagination', ['page' => $page, 'pages' => $pages, 'path' => '/admin/messaging', 'compact' => true]) ?>
-</div>
-<div class="wm-panel"><div class="table-responsive" tabindex="0" role="region" aria-label="Message log (scrolls sideways)">
+<?= View::partial('partials/table/toolbar', ['id' => 'msglog', 'path' => '/admin/messaging', 'lp' => $lp, 'label' => 'Search the message log',
+    'placeholder' => 'Phone, email, order number, text…',
+    'filters' => [
+        ['name' => 'channel', 'label' => 'Type', 'value' => $channel, 'options' => ['' => 'SMS and email', 'sms' => 'SMS', 'email' => 'Email']],
+        ['name' => 'status', 'label' => 'Status', 'value' => $status, 'options' => ['' => 'Any status'] + $statusLabel],
+    ]]) ?>
+<div class="wm-panel"><div id="msglog" class="wm-table-region" data-table-region data-loading-text="Loading messages…"><div class="table-responsive">
     <table class="table table-sm align-top mb-0">
         <caption class="visually-hidden">Messages sent to customers, sellers and staff, newest first</caption>
         <thead><tr><th scope="col">When</th><th scope="col">Type</th><th scope="col">To</th><th scope="col">Message</th><th scope="col">Order</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
@@ -354,8 +340,9 @@ $result = function (?array $r, string $what): string {
                 <?php endif; ?></td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$rows): ?><tr><td colspan="7" class="text-center text-muted py-4">No messages<?= $search !== '' || $channel !== '' || $status !== '' ? ' match these filters' : ' yet' ?>.</td></tr><?php endif; ?>
+        <?php if (!$rows): ?><?= empty_row(7, $search !== '' || $channel !== '' || $status !== '', 'No messages yet.') ?><?php endif; ?>
         </tbody>
     </table>
+</div>
+<?= View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/messaging', 'id' => 'msglog', 'noun' => 'messages']) ?>
 </div></div>
-<?= View::partial('partials/pagination', ['page' => $page, 'pages' => $pages, 'path' => '/admin/messaging']) ?>

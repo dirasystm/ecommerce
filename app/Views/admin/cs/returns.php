@@ -1,13 +1,18 @@
-<?php /** @var list<array<string,mixed>> $rows @var string $status @var array<string,string> $reasons */ ?>
+<?php /** @var \Waimart\Core\ListParams $lp @var list<array<string,mixed>> $rows @var string $status @var array<string,string> $reasons */ ?>
 <div class="wm-admin-head"><h1>Returns</h1></div>
 <ul class="nav nav-pills mb-3 small">
     <?php foreach (['open' => 'Open', 'completed' => 'Completed', 'rejected' => 'Rejected', 'all' => 'All'] as $k => $l): ?>
         <li class="nav-item"><a class="nav-link<?= $status === $k ? ' active' : '' ?>" href="<?= e(url('/admin/returns', ['status' => $k])) ?>"><?= e($l) ?></a></li>
     <?php endforeach; ?>
 </ul>
-<div class="wm-panel"><div class="table-responsive">
+<?= \Waimart\Core\View::partial('partials/table/toolbar', ['id' => 'returns', 'path' => '/admin/returns', 'lp' => $lp, 'label' => 'Search returns',
+    'placeholder' => 'Return or order number, customer or seller', 'keep' => ['status' => $status]]) ?>
+<div class="wm-panel">
+    <div id="returns" class="wm-table-region" data-table-region data-loading-text="Loading returns…">
+        <div class="table-responsive">
     <table class="table table-hover mb-0">
-        <thead><tr><th>Return</th><th>Order</th><th>Seller</th><th>Customer</th><th>Reason</th><th class="text-end">Units</th><th>Requested</th><th>Status</th></tr></thead>
+        <caption class="visually-hidden">Returns</caption>
+        <thead><tr><th scope="col">Return</th><th scope="col">Order</th><th scope="col">Seller</th><th scope="col">Customer</th><th scope="col">Reason</th><th scope="col" class="text-end">Units</th><?= sort_th('Requested', 'requested', $lp, '/admin/returns') ?><th scope="col">Status</th></tr></thead>
         <tbody>
         <?php foreach ($rows as $r): ?>
             <tr>
@@ -18,7 +23,10 @@
                 <td><span class="badge <?= ['completed' => 'badge-soft-success', 'rejected' => 'badge-soft-danger'][$r['status']] ?? 'badge-soft-warning' ?>"><?= e($r['status']) ?></span></td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$rows): ?><tr><td colspan="8" class="text-center text-muted py-4">No returns.</td></tr><?php endif; ?>
+        <?php if (!$rows): ?><?= empty_row(8, $lp->q !== '', 'No returns.') ?><?php endif; ?>
         </tbody>
     </table>
-</div></div>
+</div>
+        <?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/returns', 'id' => 'returns', 'noun' => 'returns']) ?>
+    </div>
+</div>

@@ -2,12 +2,11 @@
 use Waimart\Core\View;
 use Waimart\Services\OrderPresenter;
 
-/** @var list<array<string,mixed>> $rows @var int $total @var int $page @var int $pages @var array<string,int> $counts @var string $status */
-$req = View::shared('request');
+/** @var list<array<string,mixed>> $rows @var \Waimart\Core\ListParams $lp @var array<string,int> $counts @var string $status @var string $method @var string $payment */
 $tabs = ['' => 'All', 'pending_confirmation' => 'COD to confirm', 'awaiting_payment' => 'Awaiting payment', 'awaiting_verification' => 'To verify',
          'confirmed' => 'Confirmed', 'processing' => 'Processing', 'packed' => 'Packed', 'dispatched' => 'Dispatched', 'expired' => 'Expired', 'cancelled' => 'Cancelled'];
 ?>
-<div class="wm-admin-head"><h1>Orders <span class="text-muted fs-6 fw-normal">(<?= number_format($total) ?>)</span></h1></div>
+<div class="wm-admin-head"><h1>Orders</h1></div>
 
 <ul class="nav nav-pills flex-nowrap overflow-auto mb-3 small">
     <?php foreach ($tabs as $k => $label): ?>
@@ -16,22 +15,20 @@ $tabs = ['' => 'All', 'pending_confirmation' => 'COD to confirm', 'awaiting_paym
     <?php endforeach; ?>
 </ul>
 
-<form class="d-flex gap-2 mb-3" method="get" action="<?= e(url('/admin/orders')) ?>">
-    <?php if ($status): ?><input type="hidden" name="status" value="<?= e($status) ?>"><?php endif; ?>
-    <label class="visually-hidden" for="q">Search</label>
-    <input class="form-control form-control-sm" id="q" name="q" placeholder="Order number, phone or name" value="<?= e($req->query['q'] ?? '') ?>" style="max-width:320px">
-    <select class="form-select form-select-sm" name="method" style="max-width:160px" aria-label="Fulfilment">
-        <option value="">All methods</option>
-        <option value="delivery" <?= ($req->query['method'] ?? '') === 'delivery' ? 'selected' : '' ?>>Delivery</option>
-        <option value="pickup" <?= ($req->query['method'] ?? '') === 'pickup' ? 'selected' : '' ?>>Pickup</option>
-    </select>
-    <button class="btn btn-sm btn-outline-secondary" type="submit">Search</button>
-</form>
+<?= View::partial('partials/table/toolbar', ['id' => 'orders', 'path' => '/admin/orders', 'lp' => $lp, 'label' => 'Search orders', 'placeholder' => 'Order number, phone, name or email',
+    'keep' => ['status' => $status],
+    'filters' => [
+        ['name' => 'method', 'label' => 'Fulfilment', 'value' => $method, 'options' => ['' => 'All methods', 'delivery' => 'Delivery', 'pickup' => 'Pickup']],
+        ['name' => 'payment', 'label' => 'Payment status', 'value' => $payment, 'options' => ['' => 'Any payment status', 'unpaid' => 'Unpaid', 'awaiting_verification' => 'To verify',
+            'verified' => 'Paid (M-Pesa)', 'cod_pending' => 'Cash due', 'cod_collected' => 'Cash collected', 'rejected' => 'Payment rejected', 'refund_due' => 'Refund due', 'refunded' => 'Refunded']],
+    ]]) ?>
 
 <div class="wm-panel">
+    <div id="orders" class="wm-table-region" data-table-region data-loading-text="Fetching orders…">
     <div class="table-responsive">
-        <table class="table table-hover">
-            <thead><tr><th>Order</th><th>Placed</th><th>Customer</th><th>Method</th><th>Payment</th><th>Status</th><th>Stock held until</th><th class="text-end">Total</th></tr></thead>
+        <table class="table table-hover mb-0 align-middle">
+            <caption class="visually-hidden">Orders</caption>
+            <thead><tr><?= sort_th('Order', 'number', $lp, '/admin/orders') ?><?= sort_th('Placed', 'placed', $lp, '/admin/orders') ?><th scope="col">Customer</th><th scope="col">Method</th><th scope="col">Payment</th><th scope="col">Status</th><th scope="col">Stock held until</th><?= sort_th('Total', 'total', $lp, '/admin/orders', 'text-end') ?></tr></thead>
             <tbody>
             <?php foreach ($rows as $o): ?>
                 <tr>
@@ -45,9 +42,10 @@ $tabs = ['' => 'All', 'pending_confirmation' => 'COD to confirm', 'awaiting_paym
                     <td class="text-end text-nowrap"><?= e(money($o['grand_total'])) ?></td>
                 </tr>
             <?php endforeach; ?>
-            <?php if (!$rows): ?><tr><td colspan="8" class="text-center text-muted py-4">No orders.</td></tr><?php endif; ?>
+            <?php if (!$rows): ?><?= empty_row(8, $lp->q !== '' || $method !== '' || $payment !== '', 'No orders.', 'No matching orders found. Try changing your search or filters.') ?><?php endif; ?>
             </tbody>
         </table>
     </div>
-    <?= View::partial('partials/pagination', ['page' => $page, 'pages' => $pages, 'path' => '/admin/orders']) ?>
+    <?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/orders', 'id' => 'orders', 'noun' => 'orders']) ?>
+    </div>
 </div>

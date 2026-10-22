@@ -20,7 +20,7 @@ $target = fn ($r) => $r['scope'] === 'default' ? 'All sellers (default)' : ($r['
         <section class="wm-panel mb-3">
             <div class="wm-panel-head">Rates in force</div>
             <div class="table-responsive"><table class="table table-sm mb-0">
-                <thead><tr><th>Applies to</th><th class="text-end">Rate</th><th>Since</th><th>Note</th><th></th></tr></thead>
+                <thead><tr><th scope="col">Applies to</th><th scope="col" class="text-end">Rate</th><th scope="col">Since</th><th scope="col">Note</th><th scope="col"></th></tr></thead>
                 <tbody>
                 <?php foreach ($active as $r): ?>
                     <tr><td><?= e($target($r)) ?></td><td class="text-end fw-semibold"><?= e($pct($r['rate'])) ?></td>
@@ -35,7 +35,7 @@ $target = fn ($r) => $r['scope'] === 'default' ? 'All sellers (default)' : ($r['
         <details class="wm-panel mb-3">
             <summary class="wm-panel-head">History (<?= count($retired) ?> retired rates)</summary>
             <div class="table-responsive"><table class="table table-sm mb-0">
-                <thead><tr><th>Applied to</th><th class="text-end">Rate</th><th>From</th><th>Until</th></tr></thead>
+                <thead><tr><th scope="col">Applied to</th><th scope="col" class="text-end">Rate</th><th scope="col">From</th><th scope="col">Until</th></tr></thead>
                 <tbody><?php foreach ($retired as $r): ?>
                     <tr><td class="small"><?= e($target($r)) ?></td><td class="text-end small"><?= e($pct($r['rate'])) ?></td>
                         <td class="small text-nowrap"><?= e(date('d M Y H:i', strtotime((string) $r['created_at']))) ?></td><td class="small text-nowrap"><?= $r['deactivated_at'] ? e(date('d M Y H:i', strtotime((string) $r['deactivated_at']))) : '' ?></td></tr>
@@ -80,16 +80,21 @@ $target = fn ($r) => $r['scope'] === 'default' ? 'All sellers (default)' : ($r['
         <button class="btn btn-sm btn-outline-secondary" type="submit">Show</button>
         <a class="btn btn-sm btn-outline-secondary" href="<?= e(url('/admin/commissions', ['from' => $from, 'to' => $to, 'format' => 'csv'])) ?>">CSV</a>
     </form>
+    <div class="wm-panel-body pb-0"><?= \Waimart\Core\View::partial('partials/table/toolbar', ['id' => 'commission', 'path' => '/admin/commissions', 'lp' => $lp, 'label' => 'Search sellers in the report', 'placeholder' => 'Seller name', 'keep' => ['from' => $from, 'to' => $to]]) ?></div>
+    <div id="commission" class="wm-table-region" data-table-region data-loading-text="Loading the report…">
     <div class="table-responsive"><table class="table table-sm mb-0">
-        <thead><tr><th>Seller</th><th class="text-end">Sales received</th><th class="text-end">Commission</th><th class="text-end">Commission reversed</th><th class="text-end">Net commission</th></tr></thead>
+        <caption class="visually-hidden">Commission earned per seller</caption>
+        <thead><tr><th scope="col">Seller</th><th scope="col" class="text-end">Sales received</th><th scope="col" class="text-end">Commission</th><th scope="col" class="text-end">Commission reversed</th><th scope="col" class="text-end">Net commission</th></tr></thead>
         <tbody>
-        <?php foreach ($report as $r): ?>
+        <?php foreach ($page as $r): ?>
             <tr><td><?= e($r['seller_name']) ?></td><td class="text-end"><?= e(money($r['gross_sales'])) ?></td><td class="text-end"><?= e(money($r['commission'])) ?></td>
                 <td class="text-end"><?= e(money(bcmul((string) $r['commission_reversed'], '-1', 2))) ?></td>
                 <td class="text-end fw-semibold"><?= e(money(bcsub((string) $r['commission'], (string) $r['commission_reversed'], 2))) ?></td></tr>
         <?php endforeach; ?>
-        <?php if (!$report): ?><tr><td colspan="5" class="text-center text-muted py-3">No marketplace sales received in this period.</td></tr><?php endif; ?>
+        <?php if (!$page): ?><?= empty_row(5, $lp->q !== '', 'No marketplace sales received in this period.') ?><?php endif; ?>
         </tbody>
     </table></div>
+    <?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/commissions', 'id' => 'commission', 'noun' => 'sellers']) ?>
+    </div>
     <div class="wm-panel-body small text-muted">Counts only money actually received (verified M-Pesa or recorded cash). Sales are the sellers' merchandise — <?= e(brand_name()) ?>'s revenue is the commission column.</div>
 </section>

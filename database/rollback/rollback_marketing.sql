@@ -1,10 +1,15 @@
--- ROLLBACK of Marketing Intelligence (migrations 031–033). Run only after taking a backup, and roll back the code
+-- ROLLBACK of Marketing Intelligence and abandoned cart recovery (migrations 031–034). Run only after taking a backup, and roll back the code
 -- together with it (the marketing code reads these tables):
 --   php bin/backup.php
 --   C:\xampp\mysql\bin\mysql.exe -u root waimart < database\rollback\rollback_marketing.sql
 -- Run it BEFORE rollback_basemall.sql if both are needed. Removes the shopping activity, campaigns, links, clicks,
 -- leads, consent history and marketing messages. Orders, customers, products and the wishlist itself are kept.
 -- Each customer's email-marketing choice is kept in marketing_opt_in (it was mirrored there all along).
+
+-- 034 (abandoned cart recovery): cart activity, guest browser link, recovery links and figures, settings.
+-- (marketing_messages is dropped below, with its recovery columns.)
+DELETE FROM settings WHERE setting_key IN ('cart_abandon_minutes', 'cart_reminder_link_days', 'cart_recovery_guests', 'marketing_max_attempts');
+ALTER TABLE carts DROP INDEX IF EXISTS ix_cart_visitor, DROP INDEX IF EXISTS ix_cart_activity, DROP COLUMN IF EXISTS visitor_id, DROP COLUMN IF EXISTS last_activity_at;
 
 -- 033 (role grants) and 031 (permissions): role links go with the permissions (ON DELETE CASCADE).
 DELETE FROM role_permissions WHERE permission_id IN (SELECT id FROM permissions WHERE slug IN ('marketing.view', 'marketing.manage', 'marketing.leads'));
@@ -36,4 +41,4 @@ ALTER TABLE wishlist_items DROP COLUMN IF EXISTS last_alert_price, DROP COLUMN I
 UPDATE users SET marketing_opt_in = marketing_email;
 ALTER TABLE users DROP COLUMN IF EXISTS marketing_frequency, DROP COLUMN IF EXISTS personalisation, DROP COLUMN IF EXISTS marketing_sms, DROP COLUMN IF EXISTS marketing_email;
 
-DELETE FROM schema_migrations WHERE filename IN ('033_marketing_roles.sql', '032_home_recommended.sql', '031_marketing_intelligence.sql');
+DELETE FROM schema_migrations WHERE filename IN ('034_abandoned_cart_recovery.sql', '033_marketing_roles.sql', '032_home_recommended.sql', '031_marketing_intelligence.sql');

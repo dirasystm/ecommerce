@@ -66,7 +66,7 @@ $expires = $order['reservation_expires_at'];
             <?php endif; ?>
 
             <?php if (\Waimart\Services\PaymentService::canSubmit($order)): ?>
-                <form class="wm-pay-form mt-3" method="post" action="<?= e(url('/order/' . $order['order_number'] . '/payment')) ?>" novalidate>
+                <form class="wm-pay-form mt-3" method="post" data-loading-overlay="Processing your payment details. Please wait…" data-loading-text="Submitting…" action="<?= e(url('/order/' . $order['order_number'] . '/payment')) ?>" novalidate>
                     <?= csrf_field() ?>
                     <h3 class="fs-6 fw-bold mb-1"><?= $order['status'] === 'expired' ? 'Already paid? Submit your M-Pesa code' : 'I have paid — submit my M-Pesa code' ?></h3>
                     <?php if ($order['status'] === 'expired'): ?>

@@ -22,7 +22,8 @@ final class FinanceController extends SellerController
         return $this->view('finance', [
             'title' => 'Earnings & payouts',
             'balances' => $ledger->balances($sid), 'summary' => $ledger->summary($sid),
-            'entries' => $ledger->entries($sid, 100),
+            'entries' => $ledger->entriesPage($sid, $lp = \Waimart\Core\ListParams::from($req, ['id' => 'e.id'], 'id', 'desc'), $bucket = (string) ($req->query['bucket'] ?? ''), $type = (string) ($req->query['type'] ?? '')),
+            'lp' => $lp, 'bucket' => $bucket, 'type' => $type,
             'payouts' => (new PayoutService())->list($sid, null, 50),
             'minimum' => PayoutService::minimum(),
             'method' => (new SellerService())->activePayoutMethod($sid),

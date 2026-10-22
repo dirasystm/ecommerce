@@ -28,7 +28,9 @@ $hours = fn ($h) => $h === null ? '' : ((int) $h % 24 === 0 && (int) $h >= 48 ? 
         <div class="wm-panel-body">
             <p class="small text-muted mb-2"><?= e($desc) ?></p>
             <p class="small mb-3">Last 30 days: <?= (int) ($s['sent'] ?? 0) + (int) ($s['logged'] ?? 0) ?> sent · <?= (int) ($s['queued'] ?? 0) ?> waiting · <?= (int) ($s['cancelled'] ?? 0) ?> stopped (no longer relevant) · <?= (int) ($s['suppressed'] ?? 0) ?> not allowed (consent) · <?= (int) ($s['failed'] ?? 0) ?> failed</p>
-            <?php if ($manage): $chan = explode(',', (string) $a['channels']); ?>
+            <?php if ($code === 'cart_recovery'): ?>
+                <p class="small mb-0">Timing, channels and guest reminders are set under <a href="<?= e(url('/admin/marketing/abandoned-carts', ['view' => 'settings'])) ?>">Abandoned carts → Settings</a>, with the recovery figures.</p>
+            <?php elseif ($manage): $chan = explode(',', (string) $a['channels']); ?>
                 <form class="row g-3 align-items-end" method="post" action="<?= e(url('/admin/marketing/automations/' . $code)) ?>" novalidate>
                     <?= csrf_field() ?>
                     <div class="col-md-3">

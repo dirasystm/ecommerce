@@ -76,6 +76,7 @@ final class Signals
     /** A placed order: the order itself (with the campaign that led to it) and sales from recommendation placements. @param array<string,mixed> $order */
     public static function orderPlaced(array $order): void
     {
+        (new CartRecovery())->orderPlaced($order);    // independent of activity tracking consent
         try {
             $uid = $order['user_id'] !== null ? (int) $order['user_id'] : null;
             Tracker::record('order_placed', ['user_id' => $uid, 'order_id' => (int) $order['id'], 'amount' => (string) $order['grand_total']]);

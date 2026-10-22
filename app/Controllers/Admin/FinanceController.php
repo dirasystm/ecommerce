@@ -38,8 +38,12 @@ final class FinanceController extends AdminController
                 ['Seller', 'Gross sales received', 'Commission', 'Commission reversed', 'Sales reversed'],
                 array_map(fn ($r) => [$r['seller_name'], $r['gross_sales'], $r['commission'], $r['commission_reversed'], $r['sales_reversed']], $report));
         }
+        $lp = \Waimart\Core\ListParams::from($req);
+        if ($lp->q !== '') {
+            $report = array_values(array_filter($report, fn ($r) => mb_stripos((string) $r['seller_name'], $lp->q) !== false));
+        }
         return $this->view('finance/commissions', [
-            'title' => 'Commission', 'rules' => (new CommissionService())->rules(),
+            'title' => 'Commission', 'lp' => $lp, 'page' => $lp->slice($report), 'rules' => (new CommissionService())->rules(),
             'provisional' => Settings::get('marketplace_commission_provisional', '1') === '1',
             'sellers' => $db->all('SELECT id, name FROM sellers WHERE is_platform = 0 ORDER BY name'),
             'categories' => $db->all('SELECT c.id, c.name, p.name AS parent_name FROM categories c LEFT JOIN categories p ON p.id = c.parent_id ORDER BY COALESCE(p.name, c.name), c.parent_id IS NOT NULL, c.name'),
@@ -68,15 +72,16 @@ final class FinanceController extends AdminController
     {
         $status = (string) ($req->query['status'] ?? 'requested');
         $status = in_array($status, self::PAYOUT_STATUSES, true) ? $status : 'requested';
-        $rows = (new PayoutService())->list(null, $status);
         if (($req->query['format'] ?? '') === 'csv') {
+            $rows = (new PayoutService())->list(null, $status, 1000);
             AuditLogger::log('report.exported', 'report', 'payouts', null, ['status' => $status], $this->actor());
             return Csv::response(Brand::slug() . "-payouts-$status.csv", ['Payout', 'Seller', 'Amount', 'Status', 'Requested', 'Destination', 'Paid method', 'Paid reference', 'Paid at'],
                 array_map(fn ($p) => [$p['payout_number'], $p['seller_name'], $p['amount'], $p['status'], $p['requested_at'], $p['destination_masked'],
                     $p['paid_method'], $p['paid_reference'], $p['paid_at']], $rows));
         }
+        $lp = \Waimart\Core\ListParams::from($req, ['requested' => 'p.requested_at', 'amount' => 'p.amount'], 'requested', 'desc');
         return $this->view('finance/payouts', [
-            'title' => 'Seller payouts', 'status' => $status, 'rows' => $rows,
+            'title' => 'Seller payouts', 'status' => $status, 'rows' => (new PayoutService())->page(null, $status, $lp), 'lp' => $lp,
             'counts' => array_map('intval', array_column(App::db()->all('SELECT status, COUNT(*) AS n FROM seller_payouts GROUP BY status'), 'n', 'status')),
             'liability' => App::db()->one("SELECT COALESCE(SUM(CASE WHEN bucket = 'pending' THEN amount END), 0) AS pending,
                     COALESCE(SUM(CASE WHEN bucket = 'available' THEN amount END), 0) AS available,
@@ -133,8 +138,13 @@ final class FinanceController extends AdminController
                 array_map(fn ($r) => [$r['seller_name'], $r['seller_status'], $r['parts'], $r['completed'], $r['declined'], $r['cancelled'], $r['sales'], $r['commission'],
                     $r['refunds_reversals'], $r['net'], $r['balances']['pending'], $r['balances']['available'], $r['balances']['reserved'], $r['balances']['paid']], $rows));
         }
+        $lp = \Waimart\Core\ListParams::from($req, ['sales' => 'sales', 'name' => 'seller_name', 'net' => 'net'], 'sales', 'desc');
+        $shown = $lp->q !== '' ? array_values(array_filter($rows, fn ($r) => mb_stripos((string) $r['seller_name'], $lp->q) !== false)) : $rows;
+        $key = $lp->sort;
+        usort($shown, fn ($a, $b) => ($key === 'seller_name' || $key === 'name' ? strcasecmp((string) $a['seller_name'], (string) $b['seller_name'])
+            : (float) $a[$key] <=> (float) $b[$key]) * ($lp->dir === 'asc' ? 1 : -1));
         return $this->view('finance/marketplace', [
-            'title' => 'Marketplace report', 'rows' => $rows, 'liability' => $svc->liability(), 'checks' => $svc->reconcile(),
+            'title' => 'Marketplace report', 'rows' => $rows, 'lp' => $lp, 'page' => $lp->slice($shown), 'liability' => $svc->liability(), 'checks' => $svc->reconcile(),
             'from' => substr($from, 0, 10), 'to' => substr($to, 0, 10),
         ]);
     }
@@ -146,7 +156,9 @@ final class FinanceController extends AdminController
         return $this->view('finance/ledger', [
             'title' => 'Ledger — ' . $seller['name'], 's' => $seller,
             'balances' => $ledger->balances((int) $seller['id']), 'summary' => $ledger->summary((int) $seller['id']),
-            'entries' => $ledger->entries((int) $seller['id'], 500),
+            'entries' => $ledger->entriesPage((int) $seller['id'], $lp = \Waimart\Core\ListParams::from($req, ['id' => 'e.id'], 'id', 'desc'),
+                $bucket = (string) ($req->query['bucket'] ?? ''), $type = (string) ($req->query['type'] ?? '')),
+            'lp' => $lp, 'bucket' => $bucket, 'type' => $type,
             'payouts' => (new PayoutService())->list((int) $seller['id'], null, 50),
         ]);
     }

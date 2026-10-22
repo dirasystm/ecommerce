@@ -23,9 +23,10 @@ final class OrderController extends SellerController
         $tab = (string) ($req->query['tab'] ?? 'new');
         $tab = isset(SellerOrderService::SELLER_TABS[$tab]) ? $tab : 'new';
         $svc = new SellerOrderService();
+        $lp = \Waimart\Core\ListParams::from($req, ['confirmed' => 'o.confirmed_at', 'value' => 'so.items_subtotal'], 'confirmed', 'desc');
         return $this->view('orders/index', [
-            'title' => 'Orders', 'tab' => $tab,
-            'rows' => $svc->forSeller($this->sellerId(), $tab),
+            'title' => 'Orders', 'tab' => $tab, 'lp' => $lp,
+            'rows' => $svc->forSellerPage($this->sellerId(), $tab, $lp),
             'counts' => $svc->sellerCounts($this->sellerId()),
         ]);
     }

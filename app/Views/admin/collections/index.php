@@ -2,47 +2,40 @@
 use Waimart\Core\View;
 use Waimart\Services\OrderPresenter;
 
-/** @var list<array<string,mixed>> $rows @var int $holdDays @var list<array<string,mixed>> $points */
-$req = View::shared('request');
+/** @var list<array<string,mixed>> $rows @var int $holdDays @var list<array<string,mixed>> $points @var \Waimart\Core\ListParams $lp @var string $point */
+$path = '/admin/collections';
+$pointOpts = ['' => 'All pickup points'];
+foreach ($points as $p) {
+    $pointOpts[(string) $p['id']] = $p['name'] . ' (' . $p['code'] . ')';
+}
 ?>
 <div class="wm-admin-head"><h1>Collection desk</h1></div>
-
-<form class="wm-panel wm-panel-body mb-3 row g-2 align-items-end" method="get" action="<?= e(url('/admin/collections')) ?>">
-    <div class="col-md-5">
-        <label class="form-label small" for="q">Order number</label>
-        <input class="form-control text-uppercase" id="q" name="q" value="<?= e($req->query['q'] ?? '') ?>" placeholder="<?= e(\Waimart\Services\Brand::orderPrefix()) ?>-XXXXXXXX" autofocus>
-    </div>
-    <div class="col-md-5">
-        <label class="form-label small" for="point">Pickup point</label>
-        <select class="form-select" id="point" name="point">
-            <option value="">All pickup points</option>
-            <?php foreach ($points as $p): ?>
-                <option value="<?= $p['id'] ?>" <?= (string) ($req->query['point'] ?? '') === (string) $p['id'] ? 'selected' : '' ?>><?= e($p['name']) ?> (<?= e($p['code']) ?>)</option>
-            <?php endforeach; ?>
-        </select>
-    </div>
-    <div class="col-md-2 d-grid"><button class="btn btn-outline-secondary" type="submit">Find</button></div>
-</form>
-
+<p class="small text-muted">Orders waiting at pickup points. Overdue = waiting more than <?= (int) $holdDays ?> days.</p>
+<?= View::partial('partials/table/toolbar', ['id' => 'collections', 'path' => $path, 'lp' => $lp, 'label' => 'Find an order to hand over',
+    'placeholder' => \Waimart\Services\Brand::orderPrefix() . '-XXXXXXXX or customer name',
+    'filters' => [['name' => 'point', 'label' => 'Pickup point', 'value' => $point, 'options' => $pointOpts]]]) ?>
 <div class="wm-panel">
-    <div class="wm-panel-head">Ready for collection <span class="small text-muted fw-normal">Overdue = waiting more than <?= (int) $holdDays ?> days</span></div>
-    <div class="table-responsive">
-        <table class="table table-hover">
-            <thead><tr><th>Order</th><th>Customer</th><th>Pickup point</th><th>Ready since</th><th>Payment</th><th></th></tr></thead>
-            <tbody>
-            <?php foreach ($rows as $r): ?>
-                <tr>
-                    <td class="fw-semibold"><?= e($r['order_number']) ?></td>
-                    <td><?= e(OrderPresenter::firstName($r['customer_name'])) ?></td>
-                    <td class="small"><?= e($r['pickup_name']) ?></td>
-                    <td class="small text-nowrap"><?= e(date('d M H:i', strtotime($r['ready_at']))) ?><?= (int) $r['overdue'] ? ' <span class="badge badge-soft-danger">Overdue</span>' : '' ?></td>
-                    <td class="small"><?= $r['payment_method'] === 'cod' ? '<span class="badge badge-soft-warning">Collect ' . e(money($r['grand_total'])) . ' cash</span>' : e(OrderPresenter::payment($r['payment_status'])) ?></td>
-                    <td class="text-end"><a class="btn btn-sm btn-wm-green" href="<?= e(url('/admin/collections/' . $r['id'])) ?>">Hand over</a></td>
-                </tr>
-            <?php endforeach; ?>
-            <?php if (!$rows): ?><tr><td colspan="6" class="text-center text-muted py-4">No orders waiting for collection.</td></tr><?php endif; ?>
-            </tbody>
-        </table>
+    <div id="collections" class="wm-table-region" data-table-region data-loading-text="Loading orders…">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <caption class="visually-hidden">Orders ready for collection</caption>
+                <thead><tr><?= sort_th('Order', 'order', $lp, $path) ?><th scope="col">Customer</th><th scope="col">Pickup point</th><?= sort_th('Ready since', 'ready', $lp, $path) ?><th scope="col">Payment</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
+                <tbody>
+                <?php foreach ($rows as $r): ?>
+                    <tr>
+                        <td class="fw-semibold"><?= e($r['order_number']) ?></td>
+                        <td><?= e(OrderPresenter::firstName($r['customer_name'])) ?></td>
+                        <td class="small"><?= e($r['pickup_name']) ?></td>
+                        <td class="small text-nowrap"><?= e(date('d M H:i', strtotime($r['ready_at']))) ?><?= (int) $r['overdue'] ? ' <span class="badge badge-soft-danger">Overdue</span>' : '' ?></td>
+                        <td class="small"><?= $r['payment_method'] === 'cod' ? '<span class="badge badge-soft-warning">Collect ' . e(money($r['grand_total'])) . ' cash</span>' : e(OrderPresenter::payment($r['payment_status'])) ?></td>
+                        <td class="text-end"><a class="btn btn-sm btn-wm-green" href="<?= e(url('/admin/collections/' . $r['id'])) ?>">Hand over<span class="visually-hidden"> <?= e($r['order_number']) ?></span></a></td>
+                    </tr>
+                <?php endforeach; ?>
+                <?php if (!$rows): ?><?= empty_row(6, $lp->q !== '' || $point !== '', 'No orders waiting for collection.') ?><?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+        <?= View::partial('partials/table/footer', ['lp' => $lp, 'path' => $path, 'id' => 'collections', 'noun' => 'orders']) ?>
     </div>
 </div>
 <p class="small text-muted mt-2">Overdue orders can be cancelled from the order page; cancelling releases the reserved stock.</p>

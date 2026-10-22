@@ -73,6 +73,31 @@ final class SellerLedgerService
     }
 
     /** @return list<array<string,mixed>> */
+    /**
+     * One page of a seller's ledger, newest first, filterable by balance and entry type, searchable by order part, payout or note.
+     * @return list<array<string,mixed>>
+     */
+    public function entriesPage(int $sellerId, \Waimart\Core\ListParams $lp, string $bucket = '', string $type = ''): array
+    {
+        $where = ['e.seller_id = ?'];
+        $params = [$sellerId];
+        if (isset(self::BUCKET_LABELS[$bucket])) {
+            $where[] = 'e.bucket = ?';
+            $params[] = $bucket;
+        }
+        if (isset(self::TYPE_LABELS[$type])) {
+            $where[] = 'e.entry_type = ?';
+            $params[] = $type;
+        }
+        if ($lp->q !== '') {
+            $where[] = '(so.sub_number LIKE ? OR p.payout_number LIKE ? OR e.note LIKE ?)';
+            array_push($params, $lp->like(), $lp->like(), $lp->like());
+        }
+        return $lp->fetch($this->db, 'SELECT e.*, so.sub_number, p.payout_number',
+            'FROM seller_ledger_entries e LEFT JOIN seller_orders so ON so.id = e.seller_order_id LEFT JOIN seller_payouts p ON p.id = e.payout_id WHERE ' . implode(' AND ', $where),
+            $params, 'e.id DESC');
+    }
+
     public function entries(int $sellerId, int $limit = 200): array
     {
         return $this->db->all(

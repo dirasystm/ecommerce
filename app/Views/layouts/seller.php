@@ -94,6 +94,7 @@ $renderNav = function () use ($nav, $active, $seller): string {
     </main>
 </div>
 <script src="<?= e(asset('vendor/bootstrap/bootstrap.bundle.min.js')) ?>"></script>
+<script src="<?= e(asset('js/ui.js')) ?>"></script>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <script src="<?= e(asset('js/admin.js')) ?>"></script>
 </body>

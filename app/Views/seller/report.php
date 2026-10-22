@@ -22,7 +22,7 @@
         <section class="wm-panel">
             <div class="wm-panel-head">Best sellers (delivered or collected, after returns)</div>
             <div class="table-responsive"><table class="table table-sm mb-0">
-                <thead><tr><th>Product</th><th class="text-end">Units</th><th class="text-end">Value</th></tr></thead>
+                <thead><tr><th scope="col">Product</th><th scope="col" class="text-end">Units</th><th scope="col" class="text-end">Value</th></tr></thead>
                 <tbody>
                 <?php foreach ($r['top'] as $t): ?>
                     <tr><td><?= e($t['product_name']) ?></td><td class="text-end"><?= (int) $t['units'] ?></td><td class="text-end"><?= e(money($t['value'])) ?></td></tr>

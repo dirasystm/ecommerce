@@ -26,7 +26,6 @@ use Waimart\Services\SmsGateway;
  */
 final class MessagingController extends AdminController
 {
-    private const PER_PAGE = 25;
 
     /** Templates whose stored body is redacted (it held a code or link): never re-sent from the log. */
     private const NO_RESEND = ['password_reset', 'password_reset_code', 'order_claim_code', 'order_ready_for_collection', 'order_placed'];
@@ -72,13 +71,8 @@ final class MessagingController extends AdminController
                 $params[] = $phone . '%';
             }
         }
-        $perPage = in_array((int) ($req->query['per'] ?? 0), [25, 50, 100], true) ? (int) $req->query['per'] : self::PER_PAGE;
-        $w = implode(' AND ', $where);
-        $from = 'FROM notifications n LEFT JOIN orders o ON o.id = n.order_id';
-        $total = (int) $db->value("SELECT COUNT(*) $from WHERE $w", $params);
-        $pages = max(1, (int) ceil($total / $perPage));
-        $page = max(1, min($pages, (int) ($req->query['page'] ?? 1)));
-        $rows = $db->all("SELECT n.*, o.order_number $from WHERE $w ORDER BY n.id DESC LIMIT $perPage OFFSET " . (($page - 1) * $perPage), $params);
+        $lp = \Waimart\Core\ListParams::from($req, ['when' => 'n.id'], 'when', 'desc');
+        $rows = $lp->fetch($db, 'SELECT n.*, o.order_number', 'FROM notifications n LEFT JOIN orders o ON o.id = n.order_id WHERE ' . implode(' AND ', $where), $params);
 
         return $this->view('messaging/index', [
             'title' => 'Email & SMS', 'stats' => $stats, 'delivered' => $delivered,
@@ -86,7 +80,7 @@ final class MessagingController extends AdminController
             'emailValues' => SettingsService::values('email'), 'smtpSecret' => (new SecretStore())->status('smtp_password'),
             'mode' => NotificationService::channelMode(),
             'mail' => NotificationService::mailConfig(), 'balance' => $this->balance(!empty($req->query['refresh'])),
-            'rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => $pages, 'perPage' => $perPage,
+            'rows' => $rows, 'lp' => $lp,
             'channel' => $channel, 'status' => $status, 'search' => $search, 'noResend' => self::NO_RESEND,
         ]);
     }

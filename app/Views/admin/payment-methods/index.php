@@ -11,7 +11,7 @@ $badge = ['on' => 'badge-soft-success', 'off' => 'badge-soft-muted', 'incomplete
     cash on delivery is confirmed by staff. No payment gateway is connected, so there are no gateway callbacks or keys to manage.</p>
 <div class="wm-panel mb-3"><div class="table-responsive">
     <table class="table table-hover mb-0 align-middle">
-        <thead><tr><th>Method</th><th>At checkout</th><th>Limits</th><th>Waiting</th><th>Last 30 days</th><th>Last verified</th><th></th></tr></thead>
+        <thead><tr><th scope="col">Method</th><th scope="col">At checkout</th><th scope="col">Limits</th><th scope="col">Waiting</th><th scope="col">Last 30 days</th><th scope="col">Last verified</th><th scope="col"></th></tr></thead>
         <tbody>
         <?php foreach ($methods as $code => $m): $h = $health[$code]; ?>
             <tr>

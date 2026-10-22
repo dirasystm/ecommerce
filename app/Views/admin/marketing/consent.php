@@ -3,7 +3,7 @@ use Waimart\Core\View;
 use Waimart\Services\Marketing\LeadService;
 
 /**
- * @var array<string,mixed> $counts @var list<array<string,mixed>> $rows @var int $page @var int $pages
+ * @var array<string,mixed> $counts @var list<array<string,mixed>> $rows @var \Waimart\Core\ListParams $lp @var string $channel
  * @var list<array<string,mixed>> $suppressed @var bool $full
  */
 $customers = max(1, (int) $counts['customers']);
@@ -40,6 +40,10 @@ $sources = ['registration' => 'Sign-up form', 'preferences' => 'Privacy & market
 
 <section class="wm-panel">
     <div class="wm-panel-head">Consent changes</div>
+    <div class="wm-panel-body pb-0"><?= View::partial('partials/table/toolbar', ['id' => 'consents', 'path' => '/admin/marketing/consent', 'lp' => $lp, 'label' => 'Search consent changes',
+        'placeholder' => 'Email address', 'search' => $full,
+        'filters' => [['name' => 'channel', 'label' => 'Channel', 'value' => $channel, 'options' => ['' => 'All channels', 'email' => 'Email', 'sms' => 'SMS', 'personalisation' => 'Personalisation']]]]) ?></div>
+    <div id="consents" class="wm-table-region" data-table-region data-loading-text="Loading consent changes…">
     <div class="table-responsive"><table class="table table-sm align-middle mb-0">
         <caption class="visually-hidden">Consent history, newest first</caption>
         <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">Channel</th><th scope="col">Choice</th><th scope="col">Where</th><th scope="col">Wording</th></tr></thead>
@@ -54,8 +58,9 @@ $sources = ['registration' => 'Sign-up form', 'preferences' => 'Privacy & market
                 <td class="small"><?= e((string) $r['wording_version']) ?></td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$rows): ?><tr><td colspan="6" class="text-center text-muted small py-3">No consent changes recorded yet.</td></tr><?php endif; ?>
+        <?php if (!$rows): ?><?= empty_row(6, $lp->q !== '' || $channel !== '', 'No consent changes recorded yet.') ?><?php endif; ?>
         </tbody>
     </table></div>
+    <?= View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/marketing/consent', 'id' => 'consents', 'noun' => 'changes']) ?>
+    </div>
 </section>
-<?= View::partial('partials/pagination', ['page' => $page, 'pages' => $pages, 'path' => '/admin/marketing/consent']) ?>

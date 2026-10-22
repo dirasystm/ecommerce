@@ -1,8 +1,8 @@
 <?php
 use Waimart\Core\View;
 
-/** @var list<array<string,mixed>> $rows @var string $status */
-$req = View::shared('request');
+/** @var list<array<string,mixed>> $rows @var string $status @var \Waimart\Core\ListParams $lp */
+$path = '/admin/pickup-points';
 ?>
 <div class="wm-admin-head">
     <h1>Pickup points</h1>
@@ -13,20 +13,14 @@ $req = View::shared('request');
         <a class="btn btn-wm-green" href="<?= e(url('/admin/pickup-points/new')) ?>"><i class="bi bi-plus-lg" aria-hidden="true"></i> New pickup point</a>
     </div>
 </div>
-<form class="d-flex flex-wrap gap-2 mb-3" method="get" action="<?= e(url('/admin/pickup-points')) ?>">
-    <label class="visually-hidden" for="q">Search</label>
-    <input class="form-control form-control-sm" id="q" name="q" placeholder="Name, code, town or county" value="<?= e($req->query['q'] ?? '') ?>" style="max-width:300px">
-    <select class="form-select form-select-sm" name="status" aria-label="Status" style="max-width:160px">
-        <option value="">All</option>
-        <option value="active" <?= $status === 'active' ? 'selected' : '' ?>>Active</option>
-        <option value="inactive" <?= $status === 'inactive' ? 'selected' : '' ?>>Inactive</option>
-    </select>
-    <button class="btn btn-sm btn-outline-secondary" type="submit">Search</button>
-</form>
+<?= View::partial('partials/table/toolbar', ['id' => 'points', 'path' => $path, 'lp' => $lp, 'label' => 'Search pickup points', 'placeholder' => 'Name, code, town or county',
+    'filters' => [['name' => 'status', 'label' => 'Status', 'value' => $status, 'options' => ['' => 'Any status', 'active' => 'Active', 'inactive' => 'Inactive']]]]) ?>
 <div class="wm-panel">
+    <div id="points" class="wm-table-region" data-table-region data-loading-text="Loading pickup points…">
     <div class="table-responsive">
-        <table class="table table-hover">
-            <thead><tr><th>Code</th><th>Name</th><th>Location</th><th class="text-end">Fee</th><th>COD</th><th class="text-end">Awaiting collection</th><th>Status</th><th></th></tr></thead>
+        <table class="table table-hover mb-0 align-middle">
+            <caption class="visually-hidden">Pickup points</caption>
+            <thead><tr><?= sort_th('Code', 'code', $lp, $path) ?><?= sort_th('Name', 'name', $lp, $path) ?><?= sort_th('Location', 'location', $lp, $path) ?><th scope="col" class="text-end">Fee</th><th scope="col">COD</th><?= sort_th('Awaiting collection', 'waiting', $lp, $path, 'text-end') ?><th scope="col">Status</th><th scope="col"><span class="visually-hidden">Actions</span></th></tr></thead>
             <tbody>
             <?php foreach ($rows as $p): ?>
                 <tr>
@@ -47,8 +41,10 @@ $req = View::shared('request');
                     </td>
                 </tr>
             <?php endforeach; ?>
-            <?php if (!$rows): ?><tr><td colspan="8" class="text-center text-muted py-4">No pickup points found.</td></tr><?php endif; ?>
+            <?php if (!$rows): ?><?= empty_row(8, $lp->q !== '' || $status !== '', 'No pickup points yet.') ?><?php endif; ?>
             </tbody>
         </table>
+    </div>
+    <?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/pickup-points', 'id' => 'points', 'noun' => 'pickup points']) ?>
     </div>
 </div>

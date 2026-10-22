@@ -32,7 +32,7 @@ $form = fn (string $action, string $label, string $class, string $confirm, strin
         <section class="wm-panel mb-3">
             <div class="wm-panel-head">Items</div>
             <div class="table-responsive"><table class="table table-sm mb-0 align-middle">
-                <thead><tr><th>Item</th><th class="text-end">Qty</th><th class="text-end">Value</th><th>Inspection</th></tr></thead>
+                <thead><tr><th scope="col">Item</th><th scope="col" class="text-end">Qty</th><th scope="col" class="text-end">Value</th><th scope="col">Inspection</th></tr></thead>
                 <tbody>
                 <?php foreach ($items as $i): ?>
                     <tr>

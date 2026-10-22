@@ -36,7 +36,8 @@ final class ProductController extends SellerController
         $status = in_array($status, self::STATUSES, true) ? $status : null;
         return $this->view('products/index', [
             'title' => 'My products', 'status' => $status,
-            'rows' => $this->service()->list($this->sellerId(), $status),
+            'rows' => $this->service()->listPage($this->sellerId(), $status, $lp = \Waimart\Core\ListParams::from($req, ['updated' => 'p.updated_at', 'name' => 'p.name', 'available' => 'available'], 'updated', 'desc')),
+            'lp' => $lp,
             'counts' => $this->service()->counts($this->sellerId()),
             'moderated' => SellerProductService::moderationRequired(),
         ]);

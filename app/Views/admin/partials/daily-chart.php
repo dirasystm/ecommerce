@@ -83,7 +83,7 @@ $r = 4;
     <details class="mt-2 small">
         <summary>Show as table</summary>
         <table class="table table-sm mt-2 wm-num">
-            <thead><tr><th>Day</th><th class="text-end">Orders</th><th class="text-end">Booked sales</th></tr></thead>
+            <thead><tr><th scope="col">Day</th><th scope="col" class="text-end">Orders</th><th scope="col" class="text-end">Booked sales</th></tr></thead>
             <tbody>
             <?php foreach ($daily as $d): ?>
                 <tr><td><?= e(date('D j M', strtotime($d['day']))) ?></td><td class="text-end"><?= (int) $d['orders'] ?></td><td class="text-end"><?= e(money($d['booked'])) ?></td></tr>

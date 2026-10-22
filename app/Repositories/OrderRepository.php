@@ -61,6 +61,30 @@ final class OrderRepository
         return $order;
     }
 
+    /**
+     * One page of a customer's orders, searchable by order number, filterable by stage.
+     * @return list<array<string,mixed>>
+     */
+    public function forUserPage(int $userId, \Waimart\Core\ListParams $lp, string $stage = ''): array
+    {
+        $where = 'o.user_id = ?';
+        $params = [$userId];
+        $where .= match ($stage) {
+            'open' => " AND o.status NOT IN ('delivered','collected','cancelled','expired','returned')",
+            'done' => " AND o.status IN ('delivered','collected')",
+            'cancelled' => " AND o.status IN ('cancelled','expired','returned')",
+            default => '',
+        };
+        if ($lp->q !== '') {
+            $where .= ' AND (o.order_number LIKE ? OR EXISTS (SELECT 1 FROM order_items oi WHERE oi.order_id = o.id AND oi.product_name LIKE ?))';
+            array_push($params, $lp->like(), $lp->like());
+        }
+        return $lp->fetch($this->db, 'SELECT o.order_number, o.status, o.payment_status, o.grand_total, o.placed_at, o.fulfilment_method,
+                    (SELECT SUM(quantity) FROM order_items WHERE order_id = o.id) AS item_count,
+                    (SELECT image_path FROM order_items WHERE order_id = o.id ORDER BY id LIMIT 1) AS image',
+            "FROM orders o WHERE $where", $params, 'o.id DESC');
+    }
+
     /** @return list<array<string,mixed>> */
     public function forUser(int $userId, int $limit = 50): array
     {

@@ -145,3 +145,24 @@ function error(string $field): ?string
 {
     return Session::errors()[$field] ?? null;
 }
+
+/**
+ * Sortable column header for a ListParams table: a link that toggles the direction, with aria-sort for screen readers.
+ * The key must be one of the table's allowed sort keys (anything else is ignored by ListParams).
+ */
+function sort_th(string $label, string $key, \Waimart\Core\ListParams $lp, string $path, string $class = ''): string
+{
+    $on = $lp->sort === $key;
+    $next = $on && $lp->dir === 'asc' ? 'desc' : 'asc';
+    $icon = $on ? ($lp->dir === 'asc' ? 'bi-sort-up' : 'bi-sort-down') : 'bi-arrow-down-up';
+    return '<th scope="col" class="' . e($class) . '"' . ($on ? ' aria-sort="' . ($lp->dir === 'asc' ? 'ascending' : 'descending') . '"' : '') . '>'
+        . '<a class="wm-sort' . ($on ? ' active' : '') . '" href="' . e(query_url($path, ['sort' => $key, 'dir' => $next, 'page' => null])) . '" data-live-link>'
+        . e($label) . ' <i class="bi ' . $icon . '" aria-hidden="true"></i><span class="visually-hidden">, sort ' . ($next === 'asc' ? 'ascending' : 'descending') . '</span></a></th>';
+}
+
+/** Empty-state row: different wording when a search or filter is active. */
+function empty_row(int $cols, bool $filtered, string $none, string $noMatch = 'No matching records found. Try changing your search or filters.'): string
+{
+    return '<tr class="wm-empty-row"><td colspan="' . $cols . '"><div class="wm-empty"><i class="bi ' . ($filtered ? 'bi-search' : 'bi-inbox') . '" aria-hidden="true"></i>'
+        . '<div>' . e($filtered ? $noMatch : $none) . '</div></div></td></tr>';
+}

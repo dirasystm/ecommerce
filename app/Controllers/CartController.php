@@ -15,11 +15,23 @@ final class CartController extends Controller
     public function show(Request $req): Response
     {
         \Waimart\Services\ExpiryService::maybeSweep();   // fallback if the scheduler is not running (C8)
+        CartService::current()->activity();      // still shopping: cart reminders wait
         $cart = CartService::current()->summary();
         $recs = !$cart['is_empty'] && \Waimart\Services\Marketing\Recommender::enabled('cart')
             ? (new \Waimart\Services\Marketing\Recommender())->complements(array_column($cart['lines'], 'product_id'), 8) : [];
         return $this->view('cart/index', ['title' => 'Cart', 'cart' => $cart, 'recs' => $recs])
             ->withHeader('Cache-Control', 'no-store, private');
+    }
+
+    /** Reminder link: opens the saved cart (sign-in first for a customer's cart). */
+    public function recover(Request $req): Response
+    {
+        $r = (new \Waimart\Services\Marketing\CartRecovery())->open((int) $req->param('id'), (string) $req->param('token'));
+        if ($r['flash'] !== null) {
+            \Waimart\Core\Session::flash($r['flash'][0], $r['flash'][1]);
+        }
+        return Response::redirect($r['to'])->withHeader('Cache-Control', 'no-store, private')->withHeader('Referrer-Policy', 'no-referrer')
+            ->withHeader('X-Robots-Tag', 'noindex');
     }
 
     public function add(Request $req): Response

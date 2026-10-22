@@ -20,15 +20,29 @@ final class StaffController extends AdminController
     public function index(Request $req): Response
     {
         $db = App::db();
-        $rows = $db->all(
-            "SELECT u.id, u.email, u.first_name, u.last_name, u.status, u.last_login_at, u.mfa_enabled_at, u.must_change_password,
+        $lp = \Waimart\Core\ListParams::from($req, ['name' => 'u.status, u.first_name', 'login' => 'u.last_login_at'], 'name', 'asc');
+        $status = (string) ($req->query['status'] ?? '');
+        $role = (string) ($req->query['role'] ?? '');
+        $where = ['u.is_staff = 1'];
+        $params = [];
+        if (in_array($status, ['active', 'suspended'], true)) {
+            $where[] = 'u.status = ?';
+            $params[] = $status;
+        }
+        if (ctype_digit($role)) {
+            $where[] = 'EXISTS (SELECT 1 FROM user_roles x WHERE x.user_id = u.id AND x.role_id = ?)';
+            $params[] = (int) $role;
+        }
+        if ($lp->q !== '') {
+            $where[] = "(CONCAT_WS(' ', u.first_name, u.last_name) LIKE ? OR u.email LIKE ?)";
+            array_push($params, $lp->like(), $lp->like());
+        }
+        $rows = $lp->fetch($db, "SELECT u.id, u.email, u.first_name, u.last_name, u.status, u.last_login_at, u.mfa_enabled_at, u.must_change_password,
                     (SELECT COUNT(*) FROM user_permissions up WHERE up.user_id = u.id) AS grants,
-                    GROUP_CONCAT(r.name ORDER BY r.name SEPARATOR ', ') AS roles
-               FROM users u LEFT JOIN user_roles ur ON ur.user_id = u.id LEFT JOIN roles r ON r.id = ur.role_id
-              WHERE u.is_staff = 1 GROUP BY u.id ORDER BY u.status, u.first_name"
-        );
+                    (SELECT GROUP_CONCAT(r.name ORDER BY r.name SEPARATOR ', ') FROM user_roles ur JOIN roles r ON r.id = ur.role_id WHERE ur.user_id = u.id) AS roles",
+            'FROM users u WHERE ' . implode(' AND ', $where), $params, 'u.id');
         $roles = $db->all('SELECT r.*, (SELECT GROUP_CONCAT(p.slug ORDER BY p.slug SEPARATOR \', \') FROM role_permissions rp JOIN permissions p ON p.id = rp.permission_id WHERE rp.role_id = r.id) AS perms FROM roles r ORDER BY r.id');
-        return $this->view('staff/index', ['title' => 'Staff', 'rows' => $rows, 'roles' => $roles]);
+        return $this->view('staff/index', ['title' => 'Staff', 'rows' => $rows, 'roles' => $roles, 'lp' => $lp, 'status' => $status, 'role' => $role]);
     }
 
     public function create(Request $req): Response
@@ -122,23 +136,24 @@ final class StaffController extends AdminController
 
     public function customers(Request $req): Response
     {
-        $q = trim((string) ($req->query['q'] ?? ''));
+        $lp = \Waimart\Core\ListParams::from($req, ['joined' => 'u.id', 'name' => 'u.first_name', 'orders' => 'orders', 'spent' => 'spent'], 'joined', 'desc');
         $params = [];
         $where = 'u.is_staff = 0';
-        if ($q !== '') {
-            $like = '%' . addcslashes(mb_substr($q, 0, 80), '%_\\') . '%';
-            $where .= ' AND (u.email LIKE ? OR u.first_name LIKE ? OR u.last_name LIKE ? OR u.phone LIKE ?)';
-            $phone = \Waimart\Core\Validator::normalizePhone($q);
-            array_push($params, $like, $like, $like, $phone ? "%$phone%" : $like);
+        $status = (string) ($req->query['status'] ?? '');
+        if (in_array($status, ['active', 'suspended'], true)) {
+            $where .= ' AND u.status = ?';
+            $params[] = $status;
         }
-        $rows = App::db()->all(
-            "SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.status, u.created_at,
+        if ($lp->q !== '') {
+            $where .= " AND (u.email LIKE ? OR CONCAT_WS(' ', u.first_name, u.last_name) LIKE ? OR u.phone LIKE ?)";
+            $phone = \Waimart\Core\Validator::normalizePhone($lp->q);
+            array_push($params, $lp->like(), $lp->like(), $phone ? "%$phone%" : $lp->like());
+        }
+        $rows = $lp->fetch(App::db(), "SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.status, u.created_at,
                     (SELECT COUNT(*) FROM orders o WHERE o.user_id = u.id) AS orders,
-                    (SELECT COALESCE(SUM(grand_total),0) FROM orders o WHERE o.user_id = u.id AND o.status NOT IN ('cancelled','expired')) AS spent
-               FROM users u WHERE $where ORDER BY u.id DESC LIMIT 100",
-            $params
-        );
-        return $this->view('staff/customers', ['title' => 'Customers', 'rows' => $rows, 'q' => $q]);
+                    (SELECT COALESCE(SUM(grand_total),0) FROM orders o WHERE o.user_id = u.id AND o.status NOT IN ('cancelled','expired')) AS spent",
+            "FROM users u WHERE $where", $params, 'u.id DESC');
+        return $this->view('staff/customers', ['title' => 'Customers', 'rows' => $rows, 'lp' => $lp, 'status' => $status]);
     }
 
     public function customer(Request $req): Response
@@ -149,7 +164,8 @@ final class StaffController extends AdminController
         \Waimart\Services\AuditLogger::log('customer.viewed', 'user', $id, null, null, $this->actor());     // personal data access is logged
         return $this->view('staff/customer', [
             'title' => $c['first_name'] . ' ' . $c['last_name'], 'c' => $c,
-            'orders' => $db->all('SELECT id, order_number, status, grand_total, placed_at FROM orders WHERE user_id = ? ORDER BY id DESC LIMIT 50', [$id]),
+            'orders' => ($lp = \Waimart\Core\ListParams::from($req, ['placed' => 'placed_at'], 'placed', 'desc'))->fetch($db, 'SELECT id, order_number, status, grand_total, placed_at', 'FROM orders WHERE user_id = ?', [$id], 'id DESC'),
+            'lp' => $lp,
             'addresses' => $db->all('SELECT a.*, co.name AS county FROM user_addresses a JOIN counties co ON co.id = a.county_id WHERE a.user_id = ?', [$id]),
         ]);
     }

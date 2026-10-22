@@ -28,7 +28,7 @@ final class EmailLayout
         'password_reset' => 'Reset my password', 'account_welcome' => 'Sign in to my account',
         'order_claim_code' => 'Open my orders', 'seller_message' => 'Open Seller Centre',
         'pickup_application_received' => 'Check my application', 'pickup_application_new' => 'Review the application',
-        'mkt_welcome' => 'Start shopping', 'mkt_cart' => 'Complete my order', 'mkt_post_purchase' => 'See the picks', 'mkt_review' => 'Write a review',
+        'mkt_welcome' => 'Start shopping', 'mkt_cart' => 'Return to your cart', 'mkt_post_purchase' => 'See the picks', 'mkt_review' => 'Write a review',
         'mkt_reengage' => 'See what is new', 'mkt_price_drop' => 'See the new price', 'mkt_discovery' => 'See the picks',
     ];
     private const EYEBROWS = ['orders' => 'Order update', 'payments' => 'Payment', 'returns' => 'Returns & refunds', 'cases' => 'Help with your order',

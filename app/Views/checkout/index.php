@@ -29,7 +29,7 @@ foreach ($pickupPoints as $pp) {
         </ol>
     </nav>
 
-    <form method="post" action="<?= e(url('/checkout')) ?>" class="row g-3" data-checkout data-quote-url="<?= e(url('/checkout/quote')) ?>" novalidate>
+    <form method="post" action="<?= e(url('/checkout')) ?>" class="row g-3" data-checkout data-loading-overlay="Placing your order. Please wait…" data-loading-text="Placing your order…" data-quote-url="<?= e(url('/checkout/quote')) ?>" novalidate>
         <?= csrf_field() ?>
         <input type="hidden" name="checkout_token" value="<?= e($checkoutToken) ?>">
 
@@ -56,8 +56,9 @@ foreach ($pickupPoints as $pp) {
                         <?= field_error('customer_phone') ?>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label" for="customer_email">Email <?= $user ? '' : '<span class="text-muted fw-normal">(optional — for order emails)</span>' ?></label>
-                        <input class="form-control<?= invalid('customer_email') ?>" id="customer_email" name="customer_email" type="email" autocomplete="email"
+                        <?php $emailRequired = $user !== null || \Waimart\Core\Settings::bool('guest_email_required', false);   // same rule as CheckoutService ?>
+                        <label class="form-label" for="customer_email">Email <?= $emailRequired ? '<span class="text-muted fw-normal">(for order updates)</span>' : '<span class="text-muted fw-normal">(optional — for order emails)</span>' ?></label>
+                        <input class="form-control<?= invalid('customer_email') ?>" id="customer_email" name="customer_email" type="email" autocomplete="email"<?= $emailRequired ? ' required aria-required="true"' : '' ?>
                                value="<?= e(fv('customer_email', $user['email'] ?? '')) ?>">
                         <?= field_error('customer_email') ?>
                     </div>

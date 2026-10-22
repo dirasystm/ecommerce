@@ -18,10 +18,10 @@ final class PickupApplicationController extends AdminController
     {
         $svc = new PickupApplicationService();
         $status = (string) ($req->query['status'] ?? 'pending');
-        $search = (string) ($req->query['q'] ?? '');
+        $lp = \Waimart\Core\ListParams::from($req, ['applied' => "a.status = 'pending' DESC, a.created_at", 'business' => 'a.business_name'], 'applied', 'desc');
         return $this->view('pickup-applications/index', [
-            'title' => 'Pickup station applications', 'rows' => $svc->list($status, $search), 'counts' => $svc->counts(),
-            'status' => isset(PickupApplicationService::STATUSES[$status]) ? $status : 'all', 'search' => $search,
+            'title' => 'Pickup station applications', 'rows' => $svc->page($status, $lp), 'counts' => $svc->counts(), 'lp' => $lp,
+            'status' => isset(PickupApplicationService::STATUSES[$status]) ? $status : 'all', 'search' => $lp->q,
         ]);
     }
 

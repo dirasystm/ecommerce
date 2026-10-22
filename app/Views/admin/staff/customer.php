@@ -2,7 +2,7 @@
 use Waimart\Core\Validator;
 use Waimart\Services\OrderPresenter;
 
-/** @var array<string,mixed> $c @var list<array<string,mixed>> $orders @var list<array<string,mixed>> $addresses */
+/** @var array<string,mixed> $c @var list<array<string,mixed>> $orders @var list<array<string,mixed>> $addresses @var \Waimart\Core\ListParams $lp */
 ?>
 <div class="wm-admin-head">
     <div><h1><?= e($c['first_name'] . ' ' . $c['last_name']) ?></h1>
@@ -12,16 +12,21 @@ use Waimart\Services\OrderPresenter;
 <div class="row g-3">
     <div class="col-lg-8">
         <section class="wm-panel"><div class="wm-panel-head">Orders</div>
+            <div id="corders" class="wm-table-region" data-table-region data-loading-text="Fetching orders…">
             <div class="table-responsive"><table class="table table-sm table-hover mb-0 wm-num">
+                <caption class="visually-hidden">Orders of this customer</caption>
+                <thead><tr><th scope="col">Order</th><th scope="col">Status</th><th scope="col">Placed</th><th scope="col" class="text-end">Total</th></tr></thead>
                 <tbody>
                 <?php foreach ($orders as $o): ?>
                     <tr><td><a href="<?= e(url('/admin/orders/' . $o['id'])) ?>"><?= e($o['order_number']) ?></a></td>
                         <td><span class="badge <?= OrderPresenter::badgeClass($o['status']) ?>"><?= e(OrderPresenter::status($o['status'])) ?></span></td>
                         <td class="small"><?= e(date('d M Y', strtotime($o['placed_at']))) ?></td><td class="text-end"><?= e(money($o['grand_total'])) ?></td></tr>
                 <?php endforeach; ?>
-                <?php if (!$orders): ?><tr><td class="text-muted text-center py-3">No orders.</td></tr><?php endif; ?>
+                <?php if (!$orders): ?><?= empty_row(4, false, 'No orders.') ?><?php endif; ?>
                 </tbody>
-            </table></div></section>
+            </table></div>
+            <?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/customers/' . $c['id'] . '', 'id' => 'corders', 'noun' => 'orders']) ?>
+            </div></section>
     </div>
     <div class="col-lg-4">
         <section class="wm-panel wm-panel-body small">

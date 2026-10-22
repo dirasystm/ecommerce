@@ -75,9 +75,9 @@ final class AccountController extends Controller
         return $this->view('account/reviews', [
             'title' => 'Reviews', 'section' => 'reviews',
             'pending' => (new \Waimart\Services\ReviewService())->pendingForUser($uid),
-            'mine' => App::db()->all(
-                'SELECT r.*, oi.product_name FROM reviews r JOIN order_items oi ON oi.id = r.order_item_id WHERE r.user_id = ? ORDER BY r.id DESC LIMIT 50', [$uid]
-            ),
+            'mine' => ($lp = \Waimart\Core\ListParams::from($req))->fetch(App::db(), 'SELECT r.*, oi.product_name',
+                'FROM reviews r JOIN order_items oi ON oi.id = r.order_item_id WHERE r.user_id = ?', [$uid], 'r.id DESC'),
+            'lp' => $lp,
         ]);
     }
 
@@ -90,12 +90,10 @@ final class AccountController extends Controller
 
     public function wishlist(Request $req): Response
     {
-        $ids = array_map('intval', array_column(App::db()->all(
-            'SELECT product_id FROM wishlist_items WHERE user_id = ? ORDER BY created_at DESC LIMIT 100',
-            [(int) Auth::id()]
-        ), 'product_id'));
+        $lp = \Waimart\Core\ListParams::from($req);
+        $ids = array_map('intval', array_column($lp->fetch(App::db(), 'SELECT w.product_id', 'FROM wishlist_items w WHERE w.user_id = ?', [(int) Auth::id()], 'w.created_at DESC, w.product_id'), 'product_id'));
         return $this->view('account/wishlist', [
-            'title' => 'Wishlist', 'section' => 'wishlist',
+            'title' => 'Wishlist', 'section' => 'wishlist', 'lp' => $lp,
             'items' => (new ProductRepository(App::db()))->cardsByIds($ids),
         ]);
     }

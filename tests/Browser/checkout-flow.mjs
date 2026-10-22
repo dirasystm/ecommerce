@@ -18,31 +18,48 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 const step = (s) => console.log('•', s);
+if (process.env.DEBUG) {
+    page.on('response', (r) => { if (r.request().method() === 'POST') { console.log('  POST', r.status(), r.url(), r.headers()['location'] || ''); } });
+}
+// Tap like a person on a phone: bring the element to the middle of the screen first (clear of the fixed bottom bars).
+const tap = async (sel) => {
+    await page.$eval(sel, (el) => el.scrollIntoView({ block: 'center' }));
+    await page.click(sel);
+};
 
 await page.goto(`${BASE}/product/${slug}`, { waitUntil: 'networkidle0' });
-await page.click('[data-add-btn]');
+// Answer the privacy banner first, as a visitor would (it is fixed at the bottom of the screen until answered).
+const noThanks = await page.$('[data-privacy-banner] button[value="0"]');
+if (noThanks) {
+    await noThanks.click();
+    await page.waitForSelector('[data-privacy-banner]', { hidden: true });
+    step('privacy banner answered (No thanks)');
+}
+await tap('[data-add-btn]');
 await page.waitForSelector('.toast');
 step('added to cart: ' + await page.$eval('.toast-body', (el) => el.textContent));
 
 await page.goto(`${BASE}/checkout`, { waitUntil: 'networkidle0' });
 await page.type('#customer_name', 'Browser Test');
 await page.type('#customer_phone', '0711222333');
-await page.click('label[for="fmPickup"]');
-await page.click('input[name="pickup_point_id"]');
+await page.type('#customer_email', 'browser-test@example.com');
+await tap('label[for="fmPickup"]');
+await tap('[data-station]:not([hidden]) input[name="pickup_point_id"]');   // the list is pre-filtered to the customer's county
 await new Promise((r) => setTimeout(r, 600));
 step('quote shows delivery fee: ' + await page.$eval('[data-fee]', (el) => el.textContent));
-await page.click('#pm_cod');
+await tap('#pm_cod');
 await page.screenshot({ path: path.join(out, 'checkout-filled.png'), fullPage: true });
 
 // Double-click "Place order".
 await Promise.all([
     page.waitForNavigation({ waitUntil: 'networkidle0' }),
-    page.click('[data-place-order]').then(() => page.click('[data-place-order]').catch(() => {})),
+    page.$eval('[data-place-order]', (el) => el.scrollIntoView({ block: 'center' })).then(() => page.click('[data-place-order]')).then(() => page.click('[data-place-order]').catch(() => {})),
 ]);
 const url = page.url();
 step('landed on: ' + url.replace(BASE, ''));
+if (process.env.DEBUG) { console.log('  messages:', await page.$$eval('.alert, .invalid-feedback', (a) => a.map((x) => x.textContent.trim().replace(/\s+/g, ' ')).filter(Boolean))); }
 await page.screenshot({ path: path.join(out, 'confirmation.png'), fullPage: true });
-const number = (url.match(/WM-[A-Z0-9]{8}/) || [])[0];
+const number = (url.match(/(?:WM|BM)-[A-Z0-9]{8}/) || [])[0];
 const link = await page.$eval('[data-select-on-focus]', (el) => el.value).catch(() => null);
 step('order ' + number + (link ? ', private link shown' : ', NO LINK'));
 

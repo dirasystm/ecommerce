@@ -14,7 +14,21 @@ final class ContentPagesController extends AdminController
 {
     public function index(Request $req): Response
     {
-        return $this->view('content/pages/index', ['title' => 'Pages', 'rows' => (new SiteContentService())->pages()]);
+        $lp = \Waimart\Core\ListParams::from($req, ['default' => 'p.is_system DESC, p.sort_order', 'title' => 'p.title', 'updated' => 'p.updated_at'], 'default', 'asc');
+        $status = (string) ($req->query['status'] ?? '');
+        $where = ['1=1'];
+        $params = [];
+        if ($lp->q !== '') {
+            $where[] = '(p.title LIKE ? OR p.slug LIKE ?)';
+            array_push($params, $lp->like(), $lp->like());
+        }
+        if (in_array($status, ['published', 'draft'], true)) {
+            $where[] = 'p.status = ?';
+            $params[] = $status;
+        }
+        $rows = $lp->fetch(\Waimart\Core\App::db(), 'SELECT p.*, u.first_name AS editor',
+            'FROM content_pages p LEFT JOIN users u ON u.id = p.updated_by WHERE ' . implode(' AND ', $where), $params, 'p.title');
+        return $this->view('content/pages/index', ['title' => 'Pages', 'rows' => $rows, 'lp' => $lp, 'status' => $status]);
     }
 
     public function create(Request $req): Response

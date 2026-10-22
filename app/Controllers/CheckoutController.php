@@ -31,6 +31,7 @@ final class CheckoutController extends Controller
     public function show(Request $req): Response
     {
         \Waimart\Services\ExpiryService::maybeSweep();   // fallback if the scheduler is not running (C8)
+        CartService::current()->activity();      // still shopping: cart reminders wait
         $cart = CartService::current()->summary();
         if ($cart['is_empty']) {
             Session::flash('info', 'Your cart is empty.');

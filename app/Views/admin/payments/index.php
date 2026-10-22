@@ -3,7 +3,7 @@ use Waimart\Core\Validator;
 use Waimart\Services\OrderPresenter;
 use Waimart\Services\PaymentOptions;
 
-/** @var list<array<string,mixed>> $rows @var string $tab @var bool $canVerify @var array<string,string> $reasons */
+/** @var \Waimart\Core\ListParams $lp @var list<array<string,mixed>> $rows @var string $tab @var bool $canVerify @var array<string,string> $reasons */
 ?>
 <div class="wm-admin-head"><h1>M-Pesa payments</h1></div>
 <ul class="nav nav-tabs mb-3">
@@ -11,6 +11,9 @@ use Waimart\Services\PaymentOptions;
     <li class="nav-item"><a class="nav-link<?= $tab === 'decided' ? ' active' : '' ?>" href="<?= e(url('/admin/payments', ['tab' => 'decided'])) ?>">Decided</a></li>
 </ul>
 
+<?= \Waimart\Core\View::partial('partials/table/toolbar', ['id' => 'payments', 'path' => '/admin/payments', 'lp' => $lp, 'label' => 'Search payments',
+    'placeholder' => 'M-Pesa code, order number, customer or phone', 'keep' => ['tab' => $tab === 'decided' ? 'decided' : '']]) ?>
+<div id="payments" class="wm-table-region" data-table-region data-loading-text="Loading payments…">
 <?php if ($tab !== 'decided'): ?>
     <p class="small text-muted">Check each code against the M-Pesa statement for the receiving Till / Paybill / phone. Enter the amount actually received.
         Oldest stock holds are listed first — verify before they expire.</p>
@@ -61,12 +64,14 @@ use Waimart\Services\PaymentOptions;
             </div>
         </section>
     <?php endforeach; ?>
-    <?php if (!$rows): ?><div class="wm-panel wm-panel-body text-center text-muted">No payments waiting for verification.</div><?php endif; ?>
+    <?php if (!$rows): ?><div class="wm-panel"><div class="wm-empty"><i class="bi bi-<?= $lp->q !== '' ? 'search' : 'check2-circle' ?>" aria-hidden="true"></i><div><?= $lp->q !== '' ? 'No matching payments found.' : 'No payments waiting for verification.' ?></div></div></div><?php endif; ?>
+    <div class="wm-panel mt-2"><?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/payments', 'id' => 'payments', 'noun' => 'payments']) ?></div>
 <?php else: ?>
     <div class="wm-panel">
         <div class="table-responsive">
-            <table class="table table-sm table-hover">
-                <thead><tr><th>Code</th><th>Order</th><th class="text-end">Claimed</th><th class="text-end">Confirmed</th><th>Decision</th><th>Note</th><th>By</th><th>When</th></tr></thead>
+            <table class="table table-sm table-hover mb-0">
+                <caption class="visually-hidden">Decided payments</caption>
+                <thead><tr><th scope="col">Code</th><th scope="col">Order</th><th scope="col" class="text-end">Claimed</th><th scope="col" class="text-end">Confirmed</th><th scope="col">Decision</th><th scope="col">Note</th><th scope="col">By</th><th scope="col">When</th></tr></thead>
                 <tbody>
                 <?php foreach ($rows as $r): ?>
                     <tr><td><code><?= e($r['transaction_code']) ?></code></td><td><a href="<?= e(url('/admin/orders/' . $r['order_id'])) ?>"><?= e($r['order_number']) ?></a></td>
@@ -75,8 +80,11 @@ use Waimart\Services\PaymentOptions;
                         <td class="small"><?= e((string) $r['decision_note']) ?></td><td class="small"><?= e((string) $r['decided_by']) ?></td>
                         <td class="small text-nowrap"><?= $r['decided_at'] ? e(date('d M H:i', strtotime($r['decided_at']))) : '' ?></td></tr>
                 <?php endforeach; ?>
+                <?php if (!$rows): ?><?= empty_row(8, $lp->q !== '', 'No decided payments yet.') ?><?php endif; ?>
                 </tbody>
             </table>
         </div>
+        <?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/payments', 'id' => 'payments', 'noun' => 'payments']) ?>
     </div>
 <?php endif; ?>
+</div>

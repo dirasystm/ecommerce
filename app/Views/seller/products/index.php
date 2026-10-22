@@ -2,7 +2,7 @@
 use Waimart\Services\SellerContext;
 use Waimart\Services\SellerProductService;
 
-/** @var ?string $status @var list<array<string,mixed>> $rows @var array<string,int> $counts @var bool $moderated @var array<string,mixed> $seller */
+/** @var \Waimart\Core\ListParams $lp @var ?string $status @var list<array<string,mixed>> $rows @var array<string,int> $counts @var bool $moderated @var array<string,mixed> $seller */
 $canEdit = in_array(SellerContext::role(), ['owner', 'manager'], true) && $seller['status'] === 'active';
 ?>
 <div class="wm-admin-head">
@@ -22,9 +22,11 @@ $canEdit = in_array(SellerContext::role(), ['owner', 'manager'], true) && $selle
     ? 'New products, and changes to a product\'s name, description, category or photos, are checked by ' . brand_name() . ' before they appear in the shop. Price and stock changes apply immediately.'
     : 'Products are published as soon as you submit them.' ?></p>
 
-<div class="wm-panel"><div class="table-responsive">
+<?= \Waimart\Core\View::partial('partials/table/toolbar', ['id' => 'sproducts', 'path' => '/seller/products', 'lp' => $lp, 'label' => 'Search your products', 'placeholder' => 'Product name, SKU or category', 'keep' => ['status' => (string) $status]]) ?>
+<div class="wm-panel"><div id="sproducts" class="wm-table-region" data-table-region data-loading-text="Loading products…"><div class="table-responsive">
     <table class="table table-hover mb-0 align-middle">
-        <thead><tr><th></th><th>Product</th><th>Category</th><th class="text-end">From</th><th class="text-end">Options</th><th class="text-end">Available</th><th>Status</th></tr></thead>
+        <caption class="visually-hidden">Your products</caption>
+        <thead><tr><th scope="col"><span class="visually-hidden">Image</span></th><?= sort_th('Product', 'name', $lp, '/seller/products') ?><th scope="col">Category</th><th scope="col" class="text-end">From</th><th scope="col" class="text-end">Options</th><?= sort_th('Available', 'available', $lp, '/seller/products', 'text-end') ?><th scope="col">Status</th></tr></thead>
         <tbody>
         <?php foreach ($rows as $p): ?>
             <tr>
@@ -39,7 +41,9 @@ $canEdit = in_array(SellerContext::role(), ['owner', 'manager'], true) && $selle
                 <td><?= SellerProductService::badge((string) $p['moderation_status']) ?><?= (int) $p['is_active'] ? '' : ' <span class="badge badge-soft-muted">Unlisted</span>' ?></td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$rows): ?><tr><td colspan="7" class="text-center text-muted py-4">No products here yet.</td></tr><?php endif; ?>
+        <?php if (!$rows): ?><?= empty_row(7, $lp->q !== '', 'No products here yet.') ?><?php endif; ?>
         </tbody>
     </table>
+</div>
+<?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/seller/products', 'id' => 'sproducts', 'noun' => 'products']) ?>
 </div></div>

@@ -74,6 +74,8 @@ $router->group(['prefix' => '/account', 'middleware' => ['auth']], function ($r)
 $router->post('/wishlist/{id:\d+}/toggle', [AccountController::class, 'toggleWishlist'], ['auth']);
 
 $router->get('/cart', [CartController::class, 'show'], [], 'cart');
+// Link in an abandoned-cart reminder: reopens that cart (signed token, expires; never orders or charges anything).
+$router->get('/cart/recover/{id:\d{1,12}}/{token:[A-Za-z0-9_-]{22}}', [CartController::class, 'recover'], ['throttle:30,60']);
 $router->post('/cart/add', [CartController::class, 'add'], ['throttle:60,60']);
 $router->post('/cart/update', [CartController::class, 'update']);
 $router->post('/cart/remove', [CartController::class, 'remove']);
@@ -255,6 +257,8 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
         $r->get('/automations', [$c, 'automations']);
         $r->post('/automations/{code:[a-z_]{2,30}}', [$c, 'saveAutomation'], ['can:marketing.manage']);
         $r->get('/recommendations', [$c, 'recommendations']);
+        $r->get('/abandoned-carts', [$c, 'abandonedCarts']);
+        $r->post('/abandoned-carts/settings', [$c, 'saveCartSettings'], ['can:marketing.manage']);
         $r->get('/settings', [$c, 'settings'], ['can:marketing.manage']);
         $r->post('/settings', [$c, 'saveSettings'], ['can:marketing.manage']);
     });

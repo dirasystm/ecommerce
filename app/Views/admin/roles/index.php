@@ -12,7 +12,7 @@ use Waimart\Services\RoleService;
 
 <div class="wm-panel mb-3"><div class="table-responsive">
     <table class="table table-hover mb-0 align-middle">
-        <thead><tr><th>Role</th><th>Permissions</th><th>Staff</th><th></th></tr></thead>
+        <thead><tr><th scope="col">Role</th><th scope="col">Permissions</th><th scope="col">Staff</th><th scope="col"></th></tr></thead>
         <tbody>
         <?php foreach ($roles as $r): ?>
             <tr>

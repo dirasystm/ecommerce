@@ -222,6 +222,24 @@ Recommendations, customer segments, promotional links with results, leads and au
 - The message wording is under **Content → Messages** (group "Marketing").
 - SMS needs an approved sender ID (Email & SMS). Until then, choose email only.
 
+**Abandoned carts (Marketing Intelligence → Abandoned carts)**
+- **When a cart counts as abandoned:** it has items, nothing happened for **First reminder after** minutes (default 60), and no order followed. Activity is recorded on the server: adding, changing or removing items, and opening the cart or checkout. Closing the browser or signing out sends nothing early.
+- **What a reminder contains:** the items still on sale and in stock at today's prices, and a personal link (valid for 7 days) back to that cart. A customer's cart needs them signed in. A guest's cart reopens in the browser that follows the link. Nothing is ordered or charged.
+- **Who gets reminders:** only customers who agreed to marketing on that channel, and guests who signed up for the newsletter with consent in the same browser.
+- **When reminders stop:**
+  - a new visit postpones the reminder;
+  - an order, an emptied cart or items no longer available stop it;
+  - failures are retried up to the set number of attempts, then marked Failed.
+- **What the page shows:** abandoned and remindable carts; email and SMS sent, delivered and failed; retries; link clicks; carts customers came back to; recovered orders and revenue (and how much of it is paid); the recovery rate. It also has the searchable cart list, the reminder log and the settings.
+
+**Loading feedback and tables (all staff, seller and customer pages)**
+- **Loading feedback:** buttons show a spinner and cannot be pressed twice while a form is sent. Checkout and payment show a full-page "Please wait" message. Uploads show "Uploading…". Slow page changes show a thin bar at the top.
+- **Tables:**
+  - show 10 rows by default (15, 25 or 50 from the footer) with "Showing 1–10 of N";
+  - search as you type (on the server), filter and sort without reloading the page;
+  - work without JavaScript as normal links and forms.
+- See `MARKETPLACE_RECOVERY_LOADING_TABLES_IMPLEMENTATION_REPORT.md` for the developer API (`WM.setButtonLoading`, `ListParams`, the table partials).
+
 **Scheduler (required for automations and the nightly upkeep)**
 
 Windows / XAMPP, in an elevated Command Prompt:

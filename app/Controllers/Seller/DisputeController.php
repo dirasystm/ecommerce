@@ -21,12 +21,13 @@ final class DisputeController extends SellerController
             "SELECT r.id, r.return_number, r.status, r.reason, r.requested_at, r.refund_amount, so.id AS so_id, so.sub_number,
                     (SELECT SUM(quantity) FROM return_items ri WHERE ri.return_id = r.id) AS units
                FROM return_requests r JOIN seller_orders so ON so.id = r.seller_order_id
-              WHERE so.seller_id = ? ORDER BY r.status IN ('requested','approved','received') DESC, r.requested_at DESC LIMIT 100",
+              WHERE so.seller_id = ? ORDER BY r.status IN ('requested','approved','received') DESC, r.requested_at DESC LIMIT 30",
             [$this->sellerId()]
         );
         return $this->view('disputes/index', [
             'title' => 'Returns & cases', 'filter' => $filter,
-            'cases' => (new DisputeService())->list($this->sellerId(), $filter),
+            'cases' => (new DisputeService())->page($this->sellerId(), $filter, $lp = \Waimart\Core\ListParams::from($req, ['status' => "FIELD(d.status, 'awaiting_seller', 'open', 'awaiting_customer', 'resolved', 'closed')", 'updated' => 'd.updated_at'], 'status', 'asc')),
+            'lp' => $lp,
             'returns' => $returns,
         ]);
     }

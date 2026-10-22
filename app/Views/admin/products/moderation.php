@@ -1,7 +1,7 @@
 <?php
 use Waimart\Services\SellerProductService;
 
-/** @var string $status @var list<array<string,mixed>> $rows */
+/** @var string $status @var list<array<string,mixed>> $rows @var \Waimart\Core\ListParams $lp */
 ?>
 <div class="wm-admin-head"><h1>Product approvals</h1></div>
 <ul class="nav nav-pills mb-3 small">
@@ -10,9 +10,12 @@ use Waimart\Services\SellerProductService;
     <?php endforeach; ?>
 </ul>
 <p class="small text-muted">Seller products appear in the shop only once approved (while the setting "Require approval before seller products go live" is on). Open a product to check its photos, description and options before deciding.</p>
-<div class="wm-panel"><div class="table-responsive">
+<?= \Waimart\Core\View::partial('partials/table/toolbar', ['id' => 'approvals', 'path' => '/admin/moderation/products', 'lp' => $lp, 'label' => 'Search products to approve',
+    'placeholder' => 'Product, seller or category', 'keep' => ['status' => $status]]) ?>
+<div class="wm-panel"><div id="approvals" class="wm-table-region" data-table-region data-loading-text="Loading products…"><div class="table-responsive">
     <table class="table table-hover mb-0 align-middle">
-        <thead><tr><th></th><th>Product</th><th>Seller</th><th>Category</th><th class="text-end">From</th><th><?= $status === 'pending' ? 'Submitted' : 'Decided' ?></th><th></th></tr></thead>
+        <caption class="visually-hidden">Product approvals</caption>
+        <thead><tr><th scope="col"><span class="visually-hidden">Image</span></th><th scope="col">Product</th><th scope="col">Seller</th><th scope="col">Category</th><th scope="col" class="text-end">From</th><th scope="col"><?= $status === 'pending' ? 'Submitted' : 'Decided' ?></th><th scope="col"></th></tr></thead>
         <tbody>
         <?php foreach ($rows as $p): ?>
             <tr>
@@ -33,8 +36,10 @@ use Waimart\Services\SellerProductService;
                 </td>
             </tr>
         <?php endforeach; ?>
-        <?php if (!$rows): ?><tr><td colspan="7" class="text-center text-muted py-4">Nothing here.</td></tr><?php endif; ?>
+        <?php if (!$rows): ?><?= empty_row(7, $lp->q !== '', $status === 'pending' ? 'No products waiting for approval.' : 'Nothing here.') ?><?php endif; ?>
         </tbody>
     </table>
+</div>
+<?= \Waimart\Core\View::partial('partials/table/footer', ['lp' => $lp, 'path' => '/admin/moderation/products', 'id' => 'approvals', 'noun' => 'products']) ?>
 </div></div>
 <p class="small text-muted mt-2"><?= SellerProductService::badge('pending') ?> products are hidden from customers until approved.</p>

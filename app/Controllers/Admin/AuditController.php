@@ -6,6 +6,7 @@ namespace Waimart\Controllers\Admin;
 
 use Waimart\Core\App;
 use Waimart\Core\Csv;
+use Waimart\Core\ListParams;
 use Waimart\Core\Request;
 use Waimart\Core\Response;
 use Waimart\Services\ReportService;
@@ -13,8 +14,6 @@ use Waimart\Services\ReportService;
 /** Read-only audit trail viewer (audit.view). The audit log itself is append-only. */
 final class AuditController extends AdminController
 {
-    private const PER_PAGE = 50;
-
     public function index(Request $req): Response
     {
         $db = App::db();
@@ -49,10 +48,10 @@ final class AuditController extends AdminController
                          OR u.email LIKE ? OR a.before_json LIKE ? OR a.after_json LIKE ?)";
             array_push($params, ...array_fill(0, 8, $like));
         }
-        $perPage = in_array((int) ($req->query['per'] ?? 0), [25, 50, 100], true) ? (int) $req->query['per'] : self::PER_PAGE;
+        $lp = ListParams::from($req, ['when' => 'a.id'], 'when', 'desc');
         $w = implode(' AND ', $where);
         $fromSql = 'FROM audit_logs a LEFT JOIN users u ON u.id = a.actor_user_id';
-        $sql = "SELECT a.*, CONCAT(u.first_name, ' ', u.last_name) AS actor_name $fromSql WHERE $w ORDER BY a.id DESC";
+        $sql = "SELECT a.*, CONCAT(u.first_name, ' ', u.last_name) AS actor_name $fromSql WHERE $w ORDER BY " . $lp->orderSql();
 
         if (($req->query['format'] ?? '') === 'csv') {
             $rows = $db->all($sql . ' LIMIT 10000', $params);   // read first, so the export's own log entry is not in it
@@ -62,13 +61,11 @@ final class AuditController extends AdminController
                 array_map(fn ($r) => [$r['created_at'], $r['actor_name'] ?? 'System/customer', $r['action'], $r['entity_type'], $r['entity_id'], $r['before_json'], $r['after_json'], $r['ip_address']], $rows));
         }
 
-        $total = (int) $db->value("SELECT COUNT(*) $fromSql WHERE $w", $params);
-        $pages = max(1, (int) ceil($total / $perPage));
-        $page = max(1, min($pages, (int) ($req->query['page'] ?? 1)));
-        $rows = $db->all($sql . ' LIMIT ' . $perPage . ' OFFSET ' . (($page - 1) * $perPage), $params);
+        $lp->fit((int) $db->value("SELECT COUNT(*) $fromSql WHERE $w", $params));
+        $rows = $db->all($sql . ' ' . $lp->limitSql(), $params);
 
         return $this->view('audit/index', [
-            'title' => 'Audit log', 'rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => $pages, 'perPage' => $perPage, 'search' => $search,
+            'title' => 'Audit log', 'rows' => $rows, 'lp' => $lp, 'search' => $search,
             'from' => substr($from, 0, 10), 'to' => substr($to, 0, 10),
             'actions' => array_column($db->all("SELECT DISTINCT SUBSTRING_INDEX(action, '.', 1) AS a FROM audit_logs ORDER BY a"), 'a'),
             'entities' => array_column($db->all('SELECT DISTINCT entity_type FROM audit_logs ORDER BY entity_type'), 'entity_type'),
@@ -81,8 +78,26 @@ final class AuditController extends AdminController
     {
         $staffOnly = ($req->query['who'] ?? 'staff') !== 'all';
         $event = (string) ($req->query['event'] ?? '');
+        $lp = ListParams::from($req, ['when' => 'e.id'], 'when', 'desc');
+        $where = ['1 = 1'];
+        $params = [];
+        if ($staffOnly) {
+            $where[] = 'e.is_staff = 1';
+        }
+        if (isset(\Waimart\Services\AuthEvents::LABELS[$event])) {
+            $where[] = 'e.event = ?';
+            $params[] = $event;
+        }
+        if ($lp->q !== '') {
+            $where[] = "(e.identifier LIKE ? OR e.ip_address LIKE ? OR CONCAT_WS(' ', u.first_name, u.last_name, u.email) LIKE ?)";
+            array_push($params, $lp->like(), $lp->like(), $lp->like());
+        }
+        $from = 'FROM auth_events e LEFT JOIN users u ON u.id = e.user_id WHERE ' . implode(' AND ', $where);
+        $db = App::db();
+        $lp->fit((int) $db->value("SELECT COUNT(*) $from", $params));
         return $this->view('audit/sign-ins', [
-            'title' => 'Sign-in activity', 'rows' => \Waimart\Services\AuthEvents::recent(null, $staffOnly, 200, $event !== '' ? $event : null),
+            'title' => 'Sign-in activity', 'lp' => $lp,
+            'rows' => $db->all("SELECT e.*, CONCAT(u.first_name, ' ', u.last_name) AS who $from ORDER BY " . $lp->orderSql() . ' ' . $lp->limitSql(), $params),
             'staffOnly' => $staffOnly, 'event' => $event,
             'failed24h' => (int) App::db()->value("SELECT COUNT(*) FROM auth_events WHERE event IN ('login_failed','mfa_failed','login_locked') AND created_at >= NOW() - INTERVAL 1 DAY"),
         ]);

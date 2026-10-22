@@ -87,9 +87,12 @@ final class OrderController extends Controller
 
     public function accountIndex(Request $req): Response
     {
+        $lp = \Waimart\Core\ListParams::from($req, ['placed' => 'o.placed_at'], 'placed', 'desc');
+        $stage = in_array($req->query['stage'] ?? '', ['open', 'done', 'cancelled'], true) ? (string) $req->query['stage'] : '';
         return $this->view('account/orders', [
-            'title' => 'My orders', 'section' => 'orders',
-            'orders' => (new OrderRepository(App::db()))->forUser((int) Auth::id()),
+            'title' => 'My orders', 'section' => 'orders', 'lp' => $lp, 'stage' => $stage,
+            'orders' => (new OrderRepository(App::db()))->forUserPage((int) Auth::id(), $lp, $stage),
+            'hasAny' => (bool) App::db()->value('SELECT 1 FROM orders WHERE user_id = ? LIMIT 1', [(int) Auth::id()]),
         ]);
     }
 

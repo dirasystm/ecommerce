@@ -106,6 +106,7 @@ final class CartService
         $cartId = $this->cartId(false);
         if ($cartId !== null) {
             $this->db->exec('DELETE FROM cart_items WHERE cart_id = ? AND variant_id = ?', [$cartId, $variantId]);
+            $this->touch($cartId);
         }
     }
 
@@ -280,7 +281,22 @@ final class CartService
 
     private function touch(int $cartId): void
     {
-        $this->db->exec('UPDATE carts SET updated_at = NOW() WHERE id = ?', [$cartId]);
+        $this->db->exec('UPDATE carts SET updated_at = NOW(), last_activity_at = NOW(), visitor_id = COALESCE(?, visitor_id) WHERE id = ?',
+            [$this->userId === null ? \Waimart\Services\Marketing\Tracker::visitorId() : null, $cartId]);
+    }
+
+    /**
+     * Records that the customer is still shopping (cart or checkout opened): reminders wait for the inactivity period
+     * from this moment. Kept on the server, so closing the browser or signing out needs no event. At most once a minute.
+     */
+    public function activity(): void
+    {
+        $cartId = $this->cartId(false);
+        if ($cartId !== null) {
+            $this->db->exec('UPDATE carts SET last_activity_at = NOW(), visitor_id = COALESCE(?, visitor_id)
+                              WHERE id = ? AND (last_activity_at IS NULL OR last_activity_at < NOW() - INTERVAL 1 MINUTE)',
+                [$this->userId === null ? \Waimart\Services\Marketing\Tracker::visitorId() : null, $cartId]);
+        }
     }
 
     /** @return array<string,mixed>|null */
