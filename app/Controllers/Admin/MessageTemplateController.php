@@ -27,6 +27,19 @@ final class MessageTemplateController extends AdminController
         ]);
     }
 
+    /** The designed email for this template, with sample values (and the latest order, for order messages). */
+    public function emailPreview(Request $req): Response
+    {
+        $code = $this->code($req);
+        $p = (new MessageTemplates())->preview($code);
+        if ($p['email'] === null) {
+            return Response::html('<p style="font-family:sans-serif;padding:24px">This message has no email version (or it is switched off).</p>');
+        }
+        $orderId = (int) \Waimart\Core\App::db()->value('SELECT id FROM orders ORDER BY id DESC LIMIT 1');
+        $html = \Waimart\Services\EmailLayout::render((string) $p['subject'], $p['email'], $code, ['order_id' => $orderId ?: null, 'codes' => ['483920']]);
+        return Response::html(\Waimart\Services\EmailLayout::forBrowser($html))->withHeader('Cache-Control', 'no-store, private')->withHeader('X-Robots-Tag', 'noindex, nofollow');
+    }
+
     public function update(Request $req): Response
     {
         $code = $this->code($req);

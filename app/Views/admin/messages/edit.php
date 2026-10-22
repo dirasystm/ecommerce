@@ -81,6 +81,7 @@ $req = fn (string $c) => $required[$c] ?? [];
             <div class="wm-panel-head">Preview (saved wording, sample order)</div>
             <div class="wm-panel-body small">
                 <?php if ($preview['email'] !== null): ?>
+                    <a class="btn btn-sm btn-wm-green mb-2" href="<?= e(url('/admin/messages/' . $t['code'] . '/email-design')) ?>" target="_blank" rel="noopener"><i class="bi bi-envelope-open" aria-hidden="true"></i> Preview email design</a>
                     <p class="fw-semibold mb-1"><?= e((string) $preview['subject']) ?></p>
                     <pre class="wm-message-preview"><?= e($preview['email']) ?></pre>
                 <?php elseif ($hasEmail): ?><p class="text-muted">Email switched off.</p><?php endif; ?>

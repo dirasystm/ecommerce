@@ -132,6 +132,18 @@ The customer's order page shows every step, from placing the order to delivery o
   - After dispatch, the count starts from the dispatch. Out for delivery shows "Today".
 - **Messages:** customers get an SMS and an email at each step: confirmed, being prepared, packed, dispatched, out for delivery, delivered or ready, and collected. Each carries the estimate. The wording is under Content → Messages.
 
+## Pickup station applications
+
+Businesses with existing premises apply on the public page **Become a pickup station** (`/become-a-pickup-station`, linked in the footer).
+- **The form:** business details, contact person, location (county, town, address, landmark, Google Maps link or "Use my current location"), opening hours day by day, space for parcels, lockable storage, cash on delivery, an optional photo of the shop front (stored privately) and notes.
+- **After applying:** the business gets a reference (`PS-…`) by email and SMS. It can check the status at `/become-a-pickup-station/check` with the reference and its phone number.
+- **Review:** super admins (or anyone given `pickup_points.approve`) are emailed. Review under **Admin → Station applications**.
+  - The review page shows every detail, the photo, the map location and the stations already in that county.
+  - **Approve and create station** creates the pickup point with a suggested code in the usual style (e.g. `LKP-NYK-01`). Adjust any field first; the station is live at checkout straight away.
+  - **Reject** needs a reason, which the business sees.
+  - The business is told by email and SMS either way.
+- **At checkout**, "Suggested for you" picks the best stations for the customer: same town first, then same county, then distance once the customer taps "Use my location" (for stations with map coordinates). One tap chooses a station.
+
 ## Order tracking numbers
 
 When staff dispatch a seller's part of an order, they can enter the courier's **delivery reference**. This becomes the customer's **tracking number**:

@@ -79,7 +79,7 @@ $announceLink = (string) \Waimart\Core\Settings::get('announcement_link', '');
 
         <nav class="wm-header-actions" aria-label="Account and cart">
             <div class="dropdown">
-                <button class="wm-action-link dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <button class="wm-action-link dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="<?= $user ? 'Hi, ' . e($user['first_name']) . ' (account menu)' : 'Account menu' ?>">
                     <i class="bi bi-person" aria-hidden="true"></i>
                     <span class="wm-action-label"><?= $user ? 'Hi, ' . e($user['first_name']) : 'Account' ?></span>
                 </button>
@@ -111,7 +111,7 @@ $announceLink = (string) \Waimart\Core\Settings::get('announcement_link', '');
             </div>
 
             <div class="dropdown d-none d-md-block">
-                <button class="wm-action-link dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <button class="wm-action-link dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Help menu">
                     <i class="bi bi-question-circle" aria-hidden="true"></i><span class="wm-action-label">Help</span>
                 </button>
                 <ul class="dropdown-menu dropdown-menu-end">

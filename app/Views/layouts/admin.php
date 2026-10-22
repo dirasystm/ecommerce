@@ -40,6 +40,7 @@ $nav = [
     ]],
     ['Fulfilment', [
         ['/admin/delivery-zones', 'truck', 'Delivery zones', 'delivery.manage'],
+        ['/admin/pickup-points/applications', 'clipboard-check', 'Station applications', 'pickup_points.approve'],
         ['/admin/pickup-points', 'shop', 'Pickup points', 'pickup_points.manage'],
         ['/admin/delivery-settings', 'sliders', 'Delivery settings', 'delivery.manage'],
     ]],

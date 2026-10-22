@@ -344,7 +344,10 @@ $result = function (?array $r, string $what): string {
                 <td class="small"><span class="badge <?= $statusClass[$r['status']] ?? 'badge-soft-muted' ?>"><?= e($statusLabel[$r['status']] ?? (string) $r['status']) ?></span>
                     <?php if ($r['provider_status']): ?><div class="text-muted">Report: <?= e((string) $r['provider_status']) ?></div><?php endif; ?>
                     <?php if ($r['last_error']): ?><div class="text-danger"><?= e((string) $r['last_error']) ?></div><?php endif; ?></td>
-                <td><?php if ($r['status'] === 'failed' && !in_array($r['template'], $noResend, true)): ?>
+                <td class="text-nowrap"><?php if ($r['channel'] === 'email'): ?>
+                    <a class="btn btn-sm btn-outline-secondary mb-1" href="<?= e(url('/admin/messaging/' . $r['id'] . '/view')) ?>" target="_blank" rel="noopener" aria-label="Preview email to <?= e((string) $r['recipient']) ?>">Preview</a>
+                <?php endif; ?>
+                <?php if ($r['status'] === 'failed' && !in_array($r['template'], $noResend, true)): ?>
                     <form method="post" action="<?= e(url('/admin/messaging/' . $r['id'] . '/retry')) ?>"><?= csrf_field() ?>
                         <?php foreach ($filters as $fk => $fv): ?><input type="hidden" name="<?= e($fk) ?>" value="<?= e($fv) ?>"><?php endforeach; ?>
                         <button class="btn btn-sm btn-outline-secondary" type="submit">Re-send</button></form>

@@ -95,8 +95,15 @@ $router->post('/track-order', [OrderController::class, 'lookup'], ['throttle:20,
 
 // ------------------------------------------------------------------ sell on Waimart (applicants)
 use Waimart\Controllers\SellController;
+use Waimart\Controllers\PickupStationController;
 
 $router->get('/sell', [SellController::class, 'landing'], [], 'sell');
+// Businesses apply to become pickup stations; a super admin approves them (Admin -> Pickup points -> Applications).
+$router->get('/become-a-pickup-station', [PickupStationController::class, 'form'], [], 'pickup.apply');
+$router->post('/become-a-pickup-station', [PickupStationController::class, 'apply'], ['throttle:10,3600']);
+$router->get('/become-a-pickup-station/thank-you', [PickupStationController::class, 'thanks']);
+$router->get('/become-a-pickup-station/check', [PickupStationController::class, 'statusForm']);
+$router->post('/become-a-pickup-station/check', [PickupStationController::class, 'status'], ['throttle:30,900']);
 $router->get('/sell/terms', [SellController::class, 'terms']);
 $router->group(['prefix' => '/sell', 'middleware' => ['auth']], function ($r) {
     $r->get('/apply', [SellController::class, 'form']);
@@ -213,6 +220,14 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
         $r->post('/delivery-settings', [Admin\DeliverySettingsController::class, 'save']);
         $r->post('/delivery-settings/status-names', [Admin\DeliverySettingsController::class, 'saveLabels']);
     });
+    // Businesses applying to become pickup stations: verified, approved or rejected (super admins; pickup_points.approve).
+    $r->group(['middleware' => ['can:pickup_points.approve']], function ($r) {
+        $r->get('/pickup-points/applications', [Admin\PickupApplicationController::class, 'index']);
+        $r->get('/pickup-points/applications/{id:\d+}', [Admin\PickupApplicationController::class, 'show']);
+        $r->get('/pickup-points/applications/{id:\d+}/photo', [Admin\PickupApplicationController::class, 'photo']);
+        $r->post('/pickup-points/applications/{id:\d+}/approve', [Admin\PickupApplicationController::class, 'approve'], ['throttle:60,3600']);
+        $r->post('/pickup-points/applications/{id:\d+}/reject', [Admin\PickupApplicationController::class, 'reject'], ['throttle:60,3600']);
+    });
     $r->group(['middleware' => ['can:pickup_points.manage']], function ($r) {
         $r->get('/pickup-points', [Admin\PickupPointController::class, 'index']);
         $r->get('/pickup-points/new', [Admin\PickupPointController::class, 'create']);
@@ -248,8 +263,8 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     $r->get('/settings/transfer', [Admin\SettingsController::class, 'transfer'], ['can:settings.manage']);
     $r->get('/settings/export', [Admin\SettingsController::class, 'export'], ['can:settings.manage', 'throttle:30,3600']);
     $r->post('/settings/import', [Admin\SettingsController::class, 'import'], ['can:settings.manage', 'throttle:10,3600']);
-    $r->get('/settings/{group:general|contact|social|seo|checkout|orders|payments|delivery|marketplace|email|sms|security|maintenance}', [Admin\SettingsController::class, 'group'], ['can:settings.manage']);
-    $r->post('/settings/{group:general|contact|social|seo|checkout|orders|payments|delivery|marketplace|email|sms|security|maintenance}', [Admin\SettingsController::class, 'saveGroup'], ['can:settings.manage']);
+    $r->get('/settings/{group:general|contact|social|seo|checkout|orders|payments|delivery|marketplace|email|sms|intelligence|security|maintenance}', [Admin\SettingsController::class, 'group'], ['can:settings.manage']);
+    $r->post('/settings/{group:general|contact|social|seo|checkout|orders|payments|delivery|marketplace|email|sms|intelligence|security|maintenance}', [Admin\SettingsController::class, 'saveGroup'], ['can:settings.manage']);
     $r->post('/settings/email/password', [Admin\SettingsController::class, 'smtpPassword'], ['can:settings.manage', 'can:secrets.manage', 'throttle:20,3600']);
     $r->post('/settings/email/test', [Admin\SettingsController::class, 'testEmail'], ['can:settings.manage', 'throttle:10,3600']);
     $r->get('/settings/branding', [Admin\BrandingController::class, 'edit'], ['can:settings.manage']);
@@ -261,6 +276,7 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
         $r->get('/messages/{code:[a-z_]+}', [Admin\MessageTemplateController::class, 'edit']);
         $r->post('/messages/{code:[a-z_]+}', [Admin\MessageTemplateController::class, 'update']);
         $r->post('/messages/{code:[a-z_]+}/restore', [Admin\MessageTemplateController::class, 'restore']);
+        $r->get('/messages/{code:[a-z_]+}/email-design', [Admin\MessageTemplateController::class, 'emailPreview']);
     });
 
     $r->get('/reports', [Admin\ReportController::class, 'index'], ['can:reports.view']);
@@ -278,6 +294,7 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
         $r->post('/messaging/test-email', [Admin\MessagingController::class, 'testEmail'], ['throttle:10,3600']);
         $r->post('/messaging/delivery', [Admin\MessagingController::class, 'delivery'], ['throttle:30,3600']);
         $r->post('/messaging/{id:\d+}/retry', [Admin\MessagingController::class, 'retry'], ['throttle:60,3600']);
+        $r->get('/messaging/{id:\d+}/view', [Admin\MessagingController::class, 'preview']);
     });
     // Website updates: upload a project .zip, install it live, roll it back.
     $r->group(['middleware' => ['can:system.update']], function ($r) {

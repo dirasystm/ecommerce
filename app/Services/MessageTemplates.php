@@ -31,7 +31,7 @@ final class MessageTemplates
     public const ACCOUNT_VARS = ['store' => 'Store name', 'first_name' => 'First name', 'support_phone' => 'Customer care phone', 'support_email' => 'Customer care email'];
 
     public const GROUPS = ['orders' => 'Orders', 'payments' => 'Payments', 'returns' => 'Returns & refunds', 'cases' => 'Seller cases',
-                           'account' => 'Account', 'sellers' => 'Seller messages'];
+                           'account' => 'Account', 'sellers' => 'Seller messages', 'stations' => 'Pickup stations'];
 
     /**
      * code => [
@@ -144,6 +144,27 @@ final class MessageTemplates
         'seller_message' => ['Messages to sellers', 'sellers', 'The layout of every message to sellers and seller applicants: {message} is the update itself (new orders, returns, cases, payouts, decisions). Important messages are always emailed.', 'seller',
             ['subject' => 'What the message is about', 'message' => 'The update itself'], ['email', 'sms'], ['email'], false, ['email' => ['message'], 'sms' => ['subject']],
             '{subject}', "Hello {first_name},\n\n{message}\n\n— {store} Seller Support", '{store} Seller Centre: {subject}'],
+
+        // Businesses applying to become pickup stations ("Become a pickup station").
+        'pickup_application_received' => ['Pickup station application received', 'stations', 'Sent to the business as soon as it applies.', 'account',
+            ['reference' => 'Application reference', 'business_name' => 'Business name', 'status_url' => 'Page to check the application status'], ['email', 'sms'], [], true, ['email' => ['reference']],
+            'We received your pickup station application ({reference})',
+            "Hello {first_name},\n\nThank you for applying to make {business_name} a {store} pickup station. Your application reference is {reference}.\n\nOur team will now verify your details. This usually takes up to 3 working days, and we may call you or visit to see the premises. We will email and SMS you our decision.\n\nYou can check the status at any time:\n\n{status_url}\n\n{store}",
+            '{store}: we received your pickup station application {reference}. We will contact you within 3 working days.'],
+        'pickup_application_approved' => ['Pickup station approved', 'stations', 'Sent when a super admin approves the application. The station is then offered at checkout.', 'account',
+            ['reference' => 'Application reference', 'business_name' => 'Business name', 'station_name' => 'Station name customers see', 'station_code' => 'Station code'], ['email', 'sms'], [], true, [],
+            '{business_name} is now a {store} pickup station',
+            "Hello {first_name},\n\nCongratulations! Your application {reference} has been approved. {business_name} is now a {store} pickup station, shown to customers as \"{station_name}\" (station code {station_code}).\n\nCustomers can now choose your station at checkout. Our team will contact you shortly to agree on parcel handover and to show you how to check a customer's collection code and ID before releasing an order.\n\nWelcome to the {store} network.\n\n{store}",
+            '{store}: congratulations, {business_name} is now an approved pickup station (code {station_code}). Our team will contact you to get started.'],
+        'pickup_application_rejected' => ['Pickup station not approved', 'stations', 'Sent when a super admin rejects the application, with the reason.', 'account',
+            ['reference' => 'Application reference', 'business_name' => 'Business name', 'reason' => 'Why the application was not approved'], ['email', 'sms'], [], true, ['email' => ['reason']],
+            'Your pickup station application ({reference})',
+            "Hello {first_name},\n\nThank you for your interest in making {business_name} a {store} pickup station. After reviewing application {reference}, we are not able to approve it at this time.\n\nReason: {reason}\n\nYou are welcome to apply again once this has been addressed. For questions, contact us on {support_phone} or {support_email}.\n\n{store}",
+            '{store}: your pickup station application {reference} was not approved. Reason: {reason}'],
+        'pickup_application_new' => ['New pickup station application (to admins)', 'stations', 'Sent to super administrators when a business applies, so it can be verified.', 'account',
+            ['reference' => 'Application reference', 'business_name' => 'Business name', 'town' => 'Town', 'county' => 'County', 'review_url' => 'Admin page to review the application'], ['email'], [], true, [],
+            'New pickup station application: {business_name}, {town}',
+            "Hello {first_name},\n\n{business_name} in {town}, {county} has applied to become a pickup station (reference {reference}). Please verify the details and approve or reject the application.\n\n{review_url}\n\n{store}", ''],
     ];
 
     private const STATUS_EMAIL_A = "Hello {customer_name},\n\n";

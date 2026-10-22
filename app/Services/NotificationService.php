@@ -118,11 +118,24 @@ final class NotificationService
 
         $mail = self::mailConfig();
         try {
+            // Branded HTML version (the plain text is sent alongside it). One-time codes are shown in a code box.
+            $codes = array_values(array_filter($ctx['secrets'] ?? [], fn ($c) => preg_match('/^\d{4,8}$/', (string) $c)));
+            try {
+                $html = EmailLayout::render($subject, $body, $template, ['order_id' => $ctx['order_id'] ?? null, 'codes' => $codes]);
+            } catch (\Throwable $e) {
+                Logger::error('Email layout failed; sending plain text', ['notification_id' => $id, 'error' => $e->getMessage()]);
+                $html = null;
+            }
             if ($mail['driver'] === 'smtp') {
-                $this->sendSmtp($mail, $to, $subject, $body);
+                $this->sendSmtp($mail, $to, $subject, $body, $html);
                 $status = 'sent';
             } else {
                 $this->writeLog('email', $to, $subject, $body);
+                if ($html !== null) {
+                    // Development: the designed email, viewable in a browser (storage/logs is not public).
+                    @mkdir(App::root() . '/storage/logs/mail-html', 0775, true);
+                    @file_put_contents(App::root() . "/storage/logs/mail-html/$id.html", $html);
+                }
                 $status = 'logged';
             }
             App::db()->exec("UPDATE notifications SET status = ?, attempts = attempts + 1, sent_at = NOW() WHERE id = ?", [$status, $id]);
@@ -173,7 +186,7 @@ final class NotificationService
     }
 
     /** @param array<string,mixed> $cfg mailConfig() */
-    private function sendSmtp(array $cfg, string $to, string $subject, string $body): void
+    private function sendSmtp(array $cfg, string $to, string $subject, string $body, ?string $html = null): void
     {
         $m = new PHPMailer(true);
         $m->isSMTP();
@@ -196,8 +209,17 @@ final class NotificationService
         }
         $m->addAddress($to);
         $m->Subject = $subject;
-        $m->Body = $body;
-        $m->isHTML(false);
+        if ($html !== null) {
+            $m->isHTML(true);
+            $m->Body = $html;
+            $m->AltBody = $body;            // plain-text version for clients that do not show HTML
+            if (($logo = EmailLayout::logoFile()) !== null) {
+                $m->addEmbeddedImage($logo, EmailLayout::LOGO_CID, 'logo.png', PHPMailer::ENCODING_BASE64, 'image/png');
+            }
+        } else {
+            $m->isHTML(false);
+            $m->Body = $body;
+        }
         $m->send();
     }
 

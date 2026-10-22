@@ -178,6 +178,14 @@ final class MessagingController extends AdminController
             'detail' => '']);
     }
 
+    /** An email from the log as the customer saw it (stored copy: codes and private links stay hidden). */
+    public function preview(Request $req): Response
+    {
+        $n = App::db()->one("SELECT * FROM notifications WHERE id = ? AND channel = 'email'", [$this->intParam($req, 'id')]) ?? throw HttpException::notFound();
+        $html = \Waimart\Services\EmailLayout::render((string) $n['subject'], (string) $n['body'], (string) $n['template'], ['order_id' => $n['order_id'] ? (int) $n['order_id'] : null]);
+        return Response::html(\Waimart\Services\EmailLayout::forBrowser($html))->withHeader('Cache-Control', 'no-store, private')->withHeader('X-Robots-Tag', 'noindex, nofollow');
+    }
+
     /** Keeps a test's outcome for the "Test your setup" panel (shown once, next to the form that sent it). */
     private function testResult(string $channel, array $result): Response
     {

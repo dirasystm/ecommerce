@@ -179,6 +179,28 @@ final class MessagingHttpTest extends FeatureTestCase
         $this->assertStringNotContainsString('good-token', (string) $this->db->value('SELECT GROUP_CONCAT(COALESCE(last_error, \'\')) FROM notifications'));
     }
 
+    public function testEmailPreviewsShowTheDesignedEmailToPermittedStaffOnly(): void
+    {
+        $id = (new \Waimart\Services\NotificationService())->email('dan@example.com', 'Welcome to Basemall', "Hello Dan,\n\nWelcome.\n\nhttps://shop.example/login\n\nBasemall", 'account_welcome');
+        @unlink(\Waimart\Core\App::root() . "/storage/logs/mail-html/$id.html");
+        $this->loginStaff('support');
+        $this->assertSame(403, $this->get("/admin/messaging/$id/view")['status']);
+        $this->assertSame(403, $this->get('/admin/messages/password_reset/email-design')['status']);
+        $this->post('/logout', [], '/');
+        $this->setUpJarOnly();
+        $this->loginStaff('super_admin');
+        $p = $this->get("/admin/messaging/$id/view");
+        $this->assertSame(200, $p['status']);
+        $this->assertStringContainsString('Sign in to my account &rarr;', $p['body']);
+        $this->assertStringContainsString('src="data:image/png;base64,', $p['body'], 'logo shown inline in the browser');
+        $this->assertStringContainsString('Preview</a>', $this->get('/admin/messaging')['body'], 'linked from the message log');
+        $t = $this->get('/admin/messages/password_reset/email-design');
+        $this->assertSame(200, $t['status']);
+        $this->assertStringContainsString('Reset my password &rarr;', $t['body']);
+        $this->assertStringContainsString('Preview email design', $this->get('/admin/messages/password_reset')['body']);
+        $this->assertSame(404, $this->get('/admin/messaging/999999/view')['status']);
+    }
+
     /** Audit A-4: redirecting the mail server or SMS endpoint would hand over the stored password/token and reset codes. */
     public function testOnlyCredentialManagersCanChangeWhereCredentialsAreSent(): void
     {

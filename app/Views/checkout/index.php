@@ -91,7 +91,7 @@ foreach ($pickupPoints as $pp) {
                             <?= field_error('address_id') ?>
                             <?php foreach ($addresses as $a): ?>
                                 <div class="form-check border rounded p-2 ps-5 mb-2">
-                                    <input class="form-check-input" type="radio" name="address_id" id="addr<?= $a['id'] ?>" value="<?= $a['id'] ?>" <?= $addrChoice === (string) $a['id'] ? 'checked' : '' ?> data-quote data-county-name="<?= e($a['county_name']) ?>">
+                                    <input class="form-check-input" type="radio" name="address_id" id="addr<?= $a['id'] ?>" value="<?= $a['id'] ?>" <?= $addrChoice === (string) $a['id'] ? 'checked' : '' ?> data-quote data-county-name="<?= e($a['county_name']) ?>" data-county-id="<?= (int) $a['county_id'] ?>" data-town="<?= e((string) $a['town']) ?>">
                                     <label class="form-check-label small w-100" for="addr<?= $a['id'] ?>">
                                         <strong><?= e($a['label'] ?: $a['recipient_name']) ?></strong> — <?= e($a['location']) ?>, <?= e($a['town']) ?>, <?= e($a['county_name']) ?>
                                     </label>
@@ -142,6 +142,13 @@ foreach ($pickupPoints as $pp) {
                     <?= field_error('pickup_point_id') ?>
                     <fieldset data-station-finder>
                         <legend class="fs-6 fw-semibold">Choose a pickup station</legend>
+                        <div class="wm-station-suggest" data-station-suggest>
+                            <h3><i class="bi bi-stars" aria-hidden="true"></i> Suggested for you</h3>
+                            <div data-suggest-list role="list"></div>
+                            <p class="small text-muted mb-2" data-suggest-empty>Enter your county and town above (or choose a saved address), or use your location, and we will suggest the nearest stations.</p>
+                            <button class="btn btn-sm btn-wm-green" type="button" data-near-me><i class="bi bi-crosshair" aria-hidden="true"></i> Use my location</button>
+                            <span class="small ms-1" role="status" aria-live="polite" data-near-status></span>
+                        </div>
                         <?php if (count($pickupPoints) > 4): ?>
                             <label class="form-label small mb-1" for="stationSearch">Find a station near you</label>
                             <input class="form-control mb-1" type="search" id="stationSearch" list="stationPlaces" placeholder="Type your town or county, e.g. Nanyuki" autocomplete="off" aria-describedby="stationSearchHelp" data-station-search>
@@ -154,7 +161,10 @@ foreach ($pickupPoints as $pp) {
                             <div data-station-group>
                             <h3 class="fs-6 text-muted text-uppercase mt-3 mb-2 small fw-bold"><?= e($county) ?></h3>
                             <?php foreach ($points as $pp): ?>
-                                <div class="form-check border rounded p-2 ps-5 mb-2" data-station="<?= e(mb_strtolower($pp['name'] . ' ' . $pp['town'] . ' ' . $county . ' ' . $pp['address'])) ?>">
+                                <div class="form-check border rounded p-2 ps-5 mb-2" data-station="<?= e(mb_strtolower($pp['name'] . ' ' . $pp['town'] . ' ' . $county . ' ' . $pp['address'])) ?>"
+                                     data-station-id="<?= (int) $pp['id'] ?>" data-county-id="<?= (int) $pp['county_id'] ?>" data-county="<?= e($county) ?>" data-town="<?= e((string) $pp['town']) ?>"
+                                     data-name="<?= e((string) $pp['name']) ?>" data-address="<?= e($pp['address'] . ', ' . $pp['town']) ?>" data-fee="<?= (float) $pp['pickup_fee'] > 0 ? e(money($pp['pickup_fee'])) : 'Free' ?>"
+                                     <?= $pp['latitude'] !== null ? 'data-lat="' . e((string) $pp['latitude']) . '" data-lng="' . e((string) $pp['longitude']) . '"' : '' ?>>
                                     <input class="form-check-input" type="radio" name="pickup_point_id" id="pp<?= $pp['id'] ?>" value="<?= $pp['id'] ?>" <?= (string) fv('pickup_point_id', '') === (string) $pp['id'] ? 'checked' : '' ?> data-quote>
                                     <label class="form-check-label small w-100" for="pp<?= $pp['id'] ?>">
                                         <strong><?= e($pp['name']) ?></strong>

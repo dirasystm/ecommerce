@@ -346,4 +346,148 @@
             if (q && q.value.trim() === '') { e.preventDefault(); q.focus(); }
         });
     });
+    // ---------------------------------------------------------------- pickup station suggestions (checkout)
+    // Ranks stations for this customer: same town first, then same county, then distance when the customer shares
+    // their location (stations with map coordinates). One tap chooses the station, exactly like ticking it below.
+    var suggest = document.querySelector('[data-station-suggest]');
+    if (suggest) {
+        var sFinder = suggest.closest('[data-station-finder]');
+        var sList = suggest.querySelector('[data-suggest-list]');
+        var sEmpty = suggest.querySelector('[data-suggest-empty]');
+        var sNearBtn = suggest.querySelector('[data-near-me]');
+        var sNearStatus = suggest.querySelector('[data-near-status]');
+        var sStations = Array.prototype.slice.call(sFinder.querySelectorAll('[data-station-id]'));
+        var me = null;
+        var norm = function (t) { return (t || '').toString().trim().toLowerCase(); };
+        var km = function (a, b, c, d) {
+            var r = Math.PI / 180, x = Math.sin((c - a) * r / 2), y = Math.sin((d - b) * r / 2);
+            var h = x * x + Math.cos(a * r) * Math.cos(c * r) * y * y;
+            return 12742 * Math.asin(Math.sqrt(h));
+        };
+        var place = function () {
+            var saved = document.querySelector('input[name="address_id"]:checked[data-county-id]');
+            if (saved) { return { county: saved.getAttribute('data-county-id'), town: norm(saved.getAttribute('data-town')) }; }
+            var c = document.getElementById('county_id');
+            var t = document.getElementById('town');
+            return { county: c ? c.value : '', town: norm(t ? t.value : '') };
+        };
+        var render = function () {
+            var where = place();
+            var ranked = sStations.map(function (el) {
+                var town = norm(el.getAttribute('data-town'));
+                var score = 0, why = '';
+                if (where.town && town && (town === where.town || town.indexOf(where.town) === 0 || where.town.indexOf(town) === 0)) {
+                    score = 300; why = 'In ' + el.getAttribute('data-town');
+                } else if (where.county && el.getAttribute('data-county-id') === where.county) {
+                    score = 200; why = 'In ' + el.getAttribute('data-county') + ' county';
+                }
+                var lat = parseFloat(el.getAttribute('data-lat')), lng = parseFloat(el.getAttribute('data-lng'));
+                if (me && !isNaN(lat) && !isNaN(lng)) {
+                    var d = km(me.lat, me.lng, lat, lng);
+                    score = Math.max(score, 400 - Math.min(d, 390)) + (score ? 1 : 0);
+                    why = (d < 1 ? Math.round(d * 1000) + ' m' : d.toFixed(d < 10 ? 1 : 0) + ' km') + ' away';
+                }
+                return { el: el, score: score, why: why };
+            }).filter(function (r) { return r.score > 0; }).sort(function (a, b) { return b.score - a.score; }).slice(0, 3);
+
+            sList.textContent = '';
+            sEmpty.hidden = ranked.length > 0;
+            ranked.forEach(function (r) {
+                var input = r.el.querySelector('input[name="pickup_point_id"]');
+                var li = document.createElement('div');
+                li.setAttribute('role', 'listitem');
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'wm-station-pick';
+                b.setAttribute('aria-pressed', input && input.checked ? 'true' : 'false');
+                var icon = document.createElement('i');
+                icon.className = 'bi bi-geo-alt-fill text-success';
+                icon.setAttribute('aria-hidden', 'true');
+                var box = document.createElement('span');
+                var name = document.createElement('strong');
+                name.className = 'd-block';
+                name.textContent = r.el.getAttribute('data-name');
+                var addr = document.createElement('span');
+                addr.className = 'd-block text-muted';
+                addr.textContent = r.el.getAttribute('data-address') + ' · ' + r.el.getAttribute('data-fee');
+                var why = document.createElement('span');
+                why.className = 'wm-why';
+                why.textContent = r.why;
+                box.appendChild(name); box.appendChild(addr); box.appendChild(why);
+                b.appendChild(icon); b.appendChild(box);
+                b.addEventListener('click', function () {
+                    if (!input) { return; }
+                    input.checked = true;
+                    r.el.hidden = false;
+                    input.dispatchEvent(new Event('change', { bubbles: true }));   // redraws this list with the new choice pressed
+                    var again = sList.querySelector('[data-pick-id="' + r.el.getAttribute('data-station-id') + '"]');
+                    if (again) { again.focus(); }
+                });
+                b.setAttribute('data-pick-id', r.el.getAttribute('data-station-id'));
+                li.appendChild(b);
+                sList.appendChild(li);
+            });
+        };
+        ['change', 'input'].forEach(function (ev) {
+            document.addEventListener(ev, function (e) {
+                var t = e.target;
+                if (t && (t.name === 'address_id' || t.id === 'county_id' || t.id === 'town' || t.name === 'fulfilment_method' || t.name === 'pickup_point_id')) { render(); }
+            });
+        });
+        if (sNearBtn) {
+            if (!navigator.geolocation) { sNearBtn.hidden = true; }
+            sNearBtn.addEventListener('click', function () {
+                sNearStatus.textContent = 'Finding your location…';
+                navigator.geolocation.getCurrentPosition(function (pos) {
+                    me = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                    var withMap = sStations.filter(function (el) { return el.hasAttribute('data-lat'); }).length;
+                    sNearStatus.textContent = withMap ? 'Showing the stations nearest to you.' : 'Stations have no map locations yet, so we used your county and town.';
+                    render();
+                }, function () {
+                    sNearStatus.textContent = 'We could not get your location. Choose your county and town instead.';
+                }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 });
+            });
+        }
+        render();
+    }
+
+    // ---------------------------------------------------------------- become a pickup station (application form)
+    // Town suggestions follow the county; "Use my current location" stores the shop's coordinates; Closed days.
+    document.querySelectorAll('[data-town-source]').forEach(function (sel) {
+        var list = document.querySelector('[data-town-list]');
+        var fill = function () {
+            if (!list) { return; }
+            list.textContent = '';
+            var opt = sel.options[sel.selectedIndex];
+            (opt ? (opt.getAttribute('data-towns') || '') : '').split('|').filter(Boolean).forEach(function (t) {
+                var o = document.createElement('option');
+                o.value = t;
+                list.appendChild(o);
+            });
+        };
+        sel.addEventListener('change', fill);
+        fill();
+    });
+    document.querySelectorAll('[data-locate]').forEach(function (btn) {
+        var form = btn.closest('form');
+        var status = form.querySelector('[data-locate-status]');
+        if (!navigator.geolocation) { btn.hidden = true; return; }
+        btn.addEventListener('click', function () {
+            status.textContent = 'Finding your location…';
+            navigator.geolocation.getCurrentPosition(function (pos) {
+                form.querySelector('[data-lat]').value = pos.coords.latitude.toFixed(7);
+                form.querySelector('[data-lng]').value = pos.coords.longitude.toFixed(7);
+                status.textContent = 'Location saved (accurate to about ' + Math.round(pos.coords.accuracy) + ' m). Customers will see your shop on the map.';
+            }, function () {
+                status.textContent = 'We could not get your location. You can paste a Google Maps link below instead.';
+            }, { enableHighAccuracy: true, timeout: 15000 });
+        });
+    });
+    document.querySelectorAll('[data-day-closed]').forEach(function (box) {
+        var sync = function () {
+            box.closest('[data-day]').querySelectorAll('input[type="time"]').forEach(function (t) { t.disabled = box.checked; });
+        };
+        box.addEventListener('change', sync);
+        sync();
+    });
 })();

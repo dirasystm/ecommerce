@@ -6,7 +6,12 @@ $req = View::shared('request');
 ?>
 <div class="wm-admin-head">
     <h1>Pickup points</h1>
-    <a class="btn btn-wm-green" href="<?= e(url('/admin/pickup-points/new')) ?>"><i class="bi bi-plus-lg" aria-hidden="true"></i> New pickup point</a>
+    <div class="d-flex flex-wrap gap-2">
+        <?php if (\Waimart\Core\Auth::can('pickup_points.approve')): $pendingApps = (int) \Waimart\Core\App::db()->value("SELECT COUNT(*) FROM pickup_station_applications WHERE status = 'pending'"); ?>
+            <a class="btn btn-outline-secondary" href="<?= e(url('/admin/pickup-points/applications')) ?>"><i class="bi bi-shop" aria-hidden="true"></i> Applications<?= $pendingApps ? ' <span class="badge text-bg-warning">' . $pendingApps . ' to review</span>' : '' ?></a>
+        <?php endif; ?>
+        <a class="btn btn-wm-green" href="<?= e(url('/admin/pickup-points/new')) ?>"><i class="bi bi-plus-lg" aria-hidden="true"></i> New pickup point</a>
+    </div>
 </div>
 <form class="d-flex flex-wrap gap-2 mb-3" method="get" action="<?= e(url('/admin/pickup-points')) ?>">
     <label class="visually-hidden" for="q">Search</label>
