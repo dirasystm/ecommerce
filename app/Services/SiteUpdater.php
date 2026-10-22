@@ -33,7 +33,7 @@ use Waimart\Core\ZipReader;
 final class SiteUpdater
 {
     /** Never read from a package or written by an update. */
-    public const PROTECTED = ['.git/', 'storage/', 'public/uploads/', 'config/config.local.php', 'node_modules/', 'tests/Browser/node_modules/',
+    public const PROTECTED = ['.git/', 'storage/', 'public/uploads/', 'config/config.local.php', 'config/config.live.php', 'node_modules/', 'tests/Browser/node_modules/',
                               '.phpunit.cache/', '.env', '.idea/', '.vscode/'];
     /** Operating-system clutter that zip tools add; ignored. */
     private const JUNK = ['__MACOSX/', '.DS_Store', 'Thumbs.db', 'desktop.ini'];
