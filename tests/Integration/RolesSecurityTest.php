@@ -59,7 +59,7 @@ final class RolesSecurityTest extends DbTestCase
     {
         $rs = new RoleService();
         $byslug = array_column($rs->roles(), null, 'slug');
-        $this->assertSame(['content.manage', 'coupons.manage', 'dashboard.view', 'messages.manage'], $byslug['content_marketing']['permissions']);
+        $this->assertSame(['content.manage', 'coupons.manage', 'dashboard.view', 'marketing.manage', 'marketing.view', 'messages.manage'], $byslug['content_marketing']['permissions']);
         $this->assertSame(['dashboard.view', 'orders.collect', 'orders.deliver', 'orders.view', 'pickup_points.manage'], $byslug['delivery_logistics']['permissions']);
         $this->assertNotContains('roles.manage', $byslug['manager']['permissions'], 'only super admins manage roles by default');
         $this->assertSame((int) $this->db->value('SELECT COUNT(*) FROM permissions'), count($byslug['super_admin']['permissions']));

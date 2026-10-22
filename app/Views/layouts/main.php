@@ -40,7 +40,9 @@ $noindex = \Waimart\Core\Settings::bool('seo_noindex');
 
 <div class="toast-container position-fixed bottom-0 end-0 p-3 wm-toasts" aria-live="polite" aria-atomic="true" data-toasts></div>
 
+<?= \Waimart\Core\View::partial('partials/newsletter') ?>
 <?= \Waimart\Core\View::partial('partials/footer') ?>
+<?= \Waimart\Core\View::partial('partials/privacy-banner') ?>
 <?= \Waimart\Core\View::partial('partials/bottom-nav') ?>
 
 <script src="<?= e(asset('vendor/bootstrap/bootstrap.bundle.min.js')) ?>"></script>

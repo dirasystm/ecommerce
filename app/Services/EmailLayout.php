@@ -28,9 +28,11 @@ final class EmailLayout
         'password_reset' => 'Reset my password', 'account_welcome' => 'Sign in to my account',
         'order_claim_code' => 'Open my orders', 'seller_message' => 'Open Seller Centre',
         'pickup_application_received' => 'Check my application', 'pickup_application_new' => 'Review the application',
+        'mkt_welcome' => 'Start shopping', 'mkt_cart' => 'Complete my order', 'mkt_post_purchase' => 'See the picks', 'mkt_review' => 'Write a review',
+        'mkt_reengage' => 'See what is new', 'mkt_price_drop' => 'See the new price', 'mkt_discovery' => 'See the picks',
     ];
     private const EYEBROWS = ['orders' => 'Order update', 'payments' => 'Payment', 'returns' => 'Returns & refunds', 'cases' => 'Help with your order',
-                              'account' => 'Your account', 'sellers' => 'Seller Centre', 'stations' => 'Pickup station partners'];
+                              'account' => 'Your account', 'sellers' => 'Seller Centre', 'stations' => 'Pickup station partners', 'marketing' => 'Picked for you'];
 
     /**
      * @param array{order_id?:?int,secrets?:list<string>,codes?:list<string>} $ctx codes: one-time codes to show in the code box
@@ -53,6 +55,7 @@ final class EmailLayout
         $paras = preg_split("/\R{2,}/", trim(str_replace("\r", '', $text))) ?: [];
         $codes = array_values(array_filter($ctx['codes'] ?? [], fn ($c) => preg_match('/^\d{4,8}$/', (string) $c)));
         $buttonUsed = false;
+        $unsub = '';
         $withCard = !empty($ctx['order_id']) && in_array($group, ['orders', 'payments', 'returns', 'cases'], true);
         $body = '';
         $signature = '';
@@ -82,6 +85,11 @@ final class EmailLayout
                     . '<a href="' . e($para) . '" style="color:' . $green . ';word-break:break-all">' . e($para) . '</a></p>';
                 continue;
             }
+            // Unsubscribe line (marketing): small and quiet, but always there.
+            if (preg_match('/^to stop receiving/i', $para)) {
+                $unsub = '<p style="margin:18px 0 0;font-size:12px;line-height:1.5;color:#8a948f;text-align:center">' . self::inline($para, '#6b7470') . '</p>';
+                continue;
+            }
             // Security notes get a calm panel.
             if (preg_match('/^(if you did not|never share|keep (it|this) private|for your security)/i', $para)) {
                 $body .= '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 18px"><tr><td style="background:#f6f7f6;border-left:4px solid '
@@ -99,6 +107,9 @@ final class EmailLayout
         }
 
         $card = '';
+        if (!empty($ctx['products'])) {
+            $card .= self::productGrid((array) $ctx['products'], $green, $action);
+        }
         if ($withCard) {
             $card = self::orderCard((int) $ctx['order_id'], $green, $greenSoft, $action, $buttonUsed);
         }
@@ -120,7 +131,7 @@ final class EmailLayout
             . '<tr><td style="background:' . $green . ';background-image:linear-gradient(135deg,' . $green . ',' . $greenDark . ');padding:24px 26px" class="bm-pad">'
             . '<div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#cfe7dc;font-weight:700">' . e($eyebrow) . '</div>'
             . '<div style="font-size:24px;line-height:1.3;font-weight:800;color:#ffffff;margin-top:6px">' . e($title) . '</div></td></tr>'
-            . '<tr><td style="padding:28px 26px 10px" class="bm-pad">' . $body . $card . $signature . '</td></tr>'
+            . '<tr><td style="padding:28px 26px 10px" class="bm-pad">' . $body . $card . $signature . $unsub . '</td></tr>'
             . '<tr><td style="padding:0 26px 26px" class="bm-pad">' . $footer . '</td></tr>'
             . '</table>'
             . '<p style="margin:16px 0 0;font-size:11px;color:#8a948f;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif">&copy; ' . date('Y') . ' ' . $store . ($tagline !== '' ? ' &middot; ' . $tagline : '') . '</p>'
@@ -137,6 +148,37 @@ final class EmailLayout
             $shown = preg_replace('#^https?://#', '', $url);
             return '<a href="' . $url . '" style="color:' . $green . ';font-weight:600;text-decoration:underline;word-break:break-all">' . $shown . '</a>' . $tail;
         }, $html);
+    }
+
+    /**
+     * Up to four real, in-stock products (from the recommender), two per row, each linked with ?rec=email so clicks
+     * and sales from emails are measured. Product images are linked from the live site.
+     * @param list<array<string,mixed>> $products product cards
+     */
+    private static function productGrid(array $products, string $green, string $action): string
+    {
+        $base = rtrim((string) config('app.url'), '/');
+        $basePath = rtrim((string) config('app.base_path', ''), '/');
+        $cells = [];
+        foreach (array_slice($products, 0, 4) as $p) {
+            $img = media($p['image'] ?? null);
+            $img = str_starts_with($img, 'http') ? $img : $base . substr($img, strlen($basePath));
+            $href = $base . '/product/' . rawurlencode((string) $p['slug']) . '?rec=email';
+            $cells[] = '<td width="50%" valign="top" style="padding:6px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #e3e8e5;border-radius:10px">'
+                . '<tr><td align="center" style="padding:10px"><a href="' . e($href) . '"><img src="' . e($img) . '" width="150" height="150" alt="" style="display:block;width:150px;height:150px;object-fit:contain;border:0"></a></td></tr>'
+                . '<tr><td style="padding:0 12px 4px;font-size:14px;line-height:1.35;font-weight:600"><a href="' . e($href) . '" style="color:#1f2a24;text-decoration:none">' . e(mb_strimwidth((string) $p['name'], 0, 60, '…')) . '</a></td></tr>'
+                . '<tr><td style="padding:0 12px 12px;font-size:15px;font-weight:800;color:' . $green . '">' . e(money($p['price']))
+                . ($p['was'] !== null ? ' <span style="font-size:12px;font-weight:400;color:#8a948f;text-decoration:line-through">' . e(money($p['was'])) . '</span>' : '') . '</td></tr>'
+                . '</table></td>';
+        }
+        if (!$cells) {
+            return '';
+        }
+        $rows = '';
+        foreach (array_chunk($cells, 2) as $pair) {
+            $rows .= '<tr>' . implode('', $pair) . (count($pair) === 1 ? '<td width="50%"></td>' : '') . '</tr>';
+        }
+        return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:6px 0 10px">' . $rows . '</table>';
     }
 
     private static function button(string $url, string $label, string $color): string

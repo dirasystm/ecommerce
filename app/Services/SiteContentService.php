@@ -30,6 +30,7 @@ final class SiteContentService
         'top_deals' => 'Biggest discounts', 'shop_by_category' => 'Category grid', 'featured' => 'Featured products',
         'category_rails' => 'A row of products for each top category', 'category_row' => 'Products from one category', 'values' => '"Why shop with us" strip',
         'text' => 'Text block',
+        'recommended' => 'Recommended for you (personalised; popular products for new visitors)',
     ];
     /** Section types that can be added more than once (the others exist once and can be hidden). */
     public const REPEATABLE_SECTIONS = ['category_row', 'text'];

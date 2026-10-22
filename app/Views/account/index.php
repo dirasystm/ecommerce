@@ -32,6 +32,15 @@ ob_start(); ?>
     <div class="col-6 col-md-3"><a class="border rounded p-3 d-block text-body" href="<?= e(url('/account/orders')) ?>"><span class="d-block fs-4 fw-bold"><?= $orderCount ?></span><span class="small text-muted">Orders</span></a></div>
     <div class="col-6 col-md-3"><a class="border rounded p-3 d-block text-body" href="<?= e(url('/account/wishlist')) ?>"><span class="d-block fs-4 fw-bold"><?= $wishCount ?></span><span class="small text-muted">Saved items</span></a></div>
 </div>
+<?php if (!empty($forYou)): \Waimart\Services\Marketing\Recommender::shown('account', count($forYou)); ?>
+    <div class="d-flex flex-wrap justify-content-between align-items-baseline mt-4 mb-2">
+        <h2 class="fs-5 fw-bold mb-0">For you</h2>
+        <a class="small" href="<?= e(url('/account/history')) ?>">Your shopping history and why we suggest these</a>
+    </div>
+    <div class="wm-rail" tabindex="0" aria-label="Products for you, scroll horizontally">
+        <?php foreach ($forYou as $c): ?><?= View::partial('partials/product-card', ['p' => $c, 'rec' => 'account', 'dismiss' => true]) ?><?php endforeach; ?>
+    </div>
+<?php endif; ?>
 <?php
 $body = (string) ob_get_clean();
 echo View::partial('account/_layout', compact('title', 'section', 'body'));

@@ -19,6 +19,8 @@ abstract class FeatureTestCase extends DbTestCase
     protected string $base = 'http://127.0.0.1:8089';
     private string $jar = '';
     protected string $lastBody = '';
+    /** User-Agent sent with requests (null: none), e.g. to act as a link-preview crawler. */
+    protected ?string $userAgent = null;
 
     public static function setUpBeforeClass(): void
     {
@@ -88,6 +90,9 @@ abstract class FeatureTestCase extends DbTestCase
                 return strlen($line);
             },
         ]);
+        if ($this->userAgent !== null) {
+            curl_setopt($ch, CURLOPT_USERAGENT, $this->userAgent);
+        }
         if ($method === 'POST') {
             if ($files) {
                 $fields = $data;

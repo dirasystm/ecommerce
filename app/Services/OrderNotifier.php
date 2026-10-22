@@ -19,6 +19,7 @@ final class OrderNotifier
 
     public static function statusChanged(array $order): void
     {
+        \Waimart\Services\Marketing\Signals::orderStatus($order);     // campaign and recommendation results (never blocks)
         if ($order['status'] === 'confirmed') {
             try {
                 // Marketplace sellers start preparing once the order is confirmed (paid / COD confirmed).

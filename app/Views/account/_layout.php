@@ -14,7 +14,9 @@ $nav = [
     'addresses' => ['/account/addresses', 'geo-alt', 'Addresses'],
     'profile' => ['/account/profile', 'person-vcard', 'Profile'],
     'password' => ['/account/password', 'shield-lock', 'Password'],
+    'history' => ['/account/history', 'clock-history', 'Shopping history'],
     'notifications' => ['/account/notifications', 'bell', 'Notifications'],
+    'privacy' => ['/account/privacy', 'shield-check', 'Privacy & marketing'],
 ];
 ?>
 <div class="container-wm">

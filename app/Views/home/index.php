@@ -150,6 +150,20 @@ case 'flash_sale': $flash = $d['flash']; if ($flash && $flash['products']): ?>
     </section>
 <?php endif; break;
 
+case 'recommended': if ($d['products']): ?>
+    <section class="wm-card wm-section" aria-labelledby="<?= $hid ?>">
+        <div class="wm-section-head">
+            <h2 id="<?= $hid ?>"><?= e($d['personal'] ? $title : 'Popular right now') ?></h2>
+            <?php if ($d['personal']): ?><span class="small text-muted">Based on what you have viewed · <a href="<?= e(url(\Waimart\Core\Auth::id() ? '/account/history' : '/privacy-choices')) ?>">Why?</a></span><?php endif; ?>
+        </div>
+        <div class="wm-rail" tabindex="0" aria-label="<?= e($d['personal'] ? $title : 'Popular right now') ?>, scroll horizontally">
+            <?php foreach ($d['products'] as $p): ?>
+                <?= View::partial('partials/product-card', ['p' => $p, 'rec' => 'home', 'dismiss' => $d['personal']]) ?>
+            <?php endforeach; ?>
+        </div>
+    </section>
+<?php endif; break;
+
 case 'top_deals': if ($d['products']): ?>
     <section class="wm-card wm-section" aria-labelledby="<?= $hid ?>">
         <div class="wm-section-head wm-head-green">

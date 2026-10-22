@@ -95,3 +95,13 @@ body.wm-admin { background: #f4f6f5; padding-bottom: 0; }
 .wm-test-result.is-error > div > .bi { color: #b42318; font-size: 1.1rem; }
 .wm-test-result .text-muted { color: #5f6368 !important; }
 .wm-test-result code { color: #3c3c3c; background: rgba(255, 255, 255, .7); padding: 6px 8px; border-radius: 4px; }
+
+/* Marketing Intelligence */
+.wm-mkt-tabs { scrollbar-width: thin; }
+.wm-funnel-bar { display: block; height: 10px; min-width: 2px; background: var(--wm-green); border-radius: 0 4px 4px 0; }
+.wm-creative { border: 1px solid #dfe3e6; border-radius: 12px; overflow: hidden; background: #fff; max-width: 420px; }
+.wm-creative-img { display: block; width: 100%; aspect-ratio: 1 / 1; object-fit: contain; background: #f6f7f8; }
+.wm-creative-body { padding: 12px 14px; }
+.wm-creative-head { font-weight: 700; font-size: 1.05rem; line-height: 1.3; margin-bottom: 4px; }
+.wm-qr { width: 200px; height: 200px; }
+.wm-qr img { width: 200px; height: 200px; image-rendering: pixelated; }

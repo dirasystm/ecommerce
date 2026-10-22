@@ -121,13 +121,13 @@ final class NotificationService
             // Branded HTML version (the plain text is sent alongside it). One-time codes are shown in a code box.
             $codes = array_values(array_filter($ctx['secrets'] ?? [], fn ($c) => preg_match('/^\d{4,8}$/', (string) $c)));
             try {
-                $html = EmailLayout::render($subject, $body, $template, ['order_id' => $ctx['order_id'] ?? null, 'codes' => $codes]);
+                $html = EmailLayout::render($subject, $body, $template, ['order_id' => $ctx['order_id'] ?? null, 'codes' => $codes, 'products' => $ctx['products'] ?? []]);
             } catch (\Throwable $e) {
                 Logger::error('Email layout failed; sending plain text', ['notification_id' => $id, 'error' => $e->getMessage()]);
                 $html = null;
             }
             if ($mail['driver'] === 'smtp') {
-                $this->sendSmtp($mail, $to, $subject, $body, $html);
+                $this->sendSmtp($mail, $to, $subject, $body, $html, $ctx['unsubscribe_url'] ?? null);
                 $status = 'sent';
             } else {
                 $this->writeLog('email', $to, $subject, $body);
@@ -186,7 +186,7 @@ final class NotificationService
     }
 
     /** @param array<string,mixed> $cfg mailConfig() */
-    private function sendSmtp(array $cfg, string $to, string $subject, string $body, ?string $html = null): void
+    private function sendSmtp(array $cfg, string $to, string $subject, string $body, ?string $html = null, ?string $unsubscribe = null): void
     {
         $m = new PHPMailer(true);
         $m->isSMTP();
@@ -208,6 +208,9 @@ final class NotificationService
             $m->addReplyTo((string) $cfg['reply_to']);
         }
         $m->addAddress($to);
+        if ($unsubscribe !== null) {
+            $m->addCustomHeader('List-Unsubscribe', '<' . $unsubscribe . '>');     // marketing: the inbox's own unsubscribe button
+        }
         $m->Subject = $subject;
         if ($html !== null) {
             $m->isHTML(true);

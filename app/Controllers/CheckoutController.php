@@ -42,6 +42,7 @@ final class CheckoutController extends Controller
         }
         $delivery = new DeliveryService();
         $user = Auth::user();
+        \Waimart\Services\Marketing\Tracker::record('checkout_started', []);
         // One-time key for duplicate-submission protection (used by order placement in Phase 6).
         if (!Session::get('checkout_token')) {
             Session::set('checkout_token', Crypto::token(32));
@@ -178,6 +179,7 @@ final class CheckoutController extends Controller
         }
 
         $order = $result['order'];
+        \Waimart\Services\Marketing\Signals::orderPlaced($order);
         OrderAccess::grant((string) $order['order_number'], 'placed');
         if ($result['access_token'] !== null) {
             // Shown once on the confirmation page so guests can bookmark their private tracking link.

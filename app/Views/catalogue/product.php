@@ -223,12 +223,13 @@ $qtyMax = max(1, min($selected['available'], $maxPerOrder));
         </aside>
     </div>
 
-    <?php foreach ([['You may also like', $related], ['Recently viewed', $recent]] as [$label, $cards]): ?>
+    <?php foreach ([['Frequently bought together', $together ?? [], 'together'], ['Similar products', $related, 'similar'], ['Recently viewed', $recent, null]] as [$label, $cards, $place]): ?>
         <?php if ($cards): ?>
+            <?php if ($place !== null) { \Waimart\Services\Marketing\Recommender::shown($place, count($cards)); } ?>
             <section class="wm-card wm-section" aria-label="<?= e($label) ?>">
                 <div class="wm-section-head"><h2><?= e($label) ?></h2></div>
                 <div class="wm-rail" tabindex="0" aria-label="<?= e($label) ?>, scroll horizontally">
-                    <?php foreach ($cards as $c): ?><?= View::partial('partials/product-card', ['p' => $c]) ?><?php endforeach; ?>
+                    <?php foreach ($cards as $c): ?><?= View::partial('partials/product-card', ['p' => $c, 'rec' => $place]) ?><?php endforeach; ?>
                 </div>
             </section>
         <?php endif; ?>

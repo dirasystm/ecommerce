@@ -490,4 +490,31 @@
         box.addEventListener('change', sync);
         sync();
     });
+    // ---------------------------------------------------------------- privacy banner and "Not interested"
+    // Both work without JavaScript (normal form posts); with it, they update in place.
+    var postForm = function (form, submitter) {
+        var data = new FormData(form);
+        if (submitter && submitter.name) { data.append(submitter.name, submitter.value); }
+        return fetch(form.action, { method: 'POST', body: data, credentials: 'same-origin', headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+    };
+    document.querySelectorAll('[data-privacy-form]').forEach(function (form) {
+        form.addEventListener('submit', function (e) {
+            e.preventDefault();
+            postForm(form, e.submitter).then(function () {
+                var banner = form.closest('[data-privacy-banner]');
+                if (banner) { banner.remove(); }
+            }).catch(function () { form.submit(); });
+        });
+    });
+    document.addEventListener('submit', function (e) {
+        var form = e.target.closest ? e.target.closest('[data-rec-dismiss]') : null;
+        if (!form) { return; }
+        e.preventDefault();
+        postForm(form, null).then(function () {
+            var card = form.closest('.wm-product');
+            var rail = card ? card.parentElement : null;
+            if (card) { card.remove(); }
+            if (rail && rail.focus) { rail.focus(); }
+        }).catch(function () { form.submit(); });
+    });
 })();

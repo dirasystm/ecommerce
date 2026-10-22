@@ -4,7 +4,10 @@
  * @var bool $flash             Show flash-sale stock bar
  */
 $flash ??= false;
+$rec ??= null;          // recommendation placement: the link carries it so clicks and sales can be measured
+$dismiss ??= false;     // show "Not interested" (personal recommendations only)
 $out = $p['available'] <= 0;
+$href = url('/product/' . $p['slug']) . ($rec !== null ? '?rec=' . rawurlencode($rec) : '');
 ?>
 <article class="wm-product<?= $out ? ' wm-out-of-stock' : '' ?>">
     <div class="wm-product-img">
@@ -14,8 +17,14 @@ $out = $p['available'] <= 0;
         <span class="wm-badge-discount">-<?= (int) $p['discount_percent'] ?>%</span>
     <?php endif; ?>
     <h3 class="wm-product-name">
-        <a class="wm-product-link" href="<?= e(url('/product/' . $p['slug'])) ?>"><?= e($p['name']) ?></a>
+        <a class="wm-product-link" href="<?= e($href) ?>"><?= e($p['name']) ?></a>
     </h3>
+    <?php if ($dismiss): ?>
+        <form class="wm-rec-dismiss" method="post" action="<?= e(url('/recommendations/' . (int) $p['id'] . '/dismiss')) ?>" data-rec-dismiss>
+            <?= csrf_field() ?><input type="hidden" name="placement" value="<?= e((string) $rec) ?>">
+            <button type="submit" title="Not interested" aria-label="Not interested in <?= e($p['name']) ?>"><i class="bi bi-x-lg" aria-hidden="true"></i></button>
+        </form>
+    <?php endif; ?>
     <?php if (!($p['seller_is_platform'] ?? true) && !empty($p['seller_name'])): ?>
         <div class="wm-product-seller">Sold by <?= e($p['seller_name']) ?></div>
     <?php endif; ?>

@@ -44,7 +44,7 @@ final class SiteContentServiceTest extends DbTestCase
         $this->assertCount(8, $this->svc->navPages(), 'Help Center menu: all built-in pages except Pickup stations');
         $this->assertSame(['Help Center', 'How to pay', 'Delivery & pickup', 'Returns & refunds', 'Contact us'], array_column($this->svc->menu('help_menu'), 'label'));
         $this->assertSame('About Basemall', $this->svc->menuTitle('footer_col_3'), '{store} filled in');
-        $this->assertSame(['hero', 'quick_categories', 'flash_sale', 'top_deals', 'shop_by_category', 'featured', 'category_rails', 'values'], array_column($this->svc->liveSections(), 'type'));
+        $this->assertSame(['hero', 'quick_categories', 'flash_sale', 'recommended', 'top_deals', 'shop_by_category', 'featured', 'category_rails', 'values'], array_column($this->svc->liveSections(), 'type'));
     }
 
     public function testPageValidationAndAddresses(): void

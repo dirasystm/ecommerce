@@ -23,6 +23,7 @@ final class ProductController extends Controller
         if ($product === null) {
             throw HttpException::notFound('This product is not available.');
         }
+        \Waimart\Services\Marketing\Signals::productViewed($req, $product);
 
         // Recently viewed (session only; excludes the current product when displayed).
         $recent = array_values(array_filter((array) Session::get('recently_viewed', []), 'is_int'));
@@ -52,7 +53,10 @@ final class ProductController extends Controller
             'metaDescription' => (string) ($product['short_description'] ?: $product['name']),
             'product' => $product,
             'selected' => $selected,
-            'related' => $repo->related($product),
+            'related' => \Waimart\Services\Marketing\Recommender::enabled('similar')
+                ? (new \Waimart\Services\Marketing\Recommender())->similar($product) : $repo->related($product),
+            'together' => \Waimart\Services\Marketing\Recommender::enabled('together')
+                ? (new \Waimart\Services\Marketing\Recommender())->boughtTogether((int) $product['id']) : [],
             'recent' => array_slice($recentCards, 0, 6),
         ]);
     }

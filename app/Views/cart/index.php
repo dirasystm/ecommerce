@@ -56,6 +56,7 @@
                         </article>
                     <?php endforeach; ?>
                 </div>
+                <?php if (!empty($recs)): ?><div class="mt-3"><?= \Waimart\Core\View::partial('partials/rec-rail', ['title' => 'You may also need', 'cards' => $recs, 'placement' => 'cart']) ?></div><?php endif; ?>
             </section>
 
             <aside class="col-lg-4">

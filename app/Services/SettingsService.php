@@ -34,18 +34,20 @@ final class SettingsService
         'delivery' => ['Delivery', 'Which fulfilment options are offered, free delivery and the notes customers see at checkout.', 'truck', false],
         'marketplace' => ['Marketplace', 'Seller products, payouts and onboarding documents.', 'shop-window', false],
         'email' => ['Email', 'Who emails come from and how they are sent.', 'envelope', true],
+        'intelligence' => ['Marketing intelligence', 'Tracking and privacy, recommendations, marketing limits, segments and attribution.', 'graph-up-arrow', true],
         'sms' => ['SMS', 'The SMS gateway (Talksasa): sender ID and API endpoint. Balance, tests and the message log are on the Email & SMS page.', 'phone', true],
         'security' => ['Security', 'Sign-in rules for staff accounts. Roles and permissions are under Staff & roles.', 'shield-lock', true],
         'maintenance' => ['Maintenance & announcement', 'Temporarily close the shop, or show a message across the top of every page.', 'megaphone', false],
     ];
 
     /** Groups edited on their own module page (with that module's permission) instead of under Admin → Settings. */
-    public const PAGES = ['payments' => '/admin/payment-methods', 'delivery' => '/admin/delivery-settings', 'sms' => '/admin/messaging'];
+    public const PAGES = ['payments' => '/admin/payment-methods', 'delivery' => '/admin/delivery-settings', 'sms' => '/admin/messaging', 'intelligence' => '/admin/marketing/settings'];
 
     /** Choices for 'select' widgets. */
     public const OPTIONS = [
         'mail_driver' => ['' => 'Server setting (config.local.php)', 'smtp' => 'Send through a mail server (SMTP)', 'log' => 'Do not send: write to the mail log (testing)'],
         'sms_driver' => ['' => 'Do not send: keep SMS in the message log only', 'talksasa' => 'Send through Talksasa bulk SMS'],
+        'tracking_consent_mode' => ['opt_in' => 'Ask guests first (recommended): only after they tap Allow', 'notice' => 'Tell guests and let them opt out'],
         'notify_channels' => ['email' => 'Email only', 'sms' => 'SMS only', 'both' => 'Both email and SMS'],
         'smtp_encryption' => ['tls' => 'STARTTLS (usually port 587)', 'ssl' => 'SSL/TLS (usually port 465)', 'none' => 'None (not recommended)'],
     ];
@@ -113,6 +115,36 @@ final class SettingsService
         'smtp_host' => ['Mail server (SMTP host)', 'nullable|max:190', 'e.g. smtp.yourprovider.com', 'email', 'text'],
         'smtp_port' => ['Port', 'required|int|gte:1|lte:65535', null, 'email', 'number'],
         'smtp_encryption' => ['Encryption', 'required|in:tls,ssl,none', null, 'email', 'select'],
+        // Marketing intelligence (edited under Marketing → Settings).
+        'tracking_enabled' => ['Record shopping activity', 'bool', 'Product views, searches, carts and orders, used for recommendations, segments and campaign results. Switching off stops all new recording.', 'intelligence', 'checkbox'],
+        'tracking_consent_mode' => ['Guests', 'required|in:opt_in,notice', 'Signed-in customers choose under My account → Privacy & marketing.', 'intelligence', 'select'],
+        'tracking_retention_days' => ['Keep shopping activity for (days)', 'required|int|gte:30|lte:730', 'Older activity is deleted every night.', 'intelligence', 'number'],
+        'guest_history_days' => ['Keep guest activity for (days)', 'required|int|gte:1|lte:180', 'Activity of visitors who never sign in is deleted after this.', 'intelligence', 'number'],
+        'recs_enabled' => ['Show recommendations', 'bool', 'Master switch for every recommendation below.', 'intelligence', 'checkbox'],
+        'recs_home' => ['Homepage: Recommended for you', 'bool', null, 'intelligence', 'checkbox'],
+        'recs_similar' => ['Product page: Similar products', 'bool', null, 'intelligence', 'checkbox'],
+        'recs_bought_together' => ['Product page: Frequently bought together', 'bool', null, 'intelligence', 'checkbox'],
+        'recs_cart' => ['Cart: You may also need', 'bool', null, 'intelligence', 'checkbox'],
+        'recs_account' => ['My account: For you', 'bool', null, 'intelligence', 'checkbox'],
+        'recs_confirmation' => ['Order confirmation: Complete your purchase', 'bool', null, 'intelligence', 'checkbox'],
+        'recs_email' => ['Products in marketing emails', 'bool', null, 'intelligence', 'checkbox'],
+        'recs_weight_view' => ['Weight: product viewed', 'required|int|gte:0|lte:20', null, 'intelligence', 'number'],
+        'recs_weight_search' => ['Weight: chosen from search', 'required|int|gte:0|lte:20', null, 'intelligence', 'number'],
+        'recs_weight_cart' => ['Weight: added to cart', 'required|int|gte:0|lte:20', null, 'intelligence', 'number'],
+        'recs_weight_wishlist' => ['Weight: saved to wishlist', 'required|int|gte:0|lte:20', null, 'intelligence', 'number'],
+        'recs_weight_purchase' => ['Weight: bought', 'required|int|gte:0|lte:20', null, 'intelligence', 'number'],
+        'recs_half_life_days' => ['Interest fades by half every (days)', 'required|int|gte:1|lte:180', 'Older activity counts for less: after this many days an action counts half as much.', 'intelligence', 'number'],
+        'marketing_paused' => ['Pause all marketing messages', 'bool', 'Stops every automation at once (order and account messages are not affected).', 'intelligence', 'checkbox'],
+        'marketing_max_per_day' => ['Most marketing messages per customer per day', 'required|int|gte:0|lte:10', null, 'intelligence', 'number'],
+        'marketing_max_per_week' => ['Most marketing messages per customer per week', 'required|int|gte:0|lte:30', null, 'intelligence', 'number'],
+        'marketing_quiet_start' => ['Quiet hours start', 'required|max:5', 'No marketing messages between these times (Kenya time), e.g. 20:00.', 'intelligence', 'text'],
+        'marketing_quiet_end' => ['Quiet hours end', 'required|max:5', 'e.g. 08:00. Messages due in quiet hours wait until then.', 'intelligence', 'text'],
+        'segment_new_days' => ['"New customer" means registered within (days)', 'required|int|gte:1|lte:365', null, 'intelligence', 'number'],
+        'segment_inactive_days' => ['"Inactive" means no order for (days)', 'required|int|gte:7|lte:730', null, 'intelligence', 'number'],
+        'segment_high_value' => ['"High value" means spent at least (KSh)', 'required|decimal', 'Paid orders, all time.', 'intelligence', 'text'],
+        'segment_frequent_views' => ['"Frequent viewer" means product views in 30 days', 'required|int|gte:2|lte:1000', null, 'intelligence', 'number'],
+        'attribution_window_days' => ['Attribution window (days)', 'required|int|gte:1|lte:90', 'A sale counts for a promotional link if the visitor clicked it within this many days before ordering.', 'intelligence', 'number'],
+        'price_drop_min_percent' => ['Price-drop alert from (%)', 'required|int|gte:1|lte:90', 'Wishlist alerts only when the real price fell by at least this much.', 'intelligence', 'number'],
         'notify_channels' => ['How notifications are sent', 'nullable|in:email,sms,both', 'Applies to every customer and seller message. One-time codes and reset links always go the way the person asked for.', 'sms', 'radio'],
         'sms_driver' => ['How SMS is sent', 'nullable|in:talksasa', null, 'sms', 'select'],
         'sms_sender_id' => ['Sender ID', 'nullable|max:11', 'The name customers see as the sender (up to 11 letters or digits), exactly as approved on your Talksasa account.', 'sms', 'text'],
@@ -313,6 +345,11 @@ final class SettingsService
         if (isset($fields['pickup_ready_min_days'], $fields['pickup_ready_max_days']) && !isset($errors['pickup_ready_min_days']) && !isset($errors['pickup_ready_max_days'])
             && trim((string) ($in['pickup_ready_max_days'] ?? '')) !== '' && (int) $in['pickup_ready_max_days'] < (int) ($in['pickup_ready_min_days'] ?? 0)) {
             $errors['pickup_ready_max_days'] = 'The longest time cannot be shorter than the shortest time.';
+        }
+        foreach (['marketing_quiet_start', 'marketing_quiet_end'] as $q) {
+            if (isset($fields[$q]) && !isset($errors[$q]) && !preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', trim((string) ($in[$q] ?? '')))) {
+                $errors[$q] = 'Use the 24-hour format, e.g. 20:00.';
+            }
         }
         if (isset($fields['sms_driver']) && ($in['sms_driver'] ?? '') === 'talksasa' && trim((string) ($in['sms_sender_id'] ?? '')) === '') {
             $errors['sms_sender_id'] = 'Enter the sender ID approved on your Talksasa account.';

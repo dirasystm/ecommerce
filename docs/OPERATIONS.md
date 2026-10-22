@@ -182,6 +182,71 @@ Install a new version of the website from a **.zip of the project** while the sh
 - Every step is in the audit log (`system.update_*`) and the update history.
 - PHP's zip extension is **not** needed: the updater reads standard .zip files itself.
 
+## Marketing Intelligence (Admin → Marketing Intelligence)
+
+Recommendations, customer segments, promotional links with results, leads and automated marketing messages. Everything is counted from what happens on this shop; nothing is estimated except where the screen says "est.".
+
+**Who can use it**
+- `marketing.view`: dashboards, campaigns, segments and automations, with contact details masked. Given to *Content & marketing* and *Manager*.
+- `marketing.manage`: create campaigns and links, edit automations and Marketing settings. Given to *Content & marketing*.
+- `marketing.leads`: see and export lead contact details. Super administrators only, until you grant it under Roles & permissions. Every export is in the audit log.
+
+**Privacy and consent (Kenya Data Protection Act, 2019)**
+- Customers choose for themselves on the sign-up form and under **My account → Privacy & marketing**: marketing email, marketing SMS, how often, and personalised suggestions. Every change is kept, with the date and the wording shown. Staff cannot switch marketing on for a customer.
+- Guests see a privacy banner. With "Ask guests first" (the default), nothing a guest does is recorded until they tap **Allow**. Saying no also deletes what was recorded for that browser.
+- Customers can see and delete their browsing history (**My account → Browsing history**) and download their data as a file.
+- Every marketing message has an unsubscribe link, and emails carry a List-Unsubscribe header. Order and account messages are not marketing and are not affected.
+- Shopping activity is deleted after **Keep shopping activity for** (180 days by default); guest activity after 30 days.
+
+**Promotional links (Campaigns & links)**
+1. Create a campaign: name, objective, channel or platform, dates. Enter the **actual cost** if you want return on ad spend; it is never estimated.
+2. Create a link to a product, category, brand, store, search or another page of the shop. A link can only open pages of this shop.
+3. The **Link studio** gives you:
+   - the short link `https://basemall.co.ke/go/<code>`;
+   - ready-to-post texts for Facebook, Instagram, WhatsApp and X, plus hashtags and share buttons;
+   - a QR code for posters (its scans are counted separately);
+   - downloadable square and story images.
+   Prices and ratings always come from the shop. A coupon can only be one that exists and is active.
+4. This shop never posts or sends messages on social media for you. Copy the texts and post them yourself.
+
+**How results are counted**
+- Link-preview crawlers (WhatsApp, Facebook…) get the share card and are not counted as visits.
+- A sale counts for the last link the visitor clicked within the attribution window (30 days). You can switch the view to the first link instead.
+- "Paid" means M-Pesa verified or cash on delivery collected. Cancelled and refunded orders are never counted as sales.
+- Impressions and reach on social platforms are not available to the shop; read them in the platform's own reports.
+
+**Automations (all off until you switch them on)**
+- The automations are: welcome; cart reminders (3 h and 24 h); after delivery; review request; win-back (30/60/90 days after the last order); wishlist price drops; product discovery.
+- Before each message is sent, the system checks consent, the daily and weekly limits (1 and 3), quiet hours (20:00–08:00 Kenya time) and whether it is still relevant. For example, a cart reminder stops if the customer has ordered.
+- A message is never queued twice for the same event. **Pause all marketing messages** in Marketing settings stops everything at once.
+- The message wording is under **Content → Messages** (group "Marketing").
+- SMS needs an approved sender ID (Email & SMS). Until then, choose email only.
+
+**Scheduler (required for automations and the nightly upkeep)**
+
+Windows / XAMPP, in an elevated Command Prompt:
+```
+schtasks /Create /TN "Basemall Marketing" /SC MINUTE /MO 15 /RU SYSTEM ^
+  /TR "\"C:\xampp\htdocs\ecommerce\bin\marketing-run.bat\""
+```
+Linux (cron) on the live server:
+```
+*/15 * * * * /usr/bin/php /path/to/ecommerce/bin/marketing-run.php --quiet >> /path/to/ecommerce/storage/logs/marketing.log 2>&1
+```
+- Each run queues due messages and sends them.
+- Once a day it also rebuilds "frequently bought together" and deletes activity past its retention.
+- Run it by hand with `php bin/marketing-run.php` (add `--nightly` to force the daily tasks).
+- Only one run works at a time, so overlapping runs are harmless.
+- Output is in `storage/logs/marketing.log`. The Automations page shows when the nightly tasks last ran.
+
+**Troubleshooting**
+- *No recommendations on the homepage:* check that **Show recommendations** and the placement are on in Marketing settings. Only products in stock are shown. New shops show "Popular right now" until there is activity.
+- *Automation shows "waiting" but nothing is sent:* the scheduler is not running, it is quiet hours, the daily limit was reached, or marketing is paused.
+- *"Not allowed (consent)":* the customer has not agreed to that channel. This is expected.
+- *Link opens the homepage:* the link is switched off or expired, or the code is wrong.
+
+**Rollback:** `database/rollback/rollback_marketing.sql` removes migrations 031–033 (after a backup; see the file header).
+
 ## Backups
 
 `php bin/backup.php` writes a consistent database dump plus copies of `public/uploads` and `config.local.php` to `storage/backups`, and keeps the newest 14. Scheduling, off-site copies, restore and rebuild procedures are in [BACKUP_RESTORE.md](BACKUP_RESTORE.md). Installation is in [INSTALL.md](INSTALL.md).

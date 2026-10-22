@@ -58,6 +58,15 @@ $nav = [
         ['/admin/flash-sales', 'lightning-charge', 'Flash sales', 'content.manage'],
         ['/admin/messages', 'chat-square-text', 'Messages', 'messages.manage'],
     ]],
+    ['Marketing Intelligence', [
+        ['/admin/marketing', 'graph-up-arrow', 'Overview', 'marketing.view'],
+        ['/admin/marketing/campaigns', 'megaphone', 'Campaigns & links', 'marketing.view'],
+        ['/admin/marketing/leads', 'person-lines-fill', 'Leads', 'marketing.view'],
+        ['/admin/marketing/segments', 'people-fill', 'Segments', 'marketing.view'],
+        ['/admin/marketing/automations', 'robot', 'Automations', 'marketing.view'],
+        ['/admin/marketing/recommendations', 'stars', 'Recommendations', 'marketing.view'],
+        ['/admin/marketing/settings', 'sliders2', 'Marketing settings', 'marketing.manage'],
+    ]],
     ['System', [
         ['/admin/staff', 'person-badge', 'Staff', 'users.manage'],
         ['/admin/roles', 'shield-check', 'Roles & permissions', 'roles.manage'],
@@ -145,6 +154,7 @@ $renderNav = function () use ($nav, $active): string {
 </div>
 <script src="<?= e(asset('vendor/bootstrap/bootstrap.bundle.min.js')) ?>"></script>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
+<?php if (str_starts_with($path, '/admin/marketing/links/')): ?><script src="<?= e(asset('vendor/qrcode/qrcode.js')) ?>"></script><?php endif; ?>
 <script src="<?= e(asset('js/admin.js')) ?>"></script>
 </body>
 </html>

@@ -44,6 +44,7 @@ final class ReviewService
         if ($item === null) {
             throw ValidationException::withMessage('You can review only items you have received, once per item.');
         }
+        \Waimart\Services\Marketing\Tracker::record('review_submitted', ['user_id' => $userId, 'product_id' => (int) $item['product_id']]);
         try {
             return $this->db->insert('reviews', [
                 'product_id' => $item['product_id'], 'user_id' => $userId, 'order_item_id' => $orderItemId,

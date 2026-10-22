@@ -19,13 +19,7 @@ ob_start(); ?>
         </div>
         <p class="small text-muted mt-2 mb-0">Some messages, such as password resets and pickup collection codes, are always sent because they are needed to keep your account and orders secure.</p>
     </fieldset>
-    <fieldset class="mb-3">
-        <legend class="fs-6 fw-semibold">Marketing</legend>
-        <div class="form-check">
-            <input class="form-check-input" type="checkbox" id="marketing_opt_in" name="marketing_opt_in" value="1" <?= (int) $u['marketing_opt_in'] ? 'checked' : '' ?>>
-            <label class="form-check-label" for="marketing_opt_in">Send me deals and offers</label>
-        </div>
-    </fieldset>
+    <p class="small">Offers, newsletters and personalised suggestions are set separately under <a href="<?= e(url('/account/privacy')) ?>">Privacy &amp; marketing</a>.</p>
     <button class="btn btn-wm" type="submit">Save preferences</button>
 </form>
 <?php

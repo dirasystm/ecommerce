@@ -15,7 +15,10 @@ final class CartController extends Controller
     public function show(Request $req): Response
     {
         \Waimart\Services\ExpiryService::maybeSweep();   // fallback if the scheduler is not running (C8)
-        return $this->view('cart/index', ['title' => 'Cart', 'cart' => CartService::current()->summary()])
+        $cart = CartService::current()->summary();
+        $recs = !$cart['is_empty'] && \Waimart\Services\Marketing\Recommender::enabled('cart')
+            ? (new \Waimart\Services\Marketing\Recommender())->complements(array_column($cart['lines'], 'product_id'), 8) : [];
+        return $this->view('cart/index', ['title' => 'Cart', 'cart' => $cart, 'recs' => $recs])
             ->withHeader('Cache-Control', 'no-store, private');
     }
 
@@ -30,6 +33,9 @@ final class CartController extends Controller
             }
             throw $e;
         }
+        if ($result['added'] > 0) {
+            \Waimart\Services\Marketing\Signals::cart('cart_added', $this->int($req, 'variant_id'));
+        }
         if ($req->isAjax()) {
             return Response::json(['ok' => true, 'message' => $result['message'], 'count' => $cart->count()]);
         }
@@ -40,6 +46,9 @@ final class CartController extends Controller
     public function update(Request $req): Response
     {
         $qty = CartService::current()->setQuantity($this->int($req, 'variant_id'), $this->int($req, 'quantity', 0));
+        if ($qty === 0) {
+            \Waimart\Services\Marketing\Signals::cart('cart_removed', $this->int($req, 'variant_id'));
+        }
         Session::flash('success', $qty === 0 ? 'Item removed from your cart.' : 'Cart updated.');
         return Response::redirect('/cart');
     }
@@ -47,6 +56,7 @@ final class CartController extends Controller
     public function remove(Request $req): Response
     {
         CartService::current()->remove($this->int($req, 'variant_id'));
+        \Waimart\Services\Marketing\Signals::cart('cart_removed', $this->int($req, 'variant_id'));
         Session::flash('success', 'Item removed from your cart.');
         return Response::redirect('/cart');
     }

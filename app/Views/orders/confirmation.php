@@ -24,6 +24,11 @@ $trackUrl = $linkToken ? rtrim((string) config('app.url'), '/') . '/track/' . $o
 
     <?= View::partial('orders/_detail', ['order' => $order, 'full' => $full, 'collectionCode' => $collectionCode ?? null]) ?>
 
+    <?php if (\Waimart\Services\Marketing\Recommender::enabled('confirmation')): ?>
+        <div class="mt-3"><?= View::partial('partials/rec-rail', ['title' => 'Complete your purchase', 'placement' => 'confirmation',
+            'cards' => (new \Waimart\Services\Marketing\Recommender())->complements(array_map(fn ($i) => (int) $i['product_id'], $order['items']), 8)]) ?></div>
+    <?php endif; ?>
+
     <div class="d-flex flex-wrap gap-2 mt-3">
         <a class="btn btn-wm" href="<?= e(url('/')) ?>">Continue shopping</a>
         <?php if (Auth::check()): ?>

@@ -31,7 +31,7 @@ final class MessageTemplates
     public const ACCOUNT_VARS = ['store' => 'Store name', 'first_name' => 'First name', 'support_phone' => 'Customer care phone', 'support_email' => 'Customer care email'];
 
     public const GROUPS = ['orders' => 'Orders', 'payments' => 'Payments', 'returns' => 'Returns & refunds', 'cases' => 'Seller cases',
-                           'account' => 'Account', 'sellers' => 'Seller messages', 'stations' => 'Pickup stations'];
+                           'account' => 'Account', 'sellers' => 'Seller messages', 'stations' => 'Pickup stations', 'marketing' => 'Marketing automations'];
 
     /**
      * code => [
@@ -144,6 +144,41 @@ final class MessageTemplates
         'seller_message' => ['Messages to sellers', 'sellers', 'The layout of every message to sellers and seller applicants: {message} is the update itself (new orders, returns, cases, payouts, decisions). Important messages are always emailed.', 'seller',
             ['subject' => 'What the message is about', 'message' => 'The update itself'], ['email', 'sms'], ['email'], false, ['email' => ['message'], 'sms' => ['subject']],
             '{subject}', "Hello {first_name},\n\n{message}\n\n— {store} Seller Support", '{store} Seller Centre: {subject}'],
+
+        // Marketing automations (Marketing → Automations). Only sent with consent for the channel; always with an unsubscribe link.
+        'mkt_welcome' => ['Welcome (marketing)', 'marketing', 'Sent once to new customers who agreed to marketing messages.', 'account',
+            ['shop_url' => 'Shop homepage', 'unsubscribe_url' => 'Unsubscribe link (required)'], ['email', 'sms'], [], false, ['email' => ['unsubscribe_url'], 'sms' => ['unsubscribe_url']],
+            'Welcome to {store}: here is how to get the best deals',
+            "Hello {first_name},\n\nThanks for joining {store}. Here is how to get the most out of it:\n\n• Pay with M-Pesa or cash on delivery.\n• Collect for free at a pickup station near you, or get it delivered.\n• Save products to your wishlist and we will tell you when the price drops.\n\nHave a look at what is popular right now:\n\n{shop_url}\n\nTo stop receiving offers by email: {unsubscribe_url}\n\n{store}",
+            '{store}: welcome! Shop deals, pay by M-Pesa or on delivery: {shop_url} Opt out: {unsubscribe_url}'],
+        'mkt_cart' => ['Items left in your cart', 'marketing', 'Reminder about items still in the cart. Stops as soon as the customer orders or empties the cart.', 'account',
+            ['cart_items' => 'The items in the cart, one per line', 'cart_url' => 'Link to the cart', 'unsubscribe_url' => 'Unsubscribe link (required)'], ['email', 'sms'], [], false, ['email' => ['unsubscribe_url', 'cart_url'], 'sms' => ['unsubscribe_url']],
+            'You left something in your cart',
+            "Hello {first_name},\n\nYou still have these in your cart:\n\n{cart_items}\n\nPrices and stock can change, so complete your order while they are available:\n\n{cart_url}\n\nTo stop receiving these reminders: {unsubscribe_url}\n\n{store}",
+            '{store}: your cart is waiting. Complete your order: {cart_url} Opt out: {unsubscribe_url}'],
+        'mkt_post_purchase' => ['After delivery: you may also like', 'marketing', 'A few days after an order is delivered or collected: products that go well with it.', 'account',
+            ['order_number' => 'Order number', 'shop_url' => 'Shop homepage', 'unsubscribe_url' => 'Unsubscribe link (required)'], ['email'], [], false, ['email' => ['unsubscribe_url']],
+            'Picked for you after order {order_number}',
+            "Hello {first_name},\n\nWe hope you are enjoying your order {order_number}. Customers who bought the same items also liked these:\n\n{shop_url}\n\nTo stop receiving offers by email: {unsubscribe_url}\n\n{store}", ''],
+        'mkt_review' => ['Review request', 'marketing', 'After delivery: asks the customer to review what they bought.', 'account',
+            ['order_number' => 'Order number', 'review_url' => 'Link to write reviews', 'unsubscribe_url' => 'Unsubscribe link (required)'], ['email'], [], false, ['email' => ['unsubscribe_url', 'review_url']],
+            'How was your order {order_number}?',
+            "Hello {first_name},\n\nYour order {order_number} has arrived. Would you tell other shoppers what you think? It takes a minute:\n\n{review_url}\n\nTo stop receiving these emails: {unsubscribe_url}\n\n{store}", ''],
+        'mkt_reengage' => ['We miss you (win back)', 'marketing', 'Customers who have not ordered for a while (Marketing → Automations sets when).', 'account',
+            ['shop_url' => 'Shop homepage', 'unsubscribe_url' => 'Unsubscribe link (required)'], ['email', 'sms'], [], false, ['email' => ['unsubscribe_url'], 'sms' => ['unsubscribe_url']],
+            'New at {store}, picked for you',
+            "Hello {first_name},\n\nIt has been a while. Here are products picked for you from what is new and popular:\n\n{shop_url}\n\nTo stop receiving offers by email: {unsubscribe_url}\n\n{store}",
+            '{store}: new products picked for you: {shop_url} Opt out: {unsubscribe_url}'],
+        'mkt_price_drop' => ['Price drop on a saved item', 'marketing', 'A wishlist product is now cheaper (real price change, at least the % set under Marketing → Settings).', 'account',
+            ['product_name' => 'Product name', 'old_price' => 'Price when saved or last alerted', 'new_price' => 'Current price', 'product_url' => 'Link to the product', 'unsubscribe_url' => 'Unsubscribe link (required)'],
+            ['email', 'sms'], [], false, ['email' => ['unsubscribe_url', 'new_price'], 'sms' => ['unsubscribe_url', 'new_price']],
+            'Price drop: {product_name} is now {new_price}',
+            "Hello {first_name},\n\nGood news: {product_name} from your wishlist is now {new_price} (it was {old_price} when you saved it).\n\n{product_url}\n\nPrices can change again and stock is limited.\n\nTo stop receiving offers by email: {unsubscribe_url}\n\n{store}",
+            '{store}: {product_name} is now {new_price} (was {old_price}). {product_url} Opt out: {unsubscribe_url}'],
+        'mkt_discovery' => ['Products for your interests', 'marketing', 'At most weekly: available products from the categories the customer has been browsing.', 'account',
+            ['category_name' => 'The category of interest', 'shop_url' => 'Link to that category', 'unsubscribe_url' => 'Unsubscribe link (required)'], ['email'], [], false, ['email' => ['unsubscribe_url']],
+            'More {category_name} you may like',
+            "Hello {first_name},\n\nYou have been looking at {category_name}. Here are some available picks:\n\n{shop_url}\n\nTo stop receiving offers by email: {unsubscribe_url}\n\n{store}", ''],
 
         // Businesses applying to become pickup stations ("Become a pickup station").
         'pickup_application_received' => ['Pickup station application received', 'stations', 'Sent to the business as soon as it applies.', 'account',

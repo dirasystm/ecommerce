@@ -46,10 +46,22 @@
                         <label class="form-check-label small" for="accept_terms">I agree to the <a href="<?= e(url('/terms')) ?>" target="_blank">terms</a> and <a href="<?= e(url('/privacy')) ?>" target="_blank">privacy policy</a>.</label>
                         <?= field_error('accept_terms') ?>
                     </div>
-                    <div class="form-check">
-                        <input class="form-check-input" type="checkbox" id="marketing_opt_in" name="marketing_opt_in" value="1" <?= old('marketing_opt_in') ? 'checked' : '' ?>>
-                        <label class="form-check-label small" for="marketing_opt_in">Send me deals and offers (optional).</label>
-                    </div>
+                    <fieldset class="mt-2">
+                        <legend class="small fw-semibold mb-1">Your choices (optional, change them any time)</legend>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="marketing_email" name="marketing_email" value="1" <?= old('marketing_email') ? 'checked' : '' ?>>
+                            <label class="form-check-label small" for="marketing_email"><?= e(\Waimart\Services\Marketing\Consent::WORDING['email']) ?></label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="marketing_sms" name="marketing_sms" value="1" <?= old('marketing_sms') ? 'checked' : '' ?>>
+                            <label class="form-check-label small" for="marketing_sms"><?= e(\Waimart\Services\Marketing\Consent::WORDING['sms']) ?></label>
+                        </div>
+                        <input type="hidden" name="personalisation_shown" value="1">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="personalisation" name="personalisation" value="1" <?= !old('personalisation_shown') || old('personalisation') ? 'checked' : '' ?>>
+                            <label class="form-check-label small" for="personalisation"><?= e(\Waimart\Services\Marketing\Consent::WORDING['personalisation']) ?></label>
+                        </div>
+                    </fieldset>
                 </div>
             </div>
             <button class="btn btn-wm w-100 mt-4" type="submit">Create account</button>

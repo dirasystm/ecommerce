@@ -29,7 +29,7 @@ abstract class DbTestCase extends TestCase
      * migrated test database and put back before every test, so each test starts from the shipped content and no test
      * can leak edits.
      */
-    private const CONTENT_SEEDED = ['content_pages', 'menus', 'menu_items', 'home_sections', 'payment_methods', 'roles', 'role_permissions'];
+    private const CONTENT_SEEDED = ['content_pages', 'menus', 'menu_items', 'home_sections', 'payment_methods', 'roles', 'role_permissions', 'marketing_automations'];
     /** @var array<string,list<array<string,mixed>>>|null */
     private static ?array $contentSeed = null;
 
@@ -46,7 +46,7 @@ abstract class DbTestCase extends TestCase
         $pdo = $this->db->pdo();
         if (self::$contentSeed === null) {
             foreach (self::CONTENT_SEEDED as $t) {
-                self::$contentSeed[$t] = $this->db->all("SELECT * FROM `$t` ORDER BY " . match ($t) { 'menu_items' => 'parent_id IS NOT NULL, id', 'payment_methods' => 'code', 'role_permissions' => 'role_id, permission_id', default => 'id' });
+                self::$contentSeed[$t] = $this->db->all("SELECT * FROM `$t` ORDER BY " . match ($t) { 'menu_items' => 'parent_id IS NOT NULL, id', 'payment_methods', 'marketing_automations' => 'code', 'role_permissions' => 'role_id, permission_id', default => 'id' });
             }
         }
         $pdo->exec('SET FOREIGN_KEY_CHECKS = 0');

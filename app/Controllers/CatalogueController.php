@@ -28,6 +28,7 @@ final class CatalogueController extends Controller
         $siblings = $parent ? $db->all('SELECT name, slug FROM categories WHERE parent_id = ? AND is_active = 1 ORDER BY sort_order, name', [$cat['parent_id']]) : [];
 
         $criteria = $this->criteria($req) + ['category_ids' => [(int) $cat['id'], ...array_map('intval', array_column($children, 'id'))]];
+        \Waimart\Services\Marketing\Tracker::record('category_viewed', ['category_id' => (int) $cat['id']]);
         $result = (new ProductListing($db))->find($criteria, $this->page($req));
 
         $crumbs = [];
@@ -56,6 +57,7 @@ final class CatalogueController extends Controller
             throw HttpException::notFound('Brand not found.');
         }
         $criteria = $this->criteria($req) + ['brand_id' => (int) $brand['id']];
+        \Waimart\Services\Marketing\Tracker::record('brand_viewed', ['brand_id' => (int) $brand['id']]);
         unset($criteria['brands']);
         return $this->view('catalogue/listing', [
             'title' => $brand['name'],
@@ -72,6 +74,9 @@ final class CatalogueController extends Controller
     {
         $q = mb_substr(trim((string) $req->input('q', '')), 0, 100);
         $criteria = $this->criteria($req) + ['q' => $q];
+        if ($q !== '') {
+            \Waimart\Services\Marketing\Tracker::record('searched', ['query' => $q]);
+        }
         $result = (new ProductListing(App::db()))->find($criteria, $this->page($req));
         return $this->view('catalogue/listing', [
             'title' => $q !== '' ? 'Search: ' . $q : 'All products',
@@ -99,6 +104,7 @@ final class CatalogueController extends Controller
             throw HttpException::notFound('This store is not available.');
         }
         $categories = $stores->categories((int) $store['id']);
+        \Waimart\Services\Marketing\Tracker::record('store_viewed', ['seller_id' => (int) $store['id']]);
         $criteria = $this->criteria($req) + ['seller_id' => (int) $store['id']];
         $catParam = (string) ($req->query['category'] ?? '');
         $current = null;

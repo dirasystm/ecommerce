@@ -48,6 +48,11 @@ $router->group(['prefix' => '/account', 'middleware' => ['auth']], function ($r)
     $r->get('/password', [AccountController::class, 'password']);
     $r->post('/password', [AccountController::class, 'savePassword'], ['throttle:10,300']);
     $r->get('/notifications', [AccountController::class, 'notifications']);
+    $r->get('/history', [\Waimart\Controllers\PreferencesController::class, 'history']);
+    $r->post('/history/forget', [\Waimart\Controllers\PreferencesController::class, 'forget']);
+    $r->get('/privacy', [\Waimart\Controllers\PreferencesController::class, 'privacy']);
+    $r->post('/privacy', [\Waimart\Controllers\PreferencesController::class, 'savePrivacy'], ['throttle:30,3600']);
+    $r->get('/privacy/export', [\Waimart\Controllers\PreferencesController::class, 'export'], ['throttle:10,3600']);
     $r->post('/notifications', [AccountController::class, 'saveNotifications']);
     $r->get('/orders', [OrderController::class, 'accountIndex']);
     $r->get('/orders/link', [OrderController::class, 'linkForm']);
@@ -99,6 +104,14 @@ use Waimart\Controllers\PickupStationController;
 
 $router->get('/sell', [SellController::class, 'landing'], [], 'sell');
 // Businesses apply to become pickup stations; a super admin approves them (Admin -> Pickup points -> Applications).
+// Marketing (public): newsletter, unsubscribe, guests' privacy choice, "Not interested", promotional links.
+$router->post('/newsletter', [\Waimart\Controllers\MarketingController::class, 'newsletter'], ['throttle:10,3600']);
+$router->get('/unsubscribe/{who:[ul]\d{1,10}}/{channel:email|sms}/{sig:[a-f0-9]{20}}', [\Waimart\Controllers\MarketingController::class, 'unsubscribeForm']);
+$router->post('/unsubscribe/{who:[ul]\d{1,10}}/{channel:email|sms}/{sig:[a-f0-9]{20}}', [\Waimart\Controllers\MarketingController::class, 'unsubscribe'], ['throttle:30,3600']);
+$router->get('/go/{code:[A-Za-z0-9]{6,12}}', [\Waimart\Controllers\GoController::class, 'go'], ['throttle:120,60']);
+$router->get('/privacy-choices', [\Waimart\Controllers\MarketingController::class, 'privacyChoices']);
+$router->post('/privacy-choices', [\Waimart\Controllers\MarketingController::class, 'choose'], ['throttle:60,3600']);
+$router->post('/recommendations/{id:\d+}/dismiss', [\Waimart\Controllers\MarketingController::class, 'dismiss'], ['throttle:120,3600']);
 $router->get('/become-a-pickup-station', [PickupStationController::class, 'form'], [], 'pickup.apply');
 $router->post('/become-a-pickup-station', [PickupStationController::class, 'apply'], ['throttle:10,3600']);
 $router->get('/become-a-pickup-station/thank-you', [PickupStationController::class, 'thanks']);
@@ -219,6 +232,31 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
         $r->get('/delivery-settings', [Admin\DeliverySettingsController::class, 'show']);
         $r->post('/delivery-settings', [Admin\DeliverySettingsController::class, 'save']);
         $r->post('/delivery-settings/status-names', [Admin\DeliverySettingsController::class, 'saveLabels']);
+    });
+    // Marketing Intelligence: analytics (marketing.view), campaigns/links/automations/settings (marketing.manage), lead contact details (marketing.leads).
+    $r->group(['prefix' => '/marketing', 'middleware' => ['can:marketing.view']], function ($r) {
+        $c = Admin\MarketingIntelligenceController::class;
+        $r->get('', [$c, 'overview']);
+        $r->get('/campaigns', [$c, 'campaigns']);
+        $r->get('/campaigns/new', [$c, 'create'], ['can:marketing.manage']);
+        $r->post('/campaigns', [$c, 'store'], ['can:marketing.manage', 'throttle:60,3600']);
+        $r->get('/campaigns/{id:\d+}', [$c, 'show']);
+        $r->post('/campaigns/{id:\d+}', [$c, 'update'], ['can:marketing.manage']);
+        $r->post('/campaigns/{id:\d+}/state', [$c, 'state'], ['can:marketing.manage']);
+        $r->post('/campaigns/{id:\d+}/links', [$c, 'storeLink'], ['can:marketing.manage', 'throttle:120,3600']);
+        $r->get('/links/{id:\d+}', [$c, 'link']);
+        $r->post('/links/{id:\d+}', [$c, 'updateLink'], ['can:marketing.manage']);
+        $r->post('/links/{id:\d+}/active', [$c, 'linkActive'], ['can:marketing.manage']);
+        $r->get('/leads', [$c, 'leads']);
+        $r->get('/leads/export', [$c, 'exportLeads'], ['can:marketing.leads', 'throttle:20,3600']);
+        $r->get('/segments', [$c, 'segments']);
+        $r->get('/segments/{code:[a-z_]{2,30}}', [$c, 'segment']);
+        $r->get('/consent', [$c, 'consent']);
+        $r->get('/automations', [$c, 'automations']);
+        $r->post('/automations/{code:[a-z_]{2,30}}', [$c, 'saveAutomation'], ['can:marketing.manage']);
+        $r->get('/recommendations', [$c, 'recommendations']);
+        $r->get('/settings', [$c, 'settings'], ['can:marketing.manage']);
+        $r->post('/settings', [$c, 'saveSettings'], ['can:marketing.manage']);
     });
     // Businesses applying to become pickup stations: verified, approved or rejected (super admins; pickup_points.approve).
     $r->group(['middleware' => ['can:pickup_points.approve']], function ($r) {

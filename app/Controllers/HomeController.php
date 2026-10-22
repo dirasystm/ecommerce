@@ -51,6 +51,7 @@ final class HomeController extends Controller
                 'category_row' => ['products' => $s['category_slug'] ? $repo->inCategoryTree((int) $s['category_id'], $limit ?: 12) : []],
                 'values' => ['items' => $content->menu('home_values')],
                 'text' => ['html' => (new \Waimart\Services\ContentRenderer())->render((string) $s['body'])],
+                'recommended' => self::recommended($limit ?: 12),
                 default => null,
             };
             if ($data !== null) {
@@ -58,6 +59,20 @@ final class HomeController extends Controller
             }
         }
         return $this->view('home/index', ['blocks' => $blocks, 'tree' => $tree]);
+    }
+
+    /** "Recommended for you": personal when allowed and there is enough activity, otherwise popular right now. */
+    private static function recommended(int $limit): ?array
+    {
+        if (!\Waimart\Services\Marketing\Recommender::enabled('home')) {
+            return null;
+        }
+        $uid = \Waimart\Core\Auth::id();
+        $allowed = \Waimart\Services\Marketing\Tracker::allowed();
+        $r = (new \Waimart\Services\Marketing\Recommender())->forYou($allowed ? $uid : null,
+            $allowed && $uid === null ? \Waimart\Services\Marketing\Tracker::visitorId() : null, $limit);
+        \Waimart\Services\Marketing\Recommender::shown('home', count($r['cards']));
+        return ['products' => $r['cards'], 'personal' => $r['personal']];
     }
 
     /** One product rail per top category that has products. @return list<array<string,mixed>> */

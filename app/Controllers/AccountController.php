@@ -26,6 +26,8 @@ final class AccountController extends Controller
             'default' => $db->one('SELECT a.*, c.name AS county_name FROM user_addresses a JOIN counties c ON c.id = a.county_id WHERE a.user_id = ? AND a.is_default = 1', [$uid]),
             'orderCount' => (int) $db->value('SELECT COUNT(*) FROM orders WHERE user_id = ?', [$uid]),
             'wishCount' => (int) $db->value('SELECT COUNT(*) FROM wishlist_items WHERE user_id = ?', [$uid]),
+            'forYou' => \Waimart\Services\Marketing\Recommender::enabled('account') && \Waimart\Services\Marketing\Tracker::allowed($uid)
+                ? (new \Waimart\Services\Marketing\Recommender())->forYou($uid, null, 12)['cards'] : [],
         ]);
     }
 
@@ -60,7 +62,9 @@ final class AccountController extends Controller
 
     public function saveNotifications(Request $req): Response
     {
-        (new AccountService())->updateNotifications((int) Auth::id(), $req->post);
+        // Marketing consent is changed only on Privacy & marketing (with its history), never from this form.
+        $marketing = (int) App::db()->value('SELECT marketing_email FROM users WHERE id = ?', [Auth::id()]);
+        (new AccountService())->updateNotifications((int) Auth::id(), ['marketing_opt_in' => $marketing] + $req->only('notify_email', 'notify_sms'));
         Session::flash('success', 'Notification preferences saved.');
         return Response::redirect('/account/notifications');
     }
@@ -110,6 +114,7 @@ final class AccountController extends Controller
             $db->exec('INSERT IGNORE INTO wishlist_items (user_id, product_id) VALUES (?, ?)', [$uid, $pid]);
             $saved = true;
         }
+        \Waimart\Services\Marketing\Signals::wishlist($saved, $pid, $uid);
         if ($req->isAjax()) {
             return Response::json(['ok' => true, 'saved' => $saved]);
         }
