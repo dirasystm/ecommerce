@@ -13,7 +13,7 @@ namespace Waimart\Core;
 final class ZipReader
 {
     public const MAX_ENTRIES = 50000;
-    public const MAX_TOTAL_BYTES = 1024 * 1024 * 1024;   // 1 GB unpacked
+    public const MAX_TOTAL_BYTES = 4 * 1024 * 1024 * 1024;   // 4 GB unpacked (a 2 GB package of mostly compressed files)
     public const MAX_RATIO = 200;                        // unpacked : packed, for entries over 1 MB
 
     /** @var resource */
@@ -152,7 +152,7 @@ final class ZipReader
             }
             $total += $h['size'];
             if ($total > self::MAX_TOTAL_BYTES) {
-                throw new \RuntimeException('Refused: the package unpacks to more than 1 GB.');
+                throw new \RuntimeException('Refused: the package unpacks to more than 4 GB.');
             }
             $this->entries[] = ['name' => rtrim($path, '/'), 'method' => $h['method'], 'crc' => $h['crc'], 'packed' => $h['packed'],
                                 'size' => $h['size'], 'offset' => $h['offset'], 'dir' => $isDir];

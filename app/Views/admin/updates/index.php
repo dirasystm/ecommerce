@@ -30,7 +30,7 @@ $label = ['completed' => 'Installed', 'rolled_back' => 'Rolled back', 'failed' =
         <div class="wm-panel-body">
             <form class="row g-2 align-items-end" data-upload-form novalidate>
                 <div class="col-md-8">
-                    <label class="form-label" for="package">Project package (.zip, up to <?= $maxMb ?> MB)</label>
+                    <label class="form-label" for="package">Project package (.zip, up to <?= e(\Waimart\Services\SiteUpdater::human($maxMb * 1024 * 1024)) ?>)</label>
                     <input class="form-control" type="file" id="package" accept=".zip,application/zip" required aria-describedby="packageHelp">
                     <div class="form-text" id="packageHelp">Zip the whole project folder (with or without vendor/). It is checked first: nothing on the website changes until you confirm.</div>
                 </div>

@@ -44,7 +44,9 @@ final class SiteUpdater
     public const INSTALL = ['approved', 'backing_up_db', 'backing_up_files', 'staging', 'applying', 'verifying', 'finalizing'];
     public const FINAL = ['completed', 'failed', 'rolled_back', 'cancelled', 'nothing'];
     public const MAX_CHUNK = 8 * 1024 * 1024;
-    public const MAX_PACKAGE = 300 * 1024 * 1024;
+    public const MAX_PACKAGE = 2048 * 1024 * 1024;   // 2 GB (uploaded in pieces; the zip format itself allows up to 4 GB without ZIP64)
+    /** Free disk space needed per byte of package: the zip, its unpacked copy and backups of the files it replaces. */
+    private const SPACE_FACTOR = 3;
     private const BUDGET = 0.8;   // seconds of work per step: short, so the progress the page shows moves smoothly
 
     private Database $db;
@@ -105,7 +107,17 @@ final class SiteUpdater
             throw new ValidationException(['package' => 'Choose a .zip file of the project.']);
         }
         if ($size <= 0 || $size > self::MAX_PACKAGE) {
-            throw new ValidationException(['package' => 'The package must be smaller than ' . (self::MAX_PACKAGE / 1024 / 1024) . ' MB.']);
+            throw new ValidationException(['package' => 'The package must be smaller than ' . self::human(self::MAX_PACKAGE) . '.']);
+        }
+        // Refuse at once when the server cannot hold the package, its unpacked copy and the backups (rather than failing halfway).
+        $updates = dirname($this->dir('x'));
+        if (!is_dir($updates)) {
+            @mkdir($updates, 0775, true);
+        }
+        $free = @disk_free_space($updates);
+        if (is_float($free) && $free < $size * self::SPACE_FACTOR + 50 * 1024 * 1024) {
+            throw new ValidationException(['package' => 'Not enough free disk space on the server for this package: about ' . self::human((int) ($size * self::SPACE_FACTOR))
+                . ' is needed and ' . self::human((int) $free) . ' is free. Leave out folders the update does not use (public/uploads, storage, .git, node_modules) or free some space in cPanel.']);
         }
         $uuid = bin2hex(random_bytes(16));
         $dir = $this->dir($uuid);
@@ -117,6 +129,12 @@ final class SiteUpdater
         $this->save($j);
         AuditLogger::log('system.update_uploading', 'system_update', $uuid, null, ['package' => $name, 'size' => $size], $actorId);
         return $j;
+    }
+
+    /** "2 GB", "300 MB". */
+    public static function human(int $bytes): string
+    {
+        return $bytes >= 1024 ** 3 ? rtrim(rtrim(number_format($bytes / 1024 ** 3, 1), '0'), '.') . ' GB' : (int) round($bytes / 1024 ** 2) . ' MB';
     }
 
     /** Appends one chunk (they must arrive in order). @return array<string,mixed> */
