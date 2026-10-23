@@ -650,3 +650,31 @@ p a:not(.btn), li > a:not(.btn):not(.dropdown-item):not(.nav-link):not(.page-lin
 .wm-toolbar-actions { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
 /* Tables scroll sideways only; a 1px rounding overflow must not make the wrapper a vertical scroll region. */
 .table-responsive { overflow-y: hidden; }
+
+/* Table look: white rows (Bootstrap would paint cells with the grey page background), a faint stripe, green hover,
+   breathing room at the panel edges, numbers that line up. */
+.wm-admin .table, .wm-table { --bs-table-bg: #fff; --bs-table-striped-bg: #fafbfa; color: #1f2a24; }
+.wm-admin .table > tbody > tr:nth-child(even of :not([hidden])) > td { background-color: #fafbfa; }
+.wm-admin .table > tbody > tr:hover > td { background-color: #f1f7f3; }
+.wm-admin .table > :not(caption) > tr > :first-child { padding-left: 16px; }
+.wm-admin .table > :not(caption) > tr > :last-child { padding-right: 16px; }
+.wm-admin .table > thead > tr > th { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: #5b6770; border-bottom: 2px solid #e3e8e5; }
+.wm-admin .table.table-sm > tbody > tr > td { padding-top: .6rem; padding-bottom: .6rem; }
+.wm-admin .table > tbody > tr.table-warning > td { background-color: #fff8e6; }
+.wm-admin .table > tbody > tr.table-danger > td { background-color: #fdecec; }
+.wm-admin .wm-panel > .table, .wm-admin .wm-panel > .table-responsive > .table { margin-bottom: 0; }
+
+/* Sortable headings (data-wm-table) */
+.wm-sort-btn { display: inline-flex; align-items: center; gap: 5px; padding: 0; border: 0; background: none; font: inherit; color: inherit;
+    text-transform: inherit; letter-spacing: inherit; white-space: nowrap; cursor: pointer; }
+.wm-sort-btn .bi { font-size: .8em; opacity: .35; }
+.wm-sort-btn:hover, .wm-sort-btn.active { color: var(--wm-green); }
+.wm-sort-btn:hover .bi, .wm-sort-btn.active .bi { opacity: 1; }
+th.text-end .wm-sort-btn { flex-direction: row-reverse; }
+
+/* Search above a table inside a panel */
+.wm-panel > .wm-table-toolbar-inline, .wm-panel .wm-table-toolbar-inline { padding: 12px 16px 0; margin-bottom: 10px; }
+.wm-table-footer { background: #fcfdfc; }
+.wm-table-footer .page-link { min-width: 32px; text-align: center; border-radius: 6px !important; margin: 0 2px; border-color: #e3e8e5; color: #1f2a24; }
+.wm-table-footer .page-item.active .page-link { background: var(--wm-green); border-color: var(--wm-green); color: #fff; }
+.wm-table-footer .page-link:hover { background: #eef5f0; color: var(--wm-green); }

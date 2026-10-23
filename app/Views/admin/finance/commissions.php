@@ -19,12 +19,12 @@ $target = fn ($r) => $r['scope'] === 'default' ? 'All sellers (default)' : ($r['
     <div class="col-lg-7">
         <section class="wm-panel mb-3">
             <div class="wm-panel-head">Rates in force</div>
-            <div class="table-responsive"><table class="table table-sm mb-0">
+            <div class="table-responsive"><table class="table table-sm mb-0" data-wm-table="10" data-wm-noun="rates">
                 <thead><tr><th scope="col">Applies to</th><th scope="col" class="text-end">Rate</th><th scope="col">Since</th><th scope="col">Note</th><th scope="col"></th></tr></thead>
                 <tbody>
                 <?php foreach ($active as $r): ?>
                     <tr><td><?= e($target($r)) ?></td><td class="text-end fw-semibold"><?= e($pct($r['rate'])) ?></td>
-                        <td class="small text-nowrap"><?= e(date('d M Y', strtotime((string) $r['created_at']))) ?></td><td class="small"><?= e((string) $r['note']) ?></td>
+                        <td class="small text-nowrap" data-sort="<?= e((string) $r['created_at']) ?>"><?= e(date('d M Y', strtotime((string) $r['created_at']))) ?></td><td class="small"><?= e((string) $r['note']) ?></td>
                         <td class="text-end"><?php if ($r['scope'] !== 'default' && !($r['scope'] === 'seller' && (int) $r['seller_id'] === \Waimart\Services\Sellers::platformId())): ?>
                             <form method="post" action="<?= e(url('/admin/commissions/' . $r['id'] . '/retire')) ?>" data-confirm="Remove this rate? New orders will use the next applicable rate."><?= csrf_field() ?>
                                 <button class="btn btn-sm btn-link text-danger p-0" type="submit">Remove</button></form><?php endif; ?></td></tr>
@@ -34,11 +34,11 @@ $target = fn ($r) => $r['scope'] === 'default' ? 'All sellers (default)' : ($r['
         </section>
         <details class="wm-panel mb-3">
             <summary class="wm-panel-head">History (<?= count($retired) ?> retired rates)</summary>
-            <div class="table-responsive"><table class="table table-sm mb-0">
+            <div class="table-responsive"><table class="table table-sm mb-0" data-wm-table="10" data-wm-noun="retired rates">
                 <thead><tr><th scope="col">Applied to</th><th scope="col" class="text-end">Rate</th><th scope="col">From</th><th scope="col">Until</th></tr></thead>
                 <tbody><?php foreach ($retired as $r): ?>
                     <tr><td class="small"><?= e($target($r)) ?></td><td class="text-end small"><?= e($pct($r['rate'])) ?></td>
-                        <td class="small text-nowrap"><?= e(date('d M Y H:i', strtotime((string) $r['created_at']))) ?></td><td class="small text-nowrap"><?= $r['deactivated_at'] ? e(date('d M Y H:i', strtotime((string) $r['deactivated_at']))) : '' ?></td></tr>
+                        <td class="small text-nowrap" data-sort="<?= e((string) $r['created_at']) ?>"><?= e(date('d M Y H:i', strtotime((string) $r['created_at']))) ?></td><td class="small text-nowrap" data-sort="<?= e((string) $r['deactivated_at']) ?>"><?= $r['deactivated_at'] ? e(date('d M Y H:i', strtotime((string) $r['deactivated_at']))) : '' ?></td></tr>
                 <?php endforeach; ?></tbody>
             </table></div>
         </details>

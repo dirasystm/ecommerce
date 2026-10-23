@@ -126,14 +126,15 @@ $total = array_sum(array_column($waiting, 1));
         <?php if (!empty($recentOrders)): ?>
             <section class="wm-panel mb-3">
                 <div class="wm-panel-head">Latest orders <a class="small fw-normal" href="<?= e(url('/admin/orders')) ?>">All orders</a></div>
-                <div class="table-responsive"><table class="table table-hover table-sm mb-0">
+                <div class="table-responsive"><table class="table table-hover table-sm mb-0" data-wm-table="8" data-wm-noun="orders">
+                    <thead><tr><th scope="col">Order</th><th scope="col">Customer</th><th scope="col">Status</th><th scope="col">Placed</th><th scope="col" class="text-end">Total</th></tr></thead>
                     <tbody>
                     <?php foreach ($recentOrders as $o): ?>
                         <tr>
                             <td><a class="fw-semibold" href="<?= e(url('/admin/orders/' . $o['id'])) ?>"><?= e($o['order_number']) ?></a></td>
                             <td class="small"><?= e($o['customer_name']) ?></td>
                             <td><span class="badge <?= OrderPresenter::badgeClass($o['status']) ?>"><?= e(OrderPresenter::status($o['status'])) ?></span></td>
-                            <td class="small text-muted text-nowrap"><?= e(date('d M H:i', strtotime($o['placed_at']))) ?></td>
+                            <td class="small text-muted text-nowrap" data-sort="<?= e((string) $o['placed_at']) ?>"><?= e(date('d M H:i', strtotime($o['placed_at']))) ?></td>
                             <td class="text-end text-nowrap wm-num"><?= e(money($o['grand_total'])) ?></td>
                         </tr>
                     <?php endforeach; ?>
@@ -159,16 +160,19 @@ $total = array_sum(array_column($waiting, 1));
         <?php if (!empty($lowStock)): ?>
             <section class="wm-panel">
                 <div class="wm-panel-head">Stock alerts <a class="small fw-normal" href="<?= e(url('/admin/inventory?filter=low')) ?>">Inventory</a></div>
-                <ul class="list-group list-group-flush small">
-                    <?php foreach ($lowStock as $s): ?>
-                        <li class="list-group-item d-flex justify-content-between">
-                            <a class="text-body" href="<?= e(url('/admin/inventory/' . $s['id'])) ?>"><?= e($s['product']) ?><?= $s['variant'] !== 'Default' ? ' · ' . e($s['variant']) : '' ?></a>
-                            <span class="text-nowrap ms-2 <?= (int) $s['available'] <= 0 ? 'text-danger fw-semibold' : 'text-body' ?>">
-                                <?php if ((int) $s['available'] <= 0): ?><i class="bi bi-x-octagon" aria-hidden="true"></i> Out<?php else: ?><?= (int) $s['available'] ?> left<?php endif; ?>
-                            </span>
-                        </li>
+                <div class="table-responsive"><table class="table table-sm mb-0" data-wm-table="8" data-wm-noun="variants">
+                    <thead><tr><th scope="col">Product</th><th scope="col" class="text-end">Left</th></tr></thead>
+                    <tbody>
+                    <?php foreach ($lowStock as $s): $left = (int) $s['available']; ?>
+                        <tr>
+                            <td class="small"><a class="text-body" href="<?= e(url('/admin/inventory/' . $s['id'])) ?>"><?= e($s['product']) ?><?= $s['variant'] !== 'Default' ? ' · ' . e($s['variant']) : '' ?></a></td>
+                            <td class="text-end text-nowrap" data-sort="<?= $left ?>">
+                                <?php if ($left <= 0): ?><span class="badge badge-soft-danger"><i class="bi bi-x-octagon" aria-hidden="true"></i> Out</span><?php else: ?><span class="badge badge-soft-warning"><?= $left ?> left</span><?php endif; ?>
+                            </td>
+                        </tr>
                     <?php endforeach; ?>
-                </ul>
+                    </tbody>
+                </table></div>
             </section>
         <?php endif; ?>
     </div>

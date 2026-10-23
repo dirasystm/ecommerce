@@ -14,8 +14,8 @@ $now = time();
 </div>
 <p class="small text-muted">The homepage, top to bottom. Move sections, rename them, change how many products they show, hide them or schedule them. Slides are edited under <a href="<?= e(url('/admin/banners')) ?>">Banners</a>; the side tiles and "why shop with us" items under <a href="<?= e(url('/admin/content/menus')) ?>">Menus</a>.</p>
 <div class="wm-panel"><div class="table-responsive">
-    <table class="table table-hover mb-0 align-middle">
-        <thead><tr><th scope="col">Order</th><th scope="col">Section</th><th scope="col">Shows</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
+    <table class="table table-hover mb-0 align-middle" data-wm-table="10" data-wm-noun="sections">
+        <thead><tr><th scope="col" data-no-sort>Order</th><th scope="col">Section</th><th scope="col">Shows</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
         <tbody>
         <?php foreach ($rows as $s):
             $live = (int) $s['is_visible'] && (!$s['starts_at'] || strtotime((string) $s['starts_at']) <= $now) && (!$s['ends_at'] || strtotime((string) $s['ends_at']) > $now);

@@ -47,22 +47,27 @@ $money = fn ($v) => $v === null ? '—' : e(money((string) $v));
             <div class="wm-panel-body"><?= View::partial('admin/partials/daily-chart', ['daily' => $daily]) ?></div></section>
     <?php endif; ?>
     <div class="row g-3">
-        <?php foreach ([['By payment method', $byPayment, fn ($l) => PaymentOptions::label((string) $l)], ['By fulfilment', $byFulfilment, fn ($l) => ucfirst($l)], ['By current status (all orders)', $byStatus, fn ($l) => OrderPresenter::status($l)]] as [$h, $rows, $fmt]): ?>
+        <?php foreach ([['By payment method', $byPayment, fn ($l) => PaymentOptions::label((string) $l), 'Payment method', 'methods'], ['By fulfilment', $byFulfilment, fn ($l) => ucfirst($l), 'Fulfilment', 'options'], ['By current status (all orders)', $byStatus, fn ($l) => OrderPresenter::status($l), 'Status', 'statuses']] as [$h, $rows, $fmt, $col, $noun]): ?>
             <div class="col-lg-4"><section class="wm-panel h-100"><div class="wm-panel-head"><?= e($h) ?></div>
-                <table class="table table-sm mb-0 wm-num"><thead><tr><th scope="col"></th><th scope="col" class="text-end">Orders</th><th scope="col" class="text-end">Value</th></tr></thead><tbody>
-                <?php foreach ($rows as $r): ?><tr><td><?= e($fmt($r['label'])) ?></td><td class="text-end"><?= (int) $r['orders'] ?></td><td class="text-end"><?= $money($r['booked']) ?></td></tr><?php endforeach; ?>
+                <div class="table-responsive"><table class="table table-sm mb-0 wm-num" data-wm-table="10" data-wm-noun="<?= e($noun) ?>"><thead><tr><th scope="col"><?= e($col) ?></th><th scope="col" class="text-end">Orders</th><th scope="col" class="text-end">Value</th></tr></thead><tbody>
+                <?php foreach ($rows as $r): ?><tr><td><?= e($fmt($r['label'])) ?></td><td class="text-end"><?= (int) $r['orders'] ?></td><td class="text-end" data-sort="<?= e((string) $r['booked']) ?>"><?= $money($r['booked']) ?></td></tr><?php endforeach; ?>
                 <?php if (!$rows): ?><tr><td colspan="3" class="text-muted text-center">No orders</td></tr><?php endif; ?>
-                </tbody></table></section></div>
+                </tbody></table></div></section></div>
         <?php endforeach; ?>
     </div>
     <p class="small text-muted mt-3"><strong>Booked sales</strong>: orders placed in the period, excluding cancelled and expired, including delivery fees, after discounts. <strong>Cash received</strong>: M-Pesa amounts verified + COD cash recorded in the period.</p>
 
-<?php else: /** @var list<array<string,mixed>> $rows */ ?>
+<?php else: /** @var list<array<string,mixed>> $rows */
+    $nouns = ['products' => 'products', 'stock' => 'variants', 'payments' => 'payments', 'cod' => 'COD orders', 'refunds' => 'refunds'];
+    $allRows = count($rows);
+    $rows = array_slice($rows, 0, 2000);   // on screen; the CSV always has everything
+    ?>
+    <?php if ($allRows > count($rows)): ?><p class="small text-muted">Showing the first <?= number_format(count($rows)) ?> of <?= number_format($allRows) ?>. Narrow the dates, or download the CSV for all of them.</p><?php endif; ?>
     <?php if ($tab === 'stock' && count($rows) < (int) ($stockTotal ?? 0)): ?>
         <p class="small text-muted">Showing the <?= count($rows) ?> variants with the least available stock, out of <?= number_format((int) $stockTotal) ?>. Download the CSV for the full list.</p>
     <?php endif; ?>
     <div class="wm-panel"><div class="table-responsive">
-        <table class="table table-sm table-hover mb-0 wm-num">
+        <table class="table table-sm table-hover mb-0 wm-num" data-wm-table="15" data-wm-noun="<?= e($nouns[$tab] ?? 'rows') ?>">
             <?php if ($tab === 'products'): ?>
                 <thead><tr><th scope="col">#</th><th scope="col">Product</th><th scope="col" class="text-end">Units</th><th scope="col" class="text-end">Orders</th><th scope="col" class="text-end">Revenue</th></tr></thead><tbody>
                 <?php foreach ($rows as $i => $r): ?><tr><td><?= $i + 1 ?></td><td><?= e($r['product_name']) ?></td><td class="text-end"><?= (int) $r['units'] ?></td><td class="text-end"><?= (int) $r['orders'] ?></td><td class="text-end"><?= $money($r['revenue']) ?></td></tr><?php endforeach; ?>
@@ -74,7 +79,8 @@ $money = fn ($v) => $v === null ? '—' : e(money((string) $v));
             <?php elseif ($tab === 'payments'): ?>
                 <thead><tr><th scope="col">Code</th><th scope="col">Order</th><th scope="col">Method</th><th scope="col" class="text-end">Claimed</th><th scope="col" class="text-end">Confirmed</th><th scope="col">Status</th><th scope="col">Decided by</th></tr></thead><tbody>
                 <?php foreach ($rows as $r): ?><tr><td><code><?= e($r['transaction_code']) ?></code></td><td><?= e($r['order_number']) ?></td><td class="small"><?= e(PaymentOptions::label((string) $r['method'])) ?></td>
-                    <td class="text-end"><?= $money($r['amount_claimed']) ?></td><td class="text-end"><?= $money($r['amount_confirmed']) ?></td><td><?= e($r['status']) ?></td><td class="small"><?= e((string) $r['decided_by']) ?></td></tr><?php endforeach; ?>
+                    <td class="text-end"><?= $money($r['amount_claimed']) ?></td><td class="text-end"><?= $money($r['amount_confirmed']) ?></td>
+                    <td><span class="badge <?= ['pending' => 'badge-soft-warning', 'verified' => 'badge-soft-success', 'rejected' => 'badge-soft-danger'][$r['status']] ?? 'badge-soft-muted' ?>"><?= e(ucfirst((string) $r['status'])) ?></span></td><td class="small"><?= e((string) $r['decided_by']) ?></td></tr><?php endforeach; ?>
             <?php elseif ($tab === 'cod'): ?>
                 <thead><tr><th scope="col">Order</th><th scope="col">Status</th><th scope="col" class="text-end">Expected</th><th scope="col" class="text-end">Collected</th><th scope="col" class="text-end">Difference</th><th scope="col">By</th><th scope="col">Note</th></tr></thead><tbody>
                 <?php foreach ($rows as $r): ?><tr class="<?= $r['collected'] === null ? 'table-warning' : ((float) $r['difference'] !== 0.0 ? 'table-danger' : '') ?>">
@@ -85,7 +91,7 @@ $money = fn ($v) => $v === null ? '—' : e(money((string) $v));
                 <thead><tr><th scope="col">Order</th><th scope="col" class="text-end">Amount</th><th scope="col">Reason</th><th scope="col">Status</th><th scope="col">Created</th><th scope="col">Paid</th></tr></thead><tbody>
                 <?php foreach ($rows as $r): ?><tr><td><?= e($r['order_number']) ?></td><td class="text-end"><?= $money($r['amount']) ?></td><td class="small"><?= e($r['reason']) ?></td>
                     <td><span class="badge <?= $r['status'] === 'due' ? 'badge-soft-warning' : ($r['status'] === 'paid' ? 'badge-soft-success' : 'badge-soft-muted') ?>"><?= e($r['status']) ?></span></td>
-                    <td class="small"><?= e(date('d M Y', strtotime($r['created_at']))) ?></td><td class="small"><?= $r['paid_at'] ? e(date('d M Y', strtotime($r['paid_at']))) : '—' ?></td></tr><?php endforeach; ?>
+                    <td class="small" data-sort="<?= e((string) $r['created_at']) ?>"><?= e(date('d M Y', strtotime($r['created_at']))) ?></td><td class="small" data-sort="<?= e((string) $r['paid_at']) ?>"><?= $r['paid_at'] ? e(date('d M Y', strtotime($r['paid_at']))) : '—' ?></td></tr><?php endforeach; ?>
             <?php endif; ?>
             <?php if (!$rows): ?><tr><td colspan="8" class="text-center text-muted py-4">No data for this period.</td></tr><?php endif; ?>
             </tbody>

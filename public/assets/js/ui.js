@@ -450,4 +450,234 @@
             loadRegion(f.getAttribute('data-live-size'), f.action.split('?')[0] + '?' + new URLSearchParams(new FormData(f)).toString(), false);
         }
     }, true);
+
+    // ---------------------------------------------------------------- tables already on the page (data-wm-table)
+    // Live search, click-to-sort headings, "Showing 1–10 of N", rows per page and page buttons, all in the browser.
+    // For bounded lists the server sends whole (reports, dashboard widgets, settings lists); big lists use the live
+    // tables above. data-wm-table="8" sets the first page size; data-wm-noun="orders" names the rows;
+    // data-no-sort on a heading keeps it fixed; a row with data-wm-fixed (e.g. a total) always stays last.
+    var SIZES = [5, 10, 15, 25, 50];
+    function cellValue(td) {
+        if (!td) { return ''; }
+        return (td.getAttribute('data-sort') !== null ? td.getAttribute('data-sort') : td.textContent).replace(/\s+/g, ' ').trim();
+    }
+    function asNumber(t) {
+        if (t === '' || t === '—' || t === '-') { return null; }
+        var m = t.replace(/KSh|Ksh|%|,|\s/g, '').match(/^-?\d+(\.\d+)?$/);
+        return m ? parseFloat(m[0]) : NaN;
+    }
+    function enhanceTable(table) {
+        if (table.hasAttribute('data-wm-enhanced') || table.closest('[data-table-region]')) { return; }
+        var tbody = table.tBodies[0];
+        if (!tbody) { return; }
+        table.setAttribute('data-wm-enhanced', '');
+        var noun = table.getAttribute('data-wm-noun') || 'rows';
+        var key = 'wm-table-per:' + location.pathname + ':' + (table.id || Array.prototype.indexOf.call(document.querySelectorAll('table[data-wm-table]'), table));
+        var stored = null;
+        try { stored = parseInt(window.localStorage.getItem(key), 10); } catch (e) { stored = null; }
+        var first = parseInt(table.getAttribute('data-wm-table'), 10) || 10;
+        var sizes = SIZES.indexOf(first) === -1 ? SIZES.concat([first]).sort(function (a, b) { return a - b; }) : SIZES.slice();
+        var per = sizes.indexOf(stored) !== -1 ? stored : first;
+        var all = Array.prototype.slice.call(tbody.rows).filter(function (tr) {
+            return !(tr.cells.length === 1 && tr.cells[0].colSpan > 1) && !tr.hasAttribute('data-wm-fixed');   // skip "No data" rows
+        });
+        var fixed = Array.prototype.slice.call(tbody.querySelectorAll('tr[data-wm-fixed]'));
+        all.forEach(function (tr, i) { tr._wmText = tr.textContent.replace(/\s+/g, ' ').toLowerCase(); tr._wmIndex = i; });
+        var page = 1, q = '', sortCol = -1, sortDir = 1, matches = all;
+        var holder = table.closest('.table-responsive') || table;
+        var uid = 'wmt' + Math.random().toString(36).slice(2, 8);
+
+        // Toolbar: a search box once there is something to search (6 rows or more).
+        var input = null;
+        if (all.length > 5) {
+            var bar = document.createElement('div');
+            bar.className = 'wm-table-toolbar wm-table-toolbar-inline';
+            bar.setAttribute('role', 'search');
+            var box = document.createElement('div');
+            box.className = 'wm-search';
+            var lab = document.createElement('label');
+            lab.className = 'visually-hidden';
+            lab.htmlFor = uid + '-q';
+            lab.textContent = 'Search ' + noun;
+            var icon = document.createElement('i');
+            icon.className = 'bi bi-search';
+            icon.setAttribute('aria-hidden', 'true');
+            input = document.createElement('input');
+            input.type = 'search';
+            input.id = uid + '-q';
+            input.className = 'form-control form-control-sm';
+            input.placeholder = 'Search ' + noun + '…';
+            input.autocomplete = 'off';
+            var clear = document.createElement('button');
+            clear.type = 'button';
+            clear.className = 'wm-search-clear';
+            clear.hidden = true;
+            clear.setAttribute('aria-label', 'Clear search');
+            clear.innerHTML = '<i class="bi bi-x-lg" aria-hidden="true"></i>';
+            box.appendChild(lab); box.appendChild(icon); box.appendChild(input); box.appendChild(clear);
+            bar.appendChild(box);
+            holder.parentNode.insertBefore(bar, holder);
+            var t = null;
+            input.addEventListener('input', function () {
+                clear.hidden = input.value === '';
+                clearTimeout(t);
+                t = setTimeout(function () { q = input.value.trim().toLowerCase(); page = 1; draw(); }, 120);
+            });
+            clear.addEventListener('click', function () { input.value = ''; clear.hidden = true; q = ''; page = 1; draw(); input.focus(); });
+        }
+
+        // Footer: count, rows per page, pages.
+        var foot = document.createElement('div');
+        foot.className = 'wm-table-footer';
+        var count = document.createElement('div');
+        count.className = 'wm-table-count';
+        count.setAttribute('role', 'status');
+        var size = document.createElement('div');
+        size.className = 'wm-table-size';
+        var sl = document.createElement('label');
+        sl.htmlFor = uid + '-per';
+        sl.textContent = 'Rows per page';
+        var sel = document.createElement('select');
+        sel.className = 'form-select form-select-sm';
+        sel.id = uid + '-per';
+        sizes.forEach(function (n) {
+            var o = document.createElement('option');
+            o.value = String(n); o.textContent = String(n); o.selected = n === per;
+            sel.appendChild(o);
+        });
+        size.appendChild(sl); size.appendChild(sel);
+        var nav = document.createElement('nav');
+        nav.setAttribute('aria-label', 'Pages');
+        var ul = document.createElement('ul');
+        ul.className = 'pagination pagination-sm mb-0';
+        nav.appendChild(ul);
+        foot.appendChild(count); foot.appendChild(size); foot.appendChild(nav);
+        holder.parentNode.insertBefore(foot, holder.nextSibling);
+        sel.addEventListener('change', function () {
+            per = parseInt(sel.value, 10);
+            try { window.localStorage.setItem(key, String(per)); } catch (e) { /* private browsing: this visit only */ }
+            page = 1; draw();
+        });
+
+        // Row shown when a search matches nothing.
+        var cols = table.tHead && table.tHead.rows[0] ? table.tHead.rows[0].cells.length : (all[0] ? all[0].cells.length : 1);
+        var none = document.createElement('tr');
+        none.className = 'wm-empty-row';
+        none.hidden = true;
+        var ntd = document.createElement('td');
+        ntd.colSpan = cols;
+        ntd.className = 'text-center text-muted py-4';
+        none.appendChild(ntd);
+        tbody.appendChild(none);
+
+        function pageButton(label, target, opts) {
+            var li = document.createElement('li');
+            li.className = 'page-item' + (opts.disabled ? ' disabled' : '') + (opts.active ? ' active' : '');
+            var b = document.createElement('button');
+            b.type = 'button';
+            b.className = 'page-link';
+            if (opts.icon) {
+                var i = document.createElement('i');
+                i.className = 'bi ' + opts.icon;
+                i.setAttribute('aria-hidden', 'true');
+                b.appendChild(i);
+            } else {
+                b.textContent = label;
+            }
+            if (opts.aria) { b.setAttribute('aria-label', opts.aria); }
+            if (opts.active) { b.setAttribute('aria-current', 'page'); }
+            if (opts.disabled) {
+                b.disabled = true;
+            } else {
+                b.addEventListener('click', function () {
+                    page = target; draw();
+                    var again = ul.querySelector('[aria-current="page"]');
+                    if (again) { again.focus(); }
+                });
+            }
+            li.appendChild(b);
+            ul.appendChild(li);
+        }
+
+        function draw() {
+            matches = q ? all.filter(function (tr) { return tr._wmText.indexOf(q) !== -1; }) : all.slice();
+            if (sortCol >= 0) {
+                var numeric = matches.every(function (tr) { var n = asNumber(cellValue(tr.cells[sortCol])); return n === null || !isNaN(n); });
+                matches.sort(function (a, b) {
+                    var x = cellValue(a.cells[sortCol]), y = cellValue(b.cells[sortCol]);
+                    var r;
+                    if (numeric) {
+                        var nx = asNumber(x), ny = asNumber(y);
+                        r = (nx === null ? -Infinity : nx) - (ny === null ? -Infinity : ny);
+                    } else {
+                        r = x.localeCompare(y, undefined, { numeric: true, sensitivity: 'base' });
+                    }
+                    return r ? r * sortDir : a._wmIndex - b._wmIndex;
+                });
+            }
+            var pages = Math.max(1, Math.ceil(matches.length / per));
+            page = Math.min(Math.max(1, page), pages);
+            var from = (page - 1) * per, to = from + per;
+            all.forEach(function (tr) { tr.hidden = true; });
+            matches.forEach(function (tr, i) { tbody.insertBefore(tr, none); tr.hidden = i < from || i >= to; });
+            fixed.forEach(function (tr) { tbody.appendChild(tr); });
+            none.hidden = matches.length > 0 || all.length === 0;
+            ntd.textContent = 'No ' + noun + ' match “' + (input ? input.value.trim() : '') + '”.';
+
+            count.textContent = matches.length === 0 ? (q ? 'No matches' : 'No ' + noun)
+                : 'Showing ' + (from + 1) + '–' + Math.min(to, matches.length) + ' of ' + matches.length + ' ' + (q ? 'matching ' : '') + noun
+                    + (q ? ' (' + all.length + ' in all)' : '');
+            size.hidden = all.length <= sizes[0];
+            ul.textContent = '';
+            nav.hidden = pages <= 1;
+            if (pages > 1) {
+                pageButton('', page - 1, { disabled: page <= 1, icon: 'bi-chevron-left', aria: 'Previous page' });
+                var prev = 0;
+                [1, page - 1, page, page + 1, pages].filter(function (n, i, a) { return n >= 1 && n <= pages && a.indexOf(n) === i; })
+                    .sort(function (a, b) { return a - b; }).forEach(function (n) {
+                        if (n - prev > 1) { pageButton('…', n, { disabled: true }); }
+                        pageButton(String(n), n, { active: n === page });
+                        prev = n;
+                    });
+                pageButton('', page + 1, { disabled: page >= pages, icon: 'bi-chevron-right', aria: 'Next page' });
+            }
+            foot.hidden = all.length === 0;
+            document.dispatchEvent(new CustomEvent('wm:region-updated'));
+        }
+
+        // Click-to-sort headings (buttons, so the keyboard works). A third click restores the original order.
+        if (table.tHead && table.tHead.rows[0] && all.length > 1) {
+            var heads = table.tHead.rows[0].cells;
+            Array.prototype.forEach.call(heads, function (th, i) {
+                var label = th.textContent.trim();
+                if (!label || th.hasAttribute('data-no-sort') || th.colSpan > 1) { return; }
+                var b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'wm-sort-btn';
+                var span = document.createElement('span');
+                span.textContent = label;
+                var ic = document.createElement('i');
+                ic.className = 'bi bi-arrow-down-up';
+                ic.setAttribute('aria-hidden', 'true');
+                b.appendChild(span); b.appendChild(ic);
+                th.textContent = '';
+                th.appendChild(b);
+                th.setAttribute('aria-sort', 'none');
+                b.addEventListener('click', function () {
+                    if (sortCol !== i) { sortCol = i; sortDir = 1; } else if (sortDir === 1) { sortDir = -1; } else { sortCol = -1; }
+                    Array.prototype.forEach.call(heads, function (h, j) {
+                        var btn = h.querySelector('.wm-sort-btn');
+                        if (!btn) { return; }
+                        h.setAttribute('aria-sort', j === sortCol ? (sortDir === 1 ? 'ascending' : 'descending') : 'none');
+                        btn.lastChild.className = 'bi ' + (j !== sortCol ? 'bi-arrow-down-up' : (sortDir === 1 ? 'bi-sort-up' : 'bi-sort-down'));
+                        btn.classList.toggle('active', j === sortCol);
+                    });
+                    page = 1; draw();
+                });
+            });
+        }
+        draw();
+    }
+    window.WM.enhanceTable = enhanceTable;
+    document.querySelectorAll('table[data-wm-table]').forEach(enhanceTable);
 })();

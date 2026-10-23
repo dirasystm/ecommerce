@@ -61,12 +61,12 @@ final class DashboardController extends AdminController
                 'SELECT v.id, v.sku, p.name AS product, v.name AS variant, (i.on_hand - i.reserved) AS available, i.low_stock_threshold
                    FROM product_variants v JOIN inventory i ON i.variant_id = v.id JOIN products p ON p.id = v.product_id
                   WHERE v.is_active = 1 AND p.is_active = 1 AND i.on_hand - i.reserved <= i.low_stock_threshold
-                  ORDER BY (i.on_hand - i.reserved), p.name LIMIT 8'
+                  ORDER BY (i.on_hand - i.reserved), p.name LIMIT 50'
             );
         }
         if (Auth::can('orders.view')) {
             $data['recentOrders'] = $db->all(
-                'SELECT id, order_number, status, customer_name, grand_total, placed_at, fulfilment_method FROM orders ORDER BY id DESC LIMIT 8'
+                'SELECT id, order_number, status, customer_name, grand_total, placed_at, fulfilment_method FROM orders ORDER BY id DESC LIMIT 50'
             );
         }
         return $this->view('dashboard', $data);

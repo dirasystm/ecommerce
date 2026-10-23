@@ -26,6 +26,23 @@ final class TablesHttpTest extends FeatureTestCase
         '/admin/marketing/abandoned-carts?view=log' => 'Search reminders',
     ];
 
+    public function testShortListsSentWholeGetLiveSearchSortingAndPages(): void
+    {
+        $this->makeOrder($this->makeVariant(1)['variant_id']);   // a latest order and a low-stock variant for the dashboard
+        $this->loginStaff('super_admin');
+        $seller = (int) $this->db->value('SELECT id FROM sellers ORDER BY id LIMIT 1');
+        $pages = ['/admin' => 2, '/admin/reports?tab=sales' => 3, '/admin/reports?tab=products' => 1, '/admin/reports?tab=stock' => 1,
+            '/admin/reports?tab=payments' => 1, '/admin/reports?tab=cod' => 1, '/admin/reports?tab=refunds' => 1, '/admin/delivery-zones' => 1,
+            "/admin/sellers/$seller" => 1, '/admin/commissions' => 2, '/admin/content/menus' => 1, '/admin/content/homepage' => 1];
+        foreach ($pages as $path => $tables) {
+            $r = $this->get($path);
+            $this->assertSame(200, $r['status'], $path);
+            preg_match_all('#<table [^>]*data-wm-table="\d+" data-wm-noun="[^"]+"[^>]*>\s*<thead>#', $r['body'], $m);
+            $this->assertCount($tables, $m[0], "$path: every table is a live table with named columns");
+        }
+        $this->assertStringContainsString('/assets/js/ui.js?v=', $this->get('/admin')['body'], 'the table script is loaded');
+    }
+
     public function testEveryAdminListUsesTheStandardAndHandlesOddInputSafely(): void
     {
         $this->loginStaff('super_admin');

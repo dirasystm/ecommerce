@@ -8,7 +8,7 @@
 <p class="small text-muted">A town-specific rule takes priority over a county-wide rule. Locations not covered by an active zone cannot choose home delivery (customers are offered pickup instead).</p>
 <div class="wm-panel mb-3">
     <div class="table-responsive">
-        <table class="table table-hover">
+        <table class="table table-hover mb-0" data-wm-table="10" data-wm-noun="zones">
             <thead><tr><th scope="col">Zone</th><th scope="col" class="text-end">Fee</th><th scope="col" class="text-end">Free over</th><th scope="col">ETA</th><th scope="col">COD</th><th scope="col">Covers</th><th scope="col">Status</th><th scope="col"></th></tr></thead>
             <tbody>
             <?php foreach ($zones as $z): $l = $locs[(int) $z['id']] ?? []; ?>

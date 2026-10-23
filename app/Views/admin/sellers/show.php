@@ -40,7 +40,7 @@ $canManage = Auth::can('sellers.manage') && !$platform;
         </section>
         <section class="wm-panel">
             <div class="wm-panel-head">Team</div>
-            <div class="table-responsive"><table class="table table-sm mb-0">
+            <div class="table-responsive"><table class="table table-sm mb-0" data-wm-table="10" data-wm-noun="team members">
                 <thead><tr><th scope="col">Name</th><th scope="col">Email</th><th scope="col">Role</th><th scope="col">Account</th></tr></thead>
                 <tbody>
                 <?php foreach ($members as $m): ?>
