@@ -1,0 +1,2 @@
+# Private: never served to visitors, even if the main .htaccess in the site root is missing.
+Require all denied
