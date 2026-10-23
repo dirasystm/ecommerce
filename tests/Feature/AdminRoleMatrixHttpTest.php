@@ -8,7 +8,7 @@ use Waimart\Core\Auth;
 use Waimart\Core\Router;
 
 /**
- * Basemall Stage 6: the role matrix, from the live route table. For every role and every admin page (and every admin
+ * Ecommerce Stage 6: the role matrix, from the live route table. For every role and every admin page (and every admin
  * action without an id), the server's answer must match the role's permissions exactly: allowed pages open (never a
  * server error), everything else is 403 — including actions posted directly, which never change anything.
  */

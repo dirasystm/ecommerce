@@ -1,4 +1,4 @@
--- Basemall 024: roles and admin accounts — editable roles and a permission matrix, per-person extra permissions,
+-- Ecommerce 024: roles and admin accounts — editable roles and a permission matrix, per-person extra permissions,
 -- optional two-step sign-in (TOTP), forced password change, "sign out everywhere", a sign-in activity log, and an
 -- audit log the database refuses to change. Additive: existing roles keep exactly their permissions, no account
 -- changes behaviour (two-step sign-in stays optional), and no row is altered.

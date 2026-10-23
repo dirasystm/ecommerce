@@ -1,4 +1,4 @@
--- Basemall 023: payment methods, an encrypted secrets store, delivery settings, order status names and message
+-- Ecommerce 023: payment methods, an encrypted secrets store, delivery settings, order status names and message
 -- templates. Additive. Seeds keep today's behaviour exactly: the four payment methods are on, with today's names and
 -- checkout descriptions; delivery and pickup are both offered; no store-wide free-delivery threshold; messages and
 -- status names use the built-in wording (rows in message_templates / order_status_labels exist only once edited).

@@ -7,7 +7,7 @@ namespace Waimart\Tests\Feature;
 use Waimart\Core\Settings;
 use Waimart\Services\MfaService;
 
-/** Basemall Stage 5 over HTTP: two-step sign-in on both sign-in pages, required steps, roles screens and their permissions. */
+/** Ecommerce Stage 5 over HTTP: two-step sign-in on both sign-in pages, required steps, roles screens and their permissions. */
 final class RolesSecurityHttpTest extends FeatureTestCase
 {
     protected function tearDown(): void

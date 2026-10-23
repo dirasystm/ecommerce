@@ -62,7 +62,7 @@ final class KenyaCoverageTest extends DbTestCase
         $this->assertSame(47, (int) $this->db->value('SELECT COUNT(DISTINCT county_id) FROM pickup_points WHERE is_active = 1'));
         $this->assertSame(47, (int) $this->db->value("SELECT COUNT(*) FROM delivery_zone_locations l JOIN delivery_zones z ON z.id = l.zone_id WHERE z.name = 'Rest of Kenya' AND l.town = ''"));
         $nanyuki = $this->db->one("SELECT * FROM pickup_points WHERE town = 'Nanyuki'");
-        $this->assertSame('Basemall Pickup — Nanyuki', $nanyuki['name']);
+        $this->assertSame('Ecommerce Pickup — Nanyuki', $nanyuki['name']);
         $this->assertStringContainsString('to be confirmed', $nanyuki['address'], 'placeholder addresses say so');
         $this->assertStringContainsString('0 pickup station(s) to add; 0 county(ies)', $this->runScript('--dry-run'), 'running again adds nothing');
 
@@ -75,7 +75,7 @@ final class KenyaCoverageTest extends DbTestCase
 
     public function testUndeliverablePlacePointsToTheCountysStations(): void
     {
-        $this->db->insert('pickup_points', ['code' => 'LKP-NYK-01', 'name' => 'Basemall Pickup — Nanyuki', 'county_id' => 31, 'town' => 'Nanyuki',
+        $this->db->insert('pickup_points', ['code' => 'LKP-NYK-01', 'name' => 'Ecommerce Pickup — Nanyuki', 'county_id' => 31, 'town' => 'Nanyuki',
             'address' => 'Kenyatta Avenue', 'opening_hours' => '8-6']);
         $cart = new CartService(null, null, $this->db);
         $cart->add($this->makeVariant(10, '1500.00')['variant_id'], 1);
@@ -83,7 +83,7 @@ final class KenyaCoverageTest extends DbTestCase
             (new CheckoutService($this->db))->prepare($cart, $this->input(), null);
             $this->fail('no zone covers Laikipia');
         } catch (ValidationException $e) {
-            $this->assertSame('Sorry, we do not deliver to Nanyuki, Laikipia yet. You can collect your order from our pickup station in this county (Basemall Pickup — Nanyuki): choose “Pickup station” above.', $e->errors['town']);
+            $this->assertSame('Sorry, we do not deliver to Nanyuki, Laikipia yet. You can collect your order from our pickup station in this county (Ecommerce Pickup — Nanyuki): choose “Pickup station” above.', $e->errors['town']);
         }
     }
 }

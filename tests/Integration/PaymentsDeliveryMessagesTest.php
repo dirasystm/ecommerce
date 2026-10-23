@@ -22,7 +22,7 @@ use Waimart\Services\SettingsService;
 use Waimart\Services\StatusLabels;
 
 /**
- * Basemall Stage 4: payment methods, the encrypted secrets store, delivery settings, order status names and message
+ * Ecommerce Stage 4: payment methods, the encrypted secrets store, delivery settings, order status names and message
  * templates — each one changing what checkout, order pages and outgoing messages actually do.
  */
 final class PaymentsDeliveryMessagesTest extends DbTestCase
@@ -186,9 +186,9 @@ final class PaymentsDeliveryMessagesTest extends DbTestCase
         $this->fails(fn () => $svc->save(['mail_driver' => 'carrier-pigeon'] + $base, $this->staff, 'email'), 'mail_driver');
         $this->fails(fn () => $svc->save(['mail_from_email' => 'not-an-email'] + $base, $this->staff, 'email'), 'mail_from_email');
         $this->fails(fn () => $svc->save(['smtp_port' => '70000', 'smtp_encryption' => 'tls'], $this->staff, 'email'), 'smtp_port');
-        $svc->save(['mail_driver' => 'smtp', 'smtp_host' => 'smtp.example.test', 'mail_from_name' => 'Basemall Care'] + $base, $this->staff, 'email');
+        $svc->save(['mail_driver' => 'smtp', 'smtp_host' => 'smtp.example.test', 'mail_from_name' => 'Ecommerce Care'] + $base, $this->staff, 'email');
         Settings::flush();
-        $this->assertSame('Basemall Care', NotificationService::mailConfig()['from_name']);
+        $this->assertSame('Ecommerce Care', NotificationService::mailConfig()['from_name']);
         $this->assertArrayNotHasKey('smtp_host', (new SettingsService())->export($this->staff)['settings'], 'server-specific: not exported');
     }
 
@@ -199,10 +199,10 @@ final class PaymentsDeliveryMessagesTest extends DbTestCase
         $o = ['customer_name' => 'Jane Wanjiku', 'order_number' => 'BM-7K2L9XQ4', 'grand_total' => '2450.00'];
         $m = (new MessageTemplates())->render('order_placed', ['next_step' => 'Please pay.', 'track_url' => 'https://shop.test/track/x'] + MessageTemplates::orderVars($o));
         $this->assertSame('Order BM-7K2L9XQ4 placed', $m['subject']);
-        $this->assertSame("Hello Jane Wanjiku,\n\nThank you for shopping with Basemall. Your order BM-7K2L9XQ4 has been placed.\nTotal: KSh 2,450\n\nPlease pay.\n\nTrack your order: https://shop.test/track/x\n\nBasemall", $m['email']);
-        $this->assertSame('Basemall: order BM-7K2L9XQ4 placed. Please pay. Track: https://shop.test/track/x', $m['sms']);
+        $this->assertSame("Hello Jane Wanjiku,\n\nThank you for shopping with Ecommerce. Your order BM-7K2L9XQ4 has been placed.\nTotal: KSh 2,450\n\nPlease pay.\n\nTrack your order: https://shop.test/track/x\n\nEcommerce", $m['email']);
+        $this->assertSame('Ecommerce: order BM-7K2L9XQ4 placed. Please pay. Track: https://shop.test/track/x', $m['sms']);
         $s = (new MessageTemplates())->render('seller_message', ['first_name' => 'Amina', 'subject' => 'New order', 'message' => 'Prepare it.'] + MessageTemplates::contactVars());
-        $this->assertSame(["New order", "Hello Amina,\n\nPrepare it.\n\n— Basemall Seller Support", 'Basemall Seller Centre: New order'], [$s['subject'], $s['email'], $s['sms']]);
+        $this->assertSame(["New order", "Hello Amina,\n\nPrepare it.\n\n— Ecommerce Seller Support", 'Ecommerce Seller Centre: New order'], [$s['subject'], $s['email'], $s['sms']]);
     }
 
     public function testEditedTemplatesAreSentAndChannelsCanBeSwitchedOff(): void
@@ -217,7 +217,7 @@ final class PaymentsDeliveryMessagesTest extends DbTestCase
         $this->assertCount(1, $rows, 'email only');
         $this->assertSame('email', $rows[0]['channel']);
         $this->assertSame($o['order_number'] . ' is confirmed', $rows[0]['subject']);
-        $this->assertSame("Hi Test! {$o['order_number']} (KSh 1,200) is confirmed.\n\nBasemall", $rows[0]['body']);
+        $this->assertSame("Hi Test! {$o['order_number']} (KSh 1,200) is confirmed.\n\nEcommerce", $rows[0]['body']);
         $this->assertSame(1, (int) $this->db->value("SELECT COUNT(*) FROM audit_logs WHERE action = 'messages.template_updated' AND entity_id = 'order_confirmed'"));
 
         $tpl->restore('order_confirmed', $this->staff);
@@ -266,7 +266,7 @@ final class PaymentsDeliveryMessagesTest extends DbTestCase
             'password' => 'Secret123', 'password_confirmation' => 'Secret123', 'accept_terms' => '1'], '127.0.0.1');
         $row = $this->db->one("SELECT recipient, subject, body FROM notifications WHERE template = 'account_welcome' AND user_id = ?", [$u['id']]);
         $this->assertSame('akinyi@example.com', $row['recipient']);
-        $this->assertSame('Welcome to Basemall', $row['subject']);
+        $this->assertSame('Welcome to Ecommerce', $row['subject']);
         $this->assertStringContainsString('Hello Akinyi,', $row['body']);
         $this->assertStringContainsString('/login with your email or phone number', $row['body']);
     }

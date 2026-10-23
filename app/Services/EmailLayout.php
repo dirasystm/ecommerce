@@ -307,7 +307,7 @@ final class EmailLayout
     {
         $rel = (string) Settings::get('brand_logo_header', '');
         if ($rel === '' || str_contains($rel, '..') || !is_file(App::root() . '/public/' . $rel)) {
-            $rel = 'assets/brand/logo-wordmark.png';
+            $rel = \Waimart\Services\Brand::ASSETS['brand_logo_header'];
         }
         $src = App::root() . '/public/' . $rel;
         if (!is_file($src)) {

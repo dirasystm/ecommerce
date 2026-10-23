@@ -45,7 +45,7 @@ final class MultiSellerOrderHttpTest extends FeatureTestCase
     {
         $page = $this->fillCart();
         $this->assertStringContainsString('Sold by Kamba Crafts', $page);
-        $this->assertStringContainsString('Sold by Basemall Official Store', $page);
+        $this->assertStringContainsString('Sold by Ecommerce Official Store', $page);
         $this->assertStringContainsString('One delivery fee covers your whole order', $page);
 
         $delivery = json_decode($this->post('/checkout/quote', ['fulfilment_method' => 'delivery', 'county_id' => '47', 'town' => 'Kilimani'], '/checkout')['body'], true);

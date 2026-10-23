@@ -1,6 +1,6 @@
-# Basemall — Installation
+# Ecommerce — Installation
 
-This guide installs Basemall (formerly Waimart; internal names such as the `waimart` database keep the old name) on **Windows with XAMPP**, the environment it was built and tested on. A section at the end covers a Linux production server.
+This guide installs Ecommerce (formerly Waimart; internal names such as the `waimart` database keep the old name) on **Windows with XAMPP**, the environment it was built and tested on. A section at the end covers a Linux production server.
 
 ## 1. Requirements
 

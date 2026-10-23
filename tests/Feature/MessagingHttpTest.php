@@ -111,9 +111,9 @@ final class MessagingHttpTest extends FeatureTestCase
         // Switching SMS on needs a sender ID; endpoints must be https (a local test address aside).
         $r = $this->flash($this->post('/admin/messaging/sms', ['sms_driver' => 'talksasa', 'sms_sender_id' => '', 'sms_api_url' => ''], '/admin/messaging'));
         $this->assertStringContainsString('Enter the sender ID approved on your Talksasa account', $r);
-        $r = $this->flash($this->post('/admin/messaging/sms', ['sms_driver' => '', 'sms_sender_id' => 'BASEMALL', 'sms_api_url' => 'http://evil.example/api/'], '/admin/messaging'));
+        $r = $this->flash($this->post('/admin/messaging/sms', ['sms_driver' => '', 'sms_sender_id' => 'ECOMMERCE', 'sms_api_url' => 'http://evil.example/api/'], '/admin/messaging'));
         $this->assertStringContainsString('must start with https://', $r);
-        $r = $this->flash($this->post('/admin/messaging/sms', ['sms_driver' => '', 'sms_sender_id' => 'BASEMALL', 'sms_api_url' => $fakeUrl], '/admin/messaging'));
+        $r = $this->flash($this->post('/admin/messaging/sms', ['sms_driver' => '', 'sms_sender_id' => 'ECOMMERCE', 'sms_api_url' => $fakeUrl], '/admin/messaging'));
         $this->assertStringContainsString('SMS settings saved', $r);
 
         // A wrong token is saved but reported; the right one shows the balance.
@@ -131,7 +131,7 @@ final class MessagingHttpTest extends FeatureTestCase
         $this->assertStringContainsString('Test SMS sent to 0712 345 678', $r);
         $this->assertStringContainsString('Customer SMS is still switched off', $r);
         $send = array_values(array_filter($this->gatewayRequests(), fn ($q) => $q['path'] === '/api/v3/sms/send'));
-        $this->assertSame(['recipient' => '254712345678', 'sender_id' => 'BASEMALL', 'type' => 'plain', 'message' => 'Hello from the test'], $send[0]['body']);
+        $this->assertSame(['recipient' => '254712345678', 'sender_id' => 'ECOMMERCE', 'type' => 'plain', 'message' => 'Hello from the test'], $send[0]['body']);
         $this->assertSame('Bearer good-token', $send[0]['auth']);
 
         $r = $this->flash($this->post('/admin/messaging/test-sms', ['phone' => '0700 000 000'], '/admin/messaging'));
@@ -144,7 +144,7 @@ final class MessagingHttpTest extends FeatureTestCase
         $this->assertStringContainsString('Enter a Kenyan mobile number', $r);
 
         // Switch customer SMS on; the counters and the log reflect what happened.
-        $this->assertStringContainsString('SMS settings saved', $this->flash($this->post('/admin/messaging/sms', ['sms_driver' => 'talksasa', 'sms_sender_id' => 'BASEMALL', 'sms_api_url' => $fakeUrl], '/admin/messaging')));
+        $this->assertStringContainsString('SMS settings saved', $this->flash($this->post('/admin/messaging/sms', ['sms_driver' => 'talksasa', 'sms_sender_id' => 'ECOMMERCE', 'sms_api_url' => $fakeUrl], '/admin/messaging')));
         $this->post('/admin/messaging/test-sms', ['phone' => '0711 111 111'], '/admin/messaging');   // accepted, later reported as not delivered
         $page = $this->get('/admin/messaging')['body'];
         $this->assertStringNotContainsString('<strong>SMS is switched off.</strong>', $page);
@@ -181,7 +181,7 @@ final class MessagingHttpTest extends FeatureTestCase
 
     public function testEmailPreviewsShowTheDesignedEmailToPermittedStaffOnly(): void
     {
-        $id = (new \Waimart\Services\NotificationService())->email('dan@example.com', 'Welcome to Basemall', "Hello Dan,\n\nWelcome.\n\nhttps://shop.example/login\n\nBasemall", 'account_welcome');
+        $id = (new \Waimart\Services\NotificationService())->email('dan@example.com', 'Welcome to Ecommerce', "Hello Dan,\n\nWelcome.\n\nhttps://shop.example/login\n\nEcommerce", 'account_welcome');
         @unlink(\Waimart\Core\App::root() . "/storage/logs/mail-html/$id.html");
         $this->loginStaff('support');
         $this->assertSame(403, $this->get("/admin/messaging/$id/view")['status']);
@@ -219,7 +219,7 @@ final class MessagingHttpTest extends FeatureTestCase
             (string) $this->db->value("SELECT setting_value FROM settings WHERE setting_key = 'sms_api_url'")], 'nothing was redirected');
 
         // Other email settings (sender name) can still be changed without credential rights.
-        $ok = $this->follow($this->post('/admin/messaging/email', ['mail_from_name' => 'Basemall Care', 'mail_driver' => 'smtp', 'smtp_host' => 'mail.example.com',
+        $ok = $this->follow($this->post('/admin/messaging/email', ['mail_from_name' => 'Ecommerce Care', 'mail_driver' => 'smtp', 'smtp_host' => 'mail.example.com',
             'smtp_port' => (string) Settings::get('smtp_port', '587'), 'smtp_encryption' => (string) Settings::get('smtp_encryption', 'tls'),
             'smtp_username' => (string) Settings::get('smtp_username', '')], '/admin/messaging'))['body'];
         $this->assertStringContainsString('Email settings saved', $ok);
@@ -233,7 +233,7 @@ final class MessagingHttpTest extends FeatureTestCase
         $this->loginStaff('super_admin');
         $fakeUrl = 'http://127.0.0.1:' . self::FAKE_PORT . '/api/v3/';
         $this->post('/admin/messaging/token', ['secret_sms_api_token' => 'good-token'], '/admin/messaging');
-        $this->post('/admin/messaging/sms', ['sms_driver' => 'talksasa', 'sms_sender_id' => 'BASEMALL', 'sms_api_url' => $fakeUrl], '/admin/messaging');
+        $this->post('/admin/messaging/sms', ['sms_driver' => 'talksasa', 'sms_sender_id' => 'ECOMMERCE', 'sms_api_url' => $fakeUrl], '/admin/messaging');
         $this->post('/logout', [], '/');
         $this->setUpJarOnly();
 

@@ -11,7 +11,7 @@ use Waimart\Repositories\OrderRepository;
 use Waimart\Services\Brand;
 use Waimart\Services\BrandingService;
 
-/** Basemall Stage 1: settings-driven brand, uploads, order prefix, and the renamed Official Store. */
+/** Ecommerce Stage 1: settings-driven brand, uploads, order prefix, and the renamed Official Store. */
 final class BrandingTest extends DbTestCase
 {
     use PlacesOrders;
@@ -51,7 +51,7 @@ final class BrandingTest extends DbTestCase
 
     private function valid(array $over = []): array
     {
-        return $over + ['store_name' => 'Basemall', 'store_tagline' => 'Everything You Need. One Marketplace.', 'order_number_prefix' => 'BM',
+        return $over + ['store_name' => 'Ecommerce', 'store_tagline' => 'Everything you need, one store.', 'order_number_prefix' => 'BM',
             'brand_primary' => '#005B3D', 'brand_secondary' => '#FF6A00'];
     }
 
@@ -70,18 +70,18 @@ final class BrandingTest extends DbTestCase
         return ['name' => 'x.png', 'tmp_name' => $f, 'error' => UPLOAD_ERR_OK, 'size' => filesize($f)];
     }
 
-    public function testMigrationShipsBasemallAndTheSuppliedLogo(): void
+    public function testMigrationShipsEcommerceAndTheSuppliedLogo(): void
     {
-        $this->assertSame('Basemall', Brand::name());
-        $this->assertSame('Everything You Need. One Marketplace.', Brand::tagline());
+        $this->assertSame('Ecommerce', Brand::name());
+        $this->assertSame('Everything you need, one store.', Brand::tagline());
         $this->assertSame(['#005B3D', '#FF6A00', 'BM'], [Brand::primary(), Brand::secondary(), Brand::orderPrefix()]);
         foreach (Brand::ASSETS as $key => $path) {
             $this->assertFileExists(App::root() . '/public/' . $path, $key);
             $this->assertStringContainsString($path, Brand::asset($key));
         }
-        [$w, $h] = getimagesize(App::root() . '/public/assets/brand/og-image.png');
+        [$w, $h] = getimagesize(App::root() . '/public/assets/brand-default/og-image.png');
         $this->assertSame([1200, 630], [$w, $h]);
-        $this->assertSame(['Basemall Official Store', 'basemall-official'], array_values((array) $this->db->one('SELECT name, slug FROM sellers WHERE is_platform = 1')));
+        $this->assertSame(['Ecommerce Official Store', 'official-store'], array_values((array) $this->db->one('SELECT name, slug FROM sellers WHERE is_platform = 1')));
         $this->assertSame(1, (int) $this->db->value("SELECT seller_id FROM seller_slug_aliases WHERE slug = 'waimart-official'"));
     }
 
@@ -98,18 +98,18 @@ final class BrandingTest extends DbTestCase
                 $this->assertArrayHasKey($field, $e->errors);
             }
         }
-        $this->assertSame('Basemall', Settings::get('store_name'), 'nothing saved from invalid input');
+        $this->assertSame('Ecommerce', Settings::get('store_name'), 'nothing saved from invalid input');
 
-        $svc->save($this->valid(['store_name' => 'Basemall Kenya', 'brand_primary' => '#1a4d8f', 'brand_secondary' => '#ffd200', 'order_number_prefix' => 'bk']), [], $this->staff);
+        $svc->save($this->valid(['store_name' => 'Ecommerce Kenya', 'brand_primary' => '#1a4d8f', 'brand_secondary' => '#ffd200', 'order_number_prefix' => 'bk']), [], $this->staff);
         Settings::flush();
-        $this->assertSame(['Basemall Kenya', '#1A4D8F', 'BK'], [Brand::name(), Brand::primary(), Brand::orderPrefix()]);
+        $this->assertSame(['Ecommerce Kenya', '#1A4D8F', 'BK'], [Brand::name(), Brand::primary(), Brand::orderPrefix()]);
         $palette = Brand::palette();
         $this->assertSame('#FFD200', $palette['--wm-orange']);
         $this->assertGreaterThanOrEqual(4.5, Brand::contrast($palette['--wm-action'], '#FFFFFF'), 'buttons stay readable with a yellow accent');
         $this->assertStringNotContainsString(';}', Brand::css());
         $log = (array) $this->db->one("SELECT * FROM audit_logs WHERE action = 'branding.updated' ORDER BY id DESC LIMIT 1");
-        $this->assertStringContainsString('Basemall Kenya', (string) $log['after_json']);
-        $this->assertStringContainsString('"store_name":"Basemall"', (string) $log['before_json']);
+        $this->assertStringContainsString('Ecommerce Kenya', (string) $log['after_json']);
+        $this->assertStringContainsString('"store_name":"Ecommerce"', (string) $log['before_json']);
         $this->assertSame('bk-', substr(strtolower((string) $this->placeOrderNumber()), 0, 3), 'new orders use the new prefix');
     }
 
@@ -146,9 +146,9 @@ final class BrandingTest extends DbTestCase
         $this->assertFileDoesNotExist($first['brand_logo_header']);
         $svc->save($this->valid(['reset' => ['logo_icon']]), [], $this->staff);
         Settings::flush();
-        $this->assertSame('assets/brand/favicon-32.png', Settings::get('brand_favicon'));
+        $this->assertSame('assets/brand-default/favicon-32.png', Settings::get('brand_favicon'));
         $this->assertFileDoesNotExist($first['brand_favicon']);
-        $this->assertFileExists(App::root() . '/public/assets/brand/favicon-32.png', 'shipped files are never deleted');
+        $this->assertFileExists(App::root() . '/public/assets/brand-default/favicon-32.png', 'shipped files are never deleted');
     }
 
     public function testBadUploadsAreRefusedAndLeaveNothingBehind(): void
@@ -169,7 +169,7 @@ final class BrandingTest extends DbTestCase
         }
         $this->assertSame($before, glob(App::root() . '/public/uploads/brand/*/*/*') ?: [], 'no orphan files');
         Settings::flush();
-        $this->assertSame('assets/brand/logo-full.png', Settings::get('brand_logo_full'));
+        $this->assertSame('assets/brand-default/logo-full.png', Settings::get('brand_logo_full'));
     }
 
     public function testFallbacksNeverBreakThePage(): void
@@ -180,12 +180,12 @@ final class BrandingTest extends DbTestCase
         Settings::set('order_number_prefix', '1');
         Settings::flush();
         $this->assertSame((string) config('app.name'), Brand::name());
-        $this->assertStringContainsString('assets/brand/logo-wordmark.png', Brand::asset('brand_logo_header'));
+        $this->assertStringContainsString('assets/brand-default/logo-wordmark.png', Brand::asset('brand_logo_header'));
         $this->assertSame(Brand::DEFAULT_PRIMARY, Brand::primary());
         $this->assertSame('BM', Brand::orderPrefix());
         Settings::set('brand_logo_header', '../../config/config.local.php');
         Settings::flush();
-        $this->assertStringContainsString('assets/brand/logo-wordmark.png', Brand::asset('brand_logo_header'), 'no path traversal');
+        $this->assertStringContainsString('assets/brand-default/logo-wordmark.png', Brand::asset('brand_logo_header'), 'no path traversal');
     }
 
     public function testOrdersWithTheOldPrefixStillWork(): void

@@ -1,4 +1,4 @@
--- Basemall 034: abandoned cart recovery. Server-side cart activity (so closing the browser needs no event), the
+-- Ecommerce 034: abandoned cart recovery. Server-side cart activity (so closing the browser needs no event), the
 -- browser a guest cart belongs to (to reach guests who signed up for the newsletter), per-reminder recovery links,
 -- clicks and recovered orders. Adds columns and settings only.
 

@@ -34,7 +34,7 @@ final class MessagingTest extends DbTestCase
 
     private function gateway(string $answer): SmsGateway
     {
-        return new SmsGateway('tok', 'https://bulksms.talksasa.com/api/v3/', 'BASEMALL', function ($m, $u, $h, $b) use ($answer) {
+        return new SmsGateway('tok', 'https://bulksms.talksasa.com/api/v3/', 'ECOMMERCE', function ($m, $u, $h, $b) use ($answer) {
             $this->sent[] = json_decode((string) $b, true);
             return [200, $answer];
         });
@@ -76,7 +76,7 @@ final class MessagingTest extends DbTestCase
         Settings::set('notify_channels', 'sms');
         Settings::set('sms_driver', '');
         $this->assertSame('both', NotificationService::channelMode(), 'SMS off: customers still get email');
-        $n = (new NotificationService())->sendTemplate('order_confirmed', ['order_number' => 'BM-1', 'store' => 'Basemall', 'customer_name' => 'A'],
+        $n = (new NotificationService())->sendTemplate('order_confirmed', ['order_number' => 'BM-1', 'store' => 'Ecommerce', 'customer_name' => 'A'],
             ['email' => 'a@example.com', 'phone' => '254712345678']);
         $this->assertSame(2, $n);
         $this->assertSame(['email', 'sms'], array_column($this->db->all("SELECT channel FROM notifications ORDER BY channel"), 'channel'));
@@ -101,7 +101,7 @@ final class MessagingTest extends DbTestCase
 
         $this->assertSame(' Tracking number: G4S-99887.', MessageTemplates::trackingNote((int) $order['id']));
         $this->assertSame(' Tracking number: G4S-99887.', MessageTemplates::trackingNote((int) $order['id'], $so));
-        $msg = (new MessageTemplates())->render('order_dispatched', ['order_number' => 'BM-1', 'store' => 'Basemall', 'tracking_note' => ' Tracking number: G4S-99887.']);
+        $msg = (new MessageTemplates())->render('order_dispatched', ['order_number' => 'BM-1', 'store' => 'Ecommerce', 'tracking_note' => ' Tracking number: G4S-99887.']);
         $this->assertStringContainsString('on its way. Tracking number: G4S-99887.', (string) $msg['sms']);
     }
 }

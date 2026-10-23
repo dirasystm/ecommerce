@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Ledger load test (marketplace Phase 10 item, run in Basemall Stage 6). Uses the TEST database only.
+ * Ledger load test (marketplace Phase 10 item, run in Ecommerce Stage 6). Uses the TEST database only.
  * Writes ~100,000 append-only ledger rows across 20 sellers through SellerLedgerService::post(), then times what
  * sellers and finance staff open every day (balances, summary, statement, liability, reconciliation, performance)
  * and checks every balance to the cent.

@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Disables the acceptance-testing accounts (every account with an @basemall.test address) before going live:
+ * Disables the acceptance-testing accounts (every account with an @example.test address) before going live:
  * staff access, roles and extra permissions are removed, the accounts are suspended and signed out everywhere, their
  * passwords are replaced with unusable ones, and the test seller store is closed. Nothing is deleted, so orders,
  * the audit log and the sign-in history made during testing stay intact and consistent.
@@ -16,11 +16,11 @@ use Waimart\Core\App;
 use Waimart\Services\AuditLogger;
 
 if (!in_array('--confirm', $argv, true)) {
-    fwrite(STDERR, "Disables every @basemall.test account and closes the test store. Run with --confirm.\n");
+    fwrite(STDERR, "Disables every @example.test account and closes the test store. Run with --confirm.\n");
     exit(1);
 }
 $db = App::db();
-$ids = array_map('intval', array_column($db->all("SELECT id FROM users WHERE email LIKE '%@basemall.test'"), 'id'));
+$ids = array_map('intval', array_column($db->all("SELECT id FROM users WHERE email LIKE '%@example.test'"), 'id'));
 if (!$ids) {
     echo "No test accounts found.\n";
     exit(0);

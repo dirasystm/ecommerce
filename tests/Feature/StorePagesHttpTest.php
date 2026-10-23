@@ -53,12 +53,12 @@ final class StorePagesHttpTest extends FeatureTestCase
             $this->assertStringNotContainsString($hidden, $r['body'], $hidden);
         }
         $this->assertStringContainsString('1 product shown', $r['body']);
-        $this->assertStringContainsString('Selling on Basemall since March 2026', $r['body']);
+        $this->assertStringContainsString('Selling on Ecommerce since March 2026', $r['body']);
         $this->assertStringContainsString('Kisumu, Kisumu', $r['body']);
         $this->assertSame(404, $this->get('/store/no-such-store')['status']);
-        $this->assertSame(200, $this->get('/store/basemall-official')['status'], 'the Official Store has a page too');
+        $this->assertSame(200, $this->get('/store/official-store')['status'], 'the Official Store has a page too');
         $old = $this->get('/store/waimart-official');
-        $this->assertSame([301, '/store/basemall-official'], [$old['status'], parse_url((string) ($old['headers']['location'] ?? ''), PHP_URL_PATH)], 'the pre-rebrand address redirects');
+        $this->assertSame([301, '/store/official-store'], [$old['status'], parse_url((string) ($old['headers']['location'] ?? ''), PHP_URL_PATH)], 'the pre-rebrand address redirects');
     }
 
     public function testSuspendedStoresAndTheirProductsDisappear(): void
@@ -159,7 +159,7 @@ final class StorePagesHttpTest extends FeatureTestCase
         $official = $this->makeVariant(3);
         $this->db->exec('UPDATE products SET category_id = ? WHERE id = ?', [$this->cat, $official['product_id']]);
         $offSlug = (string) $this->db->value('SELECT slug FROM products WHERE id = ?', [$official['product_id']]);
-        $this->assertStringContainsString('Basemall Official Store', $this->get('/product/' . $offSlug)['body']);
+        $this->assertStringContainsString('Ecommerce Official Store', $this->get('/product/' . $offSlug)['body']);
 
         $this->post('/cart/add', ['variant_id' => (string) $p['variant'], 'quantity' => '1'], '/product/' . $p['slug']);
         $this->assertStringContainsString('Sold by <a href="/store/kitenge-house">Kitenge House</a>', $this->get('/cart')['body']);

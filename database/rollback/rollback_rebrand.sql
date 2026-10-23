@@ -1,7 +1,7 @@
--- ROLLBACK of the Basemall rebrand migrations (018 onwards; currently 018–030). Run only after taking a backup:
+-- ROLLBACK of the Ecommerce rebrand migrations (018 onwards; currently 018–030). Run only after taking a backup:
 --   php bin/backup.php
---   C:\xampp\mysql\bin\mysql.exe -u root waimart < database\rollback\rollback_basemall.sql
--- Restores the Waimart values only where they still hold the shipped Basemall values. Orders numbered BM- stay
+--   C:\xampp\mysql\bin\mysql.exe -u root waimart < database\rollback\rollback_rebrand.sql
+-- Restores the Waimart values only where they still hold the shipped Ecommerce values. Orders numbered BM- stay
 -- valid (the code that reads them is not removed by this script; only roll back the code together with it).
 
 -- 030 (pickup station applications): the applications go; stations already created from them stay (deactivate them first if needed).
@@ -77,16 +77,16 @@ DELETE FROM settings WHERE setting_key IN ('store_description', 'products_per_pa
     'announcement_text', 'announcement_link');
 
 -- 018
-UPDATE settings SET setting_value = 'Waimart' WHERE setting_key = 'store_name' AND setting_value = 'Basemall';
+UPDATE settings SET setting_value = 'Waimart' WHERE setting_key = 'store_name' AND setting_value = 'Ecommerce';
 DELETE FROM settings WHERE setting_key IN ('store_tagline', 'brand_primary', 'brand_secondary', 'brand_logo_header', 'brand_logo_icon',
     'brand_logo_full', 'brand_favicon', 'brand_icon_180', 'brand_icon_192', 'brand_icon_512', 'brand_og_image', 'order_number_prefix');
 UPDATE sellers SET name = 'Waimart Official Store', slug = 'waimart-official'
- WHERE is_platform = 1 AND name = 'Basemall Official Store' AND slug = 'basemall-official';
-UPDATE sellers SET legal_name = 'Waimart' WHERE is_platform = 1 AND legal_name = 'Basemall';
+ WHERE is_platform = 1 AND name = 'Ecommerce Official Store' AND slug = 'official-store';
+UPDATE sellers SET legal_name = 'Waimart' WHERE is_platform = 1 AND legal_name = 'Ecommerce';
 UPDATE sellers SET description = 'Products sold and shipped by Waimart.'
- WHERE is_platform = 1 AND description = 'Products sold and shipped by Basemall.';
+ WHERE is_platform = 1 AND description = 'Products sold and shipped by Ecommerce.';
 UPDATE commission_rules SET note = 'Waimart Official Store (platform-owned)'
- WHERE scope = 'seller' AND seller_id = 1 AND note = 'Basemall Official Store (platform-owned)' AND is_active = 1;
+ WHERE scope = 'seller' AND seller_id = 1 AND note = 'Ecommerce Official Store (platform-owned)' AND is_active = 1;
 DROP TABLE seller_slug_aliases;
 
-DELETE FROM schema_migrations WHERE filename IN ('030_pickup_station_applications.sql', '029_notify_channels.sql', '028_password_reset_sms.sql', '027_order_journey.sql', '026_messaging.sql', '025_system_updates.sql', '024_roles_mfa_security.sql', '023_payments_delivery_messages.sql', '022_content_management.sql', '021_normalise_setting_flags.sql', '020_unique_user_phone.sql', '019_settings_groups.sql', '018_basemall_brand.sql');
+DELETE FROM schema_migrations WHERE filename IN ('030_pickup_station_applications.sql', '029_notify_channels.sql', '028_password_reset_sms.sql', '027_order_journey.sql', '026_messaging.sql', '025_system_updates.sql', '024_roles_mfa_security.sql', '023_payments_delivery_messages.sql', '022_content_management.sql', '021_normalise_setting_flags.sql', '020_unique_user_phone.sql', '019_settings_groups.sql', '018_brand.sql');

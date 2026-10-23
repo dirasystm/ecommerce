@@ -1,6 +1,6 @@
 # Abandoned cart recovery, loading feedback and tables: implementation report
 
-**Date:** 22 October 2026 · **Branch:** `feature/basemall-rebrand` · **Migration:** 034 · **Rollback:** `database/rollback/rollback_marketing.sql` (031–034)
+**Date:** 22 October 2026 · **Branch:** `feature/rebrand` · **Migration:** 034 · **Rollback:** `database/rollback/rollback_marketing.sql` (031–034)
 
 ## 1. Summary
 
@@ -54,7 +54,7 @@
 Reminders are sent by the existing marketing scheduler. Nothing new needs to be scheduled.
 - **Windows / XAMPP:**
   ```
-  schtasks /Create /TN "Basemall Marketing" /SC MINUTE /MO 15 /RU SYSTEM /TR "\"C:\xampp\htdocs\ecommerce\bin\marketing-run.bat\""
+  schtasks /Create /TN "Ecommerce Marketing" /SC MINUTE /MO 15 /RU SYSTEM /TR "\"C:\xampp\htdocs\ecommerce\bin\marketing-run.bat\""
   ```
 - **Linux (cron):**
   ```
@@ -65,7 +65,7 @@ With a 15-minute schedule, a reminder goes out 60 to 75 minutes after the last a
 
 ## 5. Email and SMS requirements
 
-- **Email:** works with the SMTP settings already in Email & SMS (noreply@basemall.co.ke).
+- **Email:** works with the SMTP settings already in Email & SMS (noreply@example.co.ke).
 - **SMS:** needs an approved Talksasa sender ID ("TALKSASA" was refused). Until then, choose **Email** only under Abandoned carts → Settings.
 - **Delivery tracking:**
   - A failed send is retried, then marked **Failed**; it is never reported as sent.

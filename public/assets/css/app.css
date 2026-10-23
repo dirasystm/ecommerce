@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Basemall design system — built on Bootstrap 5.3
+   Ecommerce design system — built on Bootstrap 5.3
    The brand colours below are defaults: the live values come from Admin → Settings → Branding and are printed
    after this file by partials/brand-head.php (Brand::palette()), which also derives the shades.
    Contrast: white text is only used on --wm-green (8.2:1) and --wm-action (≥4.5:1, derived automatically).

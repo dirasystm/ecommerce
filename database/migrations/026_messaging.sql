@@ -1,4 +1,4 @@
--- Basemall 026: SMS gateway (Talksasa bulk SMS) and the Email & SMS admin page. Additive.
+-- Ecommerce 026: SMS gateway (Talksasa bulk SMS) and the Email & SMS admin page. Additive.
 -- The API token is stored encrypted in `secrets` (sms_api_token), never in settings.
 
 INSERT IGNORE INTO permissions (slug, description) VALUES

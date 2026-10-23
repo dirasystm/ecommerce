@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| **Project** | Basemall: multi-vendor e-commerce marketplace (repository `dirasystm/ecommerce`) |
+| **Project** | Ecommerce: multi-vendor e-commerce marketplace (repository `dirasystm/ecommerce`) |
 | **Audit date** | 22 October 2026 |
 | **Technology** | PHP 8.2, MariaDB 10.4 and Apache 2.4 (XAMPP on Windows for development; Linux cPanel for live). Own lightweight framework, Bootstrap 5, PHPMailer, Talksasa SMS API |
 | **Size** | 310 routes, 53 controllers, 68 services, 142 views, 75 tables (29 migrations), 8 roles, 38 permissions |
@@ -27,7 +27,7 @@
 | Production mode | Live settings with the database unreachable | Clean error page, no internal details, HSTS sent, no PHP version |
 | Sensitive paths | 15 URLs (config, logs, backups, private documents, source, `.git`, vendor) | All 403 |
 | Migrations | Fresh database from all 29 migrations compared with development | 1,245 schema items identical. Re-run applies 0 |
-| Rollback | All migrations plus `rollback_basemall.sql`, compared with a clean 001–017 install | 46 statements, 1,001 items identical |
+| Rollback | All migrations plus `rollback_rebrand.sql`, compared with a clean 001–017 install | 46 statements, 1,001 items identical |
 | Data integrity | `bin/check-integrity.php` on development data | All checks OK (stock, refunds, ledger reconciliation, guards) |
 | Accessibility (axe-core, WCAG 2.1 A/AA) | 14 public pages; 22 admin pages at desktop and phone width | **0 serious or critical issues** after fix A-5 |
 | Responsive layout | Phone, tablet and desktop emulation | All pass |
@@ -65,11 +65,11 @@ Found and fixed earlier in this release cycle (each has a regression test): wron
 ## D. Remaining issues and risks
 
 1. **SMS not verified end to end (external).** Talksasa accepts the API token (balance KSh 1,152) but refused sender ID "TALKSASA" ("Originator … is not authorized"). SMS sending is switched off until the account's approved sender ID is entered. Email was verified (test email delivered).
-2. **Test accounts with known passwords** (`@basemall.test`) are in the development database and in any export of it. They **must be removed on the live site** before opening: `php bin/remove-test-accounts.php --confirm`.
+2. **Test accounts with known passwords** (`@example.test`) are in the development database and in any export of it. They **must be removed on the live site** before opening: `php bin/remove-test-accounts.php --confirm`.
 3. **Email lands in spam at first.** SPF, DKIM, DMARC and reverse DNS are all correct. The cause is the new sender's reputation and the shared hosting server. Mark as "Not spam", and set a real reply-to address.
 4. **Shared mobile IP addresses:** rate limits are per IP address. Many customers behind one mobile-carrier address could together hit the search limit (120 per minute). Watch after launch and raise the limit if needed.
 5. **Registration reveals whether an email is registered.** Low; an accepted usability trade-off. Sign-in and password reset do not reveal it.
-6. **The live server is not deployed or verified by this audit.** The live package was rehearsed locally only. The `Basemall-Live-Deploy` folder on the Desktop predates this commit and should be rebuilt before uploading.
+6. **The live server is not deployed or verified by this audit.** The live package was rehearsed locally only. The `Live-Deploy` folder on the Desktop predates this commit and should be rebuilt before uploading.
 7. **The development MySQL had damaged system tables twice** after unclean shutdowns (repaired with no data loss). Stop MySQL properly, or run it as a Windows service.
 8. **No static-analysis tool** (PHPStan or Psalm) is installed. Coverage relied on the test suite, `php -l` and the custom scanner.
 
@@ -78,7 +78,7 @@ Found and fixed earlier in this release cycle (each has a regression test): wron
 | | |
 |---|---|
 | Repository | https://github.com/dirasystm/ecommerce |
-| Branches | `main` and `feature/basemall-rebrand` |
+| Branches | `main` and `feature/rebrand` |
 | Commit with all fixes | `e16c31c` "System audit fixes; Email & SMS: notification channels, email server, test boxes with plain-language errors" |
 | Push status | Succeeded. GitHub reports `main` at `e16c31c` |
 | CI | None configured (0 workflow runs) |
@@ -92,6 +92,6 @@ This report is added in the next commit on the same branches. No credentials, to
 No known Critical or High issue remains in the code, and every fix is verified by an automated test. Before production use, the owner must:
 - enter the approved Talksasa sender ID and send a test SMS (item 1);
 - remove the test accounts on the live site (item 2);
-- rebuild and upload the live package, then check it on https://basemall.co.ke (item 6).
+- rebuild and upload the live package, then check it on https://example.co.ke (item 6).
 
 **Production deployment is awaiting the owner's authorization.**

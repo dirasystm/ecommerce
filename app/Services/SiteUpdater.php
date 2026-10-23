@@ -340,12 +340,12 @@ final class SiteUpdater
     /** Pending migrations in the package, checked statement by statement. */
     private function plan(array &$j): array
     {
-        $applied = array_flip(array_column($this->db->all('SELECT filename FROM schema_migrations'), 'filename'));
+        $applied = array_column($this->db->all('SELECT filename FROM schema_migrations'), 'filename');
         $plan = [];
         $blocked = [];
         foreach (glob($this->dir($j['uuid']) . '/staging/database/migrations/*.sql') ?: [] as $file) {
             $name = basename($file);
-            if (isset($applied[$name])) {
+            if (\Waimart\Core\Migrator::isApplied($name, $applied)) {   // by number, so a renamed migration is not run again
                 continue;
             }
             $statements = UpdateSqlGuard::analyse((string) file_get_contents($file));
@@ -498,7 +498,8 @@ final class SiteUpdater
                 }
             }
         }
-        $pending = array_diff(array_column($j['plan'], 'file'), array_column($this->db->all('SELECT filename FROM schema_migrations'), 'filename'));
+        $recorded = array_column($this->db->all('SELECT filename FROM schema_migrations'), 'filename');
+        $pending = array_values(array_filter(array_column($j['plan'], 'file'), fn ($f) => !\Waimart\Core\Migrator::isApplied((string) $f, $recorded)));
         if ($pending) {
             throw new \RuntimeException('Database changes missing: ' . implode(', ', $pending));
         }

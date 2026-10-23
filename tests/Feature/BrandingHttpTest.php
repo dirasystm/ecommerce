@@ -6,7 +6,7 @@ namespace Waimart\Tests\Feature;
 
 use Waimart\Core\Settings;
 
-/** Basemall Stage 1 over HTTP: the Branding page, its permission, live effect on the shop, and no old branding left. */
+/** Ecommerce Stage 1 over HTTP: the Branding page, its permission, live effect on the shop, and no old branding left. */
 final class BrandingHttpTest extends FeatureTestCase
 {
     /** @var array<string,?string> */
@@ -37,7 +37,7 @@ final class BrandingHttpTest extends FeatureTestCase
             $this->assertSame(403, $this->post('/admin/settings/branding', ['store_name' => 'Hijacked', 'store_tagline' => '', 'order_number_prefix' => 'HJ',
                 'brand_primary' => '#000000', 'brand_secondary' => '#000000'], '/admin')['status'], "$role cannot save Branding");
         }
-        $this->assertSame('Basemall', (string) Settings::get('store_name'));
+        $this->assertSame('Ecommerce', (string) Settings::get('store_name'));
     }
 
     public function testBrandingChangesAreLiveAcrossTheShop(): void
@@ -45,23 +45,23 @@ final class BrandingHttpTest extends FeatureTestCase
         $this->loginStaff('super_admin');
         $page = $this->get('/admin/settings/branding');
         $this->assertSame(200, $page['status']);
-        $this->assertStringContainsString('value="Basemall"', $page['body']);
-        $r = $this->post('/admin/settings/branding', ['store_name' => 'Basemall Kenya', 'store_tagline' => 'Shop smarter', 'order_number_prefix' => 'BK',
+        $this->assertStringContainsString('value="Ecommerce"', $page['body']);
+        $r = $this->post('/admin/settings/branding', ['store_name' => 'Ecommerce Kenya', 'store_tagline' => 'Shop smarter', 'order_number_prefix' => 'BK',
             'brand_primary' => '#1A4D8F', 'brand_secondary' => '#FFD200'], '/admin/settings/branding');
         $this->assertSame(303, $r['status']);
 
         $home = $this->get('/')['body'];
-        $this->assertStringContainsString('<title>Basemall Kenya — Shop smarter</title>', $home);
+        $this->assertStringContainsString('<title>Ecommerce Kenya — Shop smarter</title>', $home);
         $this->assertStringContainsString('--wm-green:#1A4D8F', $home, 'palette from settings');
         $this->assertStringContainsString('content="#1A4D8F"', $home, 'theme colour');
-        $this->assertStringContainsString('alt="Basemall Kenya"', $home, 'logo alt text');
-        $this->assertStringContainsString('og:site_name" content="Basemall Kenya"', $home);
+        $this->assertStringContainsString('alt="Ecommerce Kenya"', $home, 'logo alt text');
+        $this->assertStringContainsString('og:site_name" content="Ecommerce Kenya"', $home);
         $manifest = json_decode($this->get('/manifest.webmanifest')['body'], true);
-        $this->assertSame(['Basemall Kenya', '#1A4D8F'], [$manifest['name'], $manifest['theme_color']]);
+        $this->assertSame(['Ecommerce Kenya', '#1A4D8F'], [$manifest['name'], $manifest['theme_color']]);
         $this->assertStringContainsString('BK-XXXXXXXX', $this->get('/admin/collections')['body'], 'order prefix hint follows the setting');
 
         // A colour too light for white text is refused with an explanation; nothing changes.
-        $bad = $this->post('/admin/settings/branding', ['store_name' => 'Basemall Kenya', 'store_tagline' => '', 'order_number_prefix' => 'BK',
+        $bad = $this->post('/admin/settings/branding', ['store_name' => 'Ecommerce Kenya', 'store_tagline' => '', 'order_number_prefix' => 'BK',
             'brand_primary' => '#FFE600', 'brand_secondary' => '#FFD200'], '/admin/settings/branding');
         $this->assertStringContainsString('too light', $this->follow($bad)['body']);
         Settings::flush();
@@ -74,11 +74,11 @@ final class BrandingHttpTest extends FeatureTestCase
         $slug = (string) $this->db->value('SELECT slug FROM products WHERE id = ?', [$product['product_id']]);
         $public = ['/', '/login', '/register', '/forgot-password', '/track-order', '/help', '/how-to-pay', '/delivery-pickup', '/returns-policy',
                    '/contact', '/about', '/terms', '/privacy', '/pickup-stations', '/sell', '/sell/terms', '/categories', '/cart', '/flash-sales',
-                   '/store/basemall-official', "/product/$slug", '/no-such-page', '/admin/login', '/manifest.webmanifest'];
+                   '/store/official-store', "/product/$slug", '/no-such-page', '/admin/login', '/manifest.webmanifest'];
         foreach ($public as $path) {
             $r = $this->get($path);
             $this->assertStringNotContainsString('Waimart', $r['body'], "GET $path");
-            $this->assertStringContainsString('Basemall', $r['body'], "GET $path names the store");
+            $this->assertStringContainsString('Ecommerce', $r['body'], "GET $path names the store");
         }
         $this->loginStaff('super_admin');
         foreach (['/admin', '/admin/orders', '/admin/sellers', '/admin/settings', '/admin/settings/branding', '/admin/payouts', '/admin/reports/marketplace'] as $path) {

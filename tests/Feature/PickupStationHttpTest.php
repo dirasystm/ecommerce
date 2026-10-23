@@ -73,7 +73,7 @@ final class PickupStationHttpTest extends FeatureTestCase
         $this->assertSame([200, 'image/png'], [$photo['status'], $photo['headers']['content-type'] ?? null]);
 
         preg_match('/name="_csrf" value="([^"]+)"/', $show['body'], $m);
-        $approve = ['_csrf' => html_entity_decode($m[1]), 'code' => 'LKP-NYK-01', 'name' => 'Basemall Pickup – Wambui Pharmacy', 'county_id' => '31', 'town' => 'Nanyuki',
+        $approve = ['_csrf' => html_entity_decode($m[1]), 'code' => 'LKP-NYK-01', 'name' => 'Ecommerce Pickup – Wambui Pharmacy', 'county_id' => '31', 'town' => 'Nanyuki',
             'address' => 'Lumumba Road, shop 2', 'opening_hours' => $app['opening_hours'], 'pickup_fee' => '0', 'latitude' => '0.0150000', 'longitude' => '37.0700000'];
         $done = $this->http('POST', '/admin/pickup-points/applications/' . $app['id'] . '/approve', $approve, [], '/admin/pickup-points/applications/' . $app['id']);
         $this->assertStringContainsString('/admin/pickup-points/', $done['headers']['location'] ?? '');
@@ -86,7 +86,7 @@ final class PickupStationHttpTest extends FeatureTestCase
         $slug = (string) $this->db->value('SELECT p.slug FROM products p JOIN product_variants v ON v.product_id = p.id WHERE v.id = ?', [$v]);
         $this->post('/cart/add', ['variant_id' => (string) $v, 'quantity' => '1'], '/product/' . $slug);
         $checkout = $this->get('/checkout')['body'];
-        $this->assertStringContainsString('Basemall Pickup – Wambui Pharmacy', $checkout);
+        $this->assertStringContainsString('Ecommerce Pickup – Wambui Pharmacy', $checkout);
         $this->assertStringContainsString('data-station-suggest', $checkout);
         $this->assertMatchesRegularExpression('/data-county-id="31" data-county="Laikipia" data-town="Nanyuki"[^>]*data-lat="0.0150000" data-lng="37.0700000"/s', $checkout);
     }

@@ -62,7 +62,7 @@ final class RoutingAndSecurityTest extends HttpTestCase
 
     public function testStaticAssetServed(): void
     {
-        $r = $this->request('GET', '/assets/brand/logo-full.png');
+        $r = $this->request('GET', '/assets/brand-default/logo-full.png');
         $this->assertSame(200, $r['status']);
         $this->assertSame('image/png', $r['headers']['content-type'] ?? null);
     }

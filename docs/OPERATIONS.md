@@ -1,4 +1,4 @@
-# Basemall — Operations
+# Ecommerce — Operations
 
 ## Reservation expiry worker (required)
 
@@ -202,7 +202,7 @@ Recommendations, customer segments, promotional links with results, leads and au
 1. Create a campaign: name, objective, channel or platform, dates. Enter the **actual cost** if you want return on ad spend; it is never estimated.
 2. Create a link to a product, category, brand, store, search or another page of the shop. A link can only open pages of this shop.
 3. The **Link studio** gives you:
-   - the short link `https://basemall.co.ke/go/<code>`;
+   - the short link `https://example.co.ke/go/<code>`;
    - ready-to-post texts for Facebook, Instagram, WhatsApp and X, plus hashtags and share buttons;
    - a QR code for posters (its scans are counted separately);
    - downloadable square and story images.
@@ -244,7 +244,7 @@ Recommendations, customer segments, promotional links with results, leads and au
 
 Windows / XAMPP, in an elevated Command Prompt:
 ```
-schtasks /Create /TN "Basemall Marketing" /SC MINUTE /MO 15 /RU SYSTEM ^
+schtasks /Create /TN "Ecommerce Marketing" /SC MINUTE /MO 15 /RU SYSTEM ^
   /TR "\"C:\xampp\htdocs\ecommerce\bin\marketing-run.bat\""
 ```
 Linux (cron) on the live server:

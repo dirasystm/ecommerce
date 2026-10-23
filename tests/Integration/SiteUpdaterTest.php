@@ -144,7 +144,7 @@ final class SiteUpdaterTest extends DbTestCase
             'config/config.local.php' => "<?php return ['secret' => 'HACKED'];\n",       // protected: ignored
             'storage/logs/app.log' => "overwritten\n",                                   // protected: ignored
             '__MACOSX/._junk' => 'x', 'Thumbs.db' => 'x',                                // clutter: ignored
-        ], 'basemall-v2/');
+        ], 'ecommerce-v2/');
         $j = $this->upload($zip);
         $this->assertSame('ready', $j['status'], json_encode($j['blocked'] ?? []));
         $this->assertSame(['app/Core/App.php'], $j['files']['changed']);

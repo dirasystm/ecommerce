@@ -1,4 +1,4 @@
--- Basemall 028: password reset by SMS code as well as by email link. Additive.
+-- Ecommerce 028: password reset by SMS code as well as by email link. Additive.
 -- An SMS reset is a password_resets row with a 6-digit code (stored hashed); the correct code swaps in a fresh link
 -- token, so both ways end on the same "set a new password" page.
 

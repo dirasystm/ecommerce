@@ -39,7 +39,7 @@ $checks = [
     'refunds above the order total' => "SELECT COUNT(*) FROM (SELECT o.id FROM orders o JOIN refunds r ON r.order_id = o.id AND r.status <> 'cancelled' GROUP BY o.id, o.grand_total HAVING SUM(r.amount) > o.grand_total) x",
     'more than one open return on a part' => "SELECT COUNT(*) FROM (SELECT seller_order_id FROM return_requests WHERE status IN ('requested','approved','received') AND seller_order_id IS NOT NULL GROUP BY seller_order_id HAVING COUNT(*) > 1) x",
     'ledger triggers installed (expect 4)' => "SELECT 4 - COUNT(*) FROM information_schema.triggers WHERE trigger_schema = DATABASE() AND event_object_table IN ('seller_ledger_entries','seller_payout_history')",
-    // Basemall stages 3–5.
+    // Ecommerce stages 3–5.
     'audit and sign-in log guards installed (expect 4)' => "SELECT 4 - COUNT(*) FROM information_schema.triggers WHERE trigger_schema = DATABASE() AND event_object_table IN ('audit_logs','auth_events')",
     'no active super administrator' => "SELECT 1 - LEAST(1, COUNT(*)) FROM users u JOIN user_roles ur ON ur.user_id = u.id JOIN roles r ON r.id = ur.role_id WHERE r.slug = 'super_admin' AND u.is_staff = 1 AND u.status = 'active'",
     'no payment method switched on' => 'SELECT 1 - LEAST(1, COUNT(*)) FROM payment_methods WHERE is_enabled = 1',

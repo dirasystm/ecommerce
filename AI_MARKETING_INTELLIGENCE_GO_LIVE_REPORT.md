@@ -1,6 +1,6 @@
-# Basemall Marketing Intelligence: go-live report
+# Ecommerce Marketing Intelligence: go-live report
 
-**Date:** 22 October 2026 · **Branch:** `feature/basemall-rebrand` · **Migrations:** 031, 032, 033 · **Rollback:** `database/rollback/rollback_marketing.sql`
+**Date:** 22 October 2026 · **Branch:** `feature/rebrand` · **Migrations:** 031, 032, 033 · **Rollback:** `database/rollback/rollback_marketing.sql`
 
 ## Verdict: READY WITH DOCUMENTED LIMITATIONS
 

@@ -7,7 +7,7 @@ namespace Waimart\Tests\Feature;
 use Waimart\Core\Settings;
 use Waimart\Services\SettingsService;
 
-/** Basemall Stage 2 over HTTP: settings pages and permissions, and each setting's effect on the shop. */
+/** Ecommerce Stage 2 over HTTP: settings pages and permissions, and each setting's effect on the shop. */
 final class SettingsHttpTest extends FeatureTestCase
 {
     /** @var array<string,string> */
@@ -57,30 +57,30 @@ final class SettingsHttpTest extends FeatureTestCase
     public function testContactSocialAndSeoSettingsShowOnTheShop(): void
     {
         $this->loginStaff('super_admin');
-        $this->assertSame(303, $this->post('/admin/settings/contact', ['store_phone' => '0700 123 456', 'store_email' => 'care@basemall.test',
-            'whatsapp_number' => '0712 345 678', 'business_address' => "Moi Avenue\nNairobi", 'business_hours' => 'Mon–Sat, 8 am – 6 pm', 'legal_name' => 'Basemall Ltd'], '/admin/settings/contact')['status']);
-        $this->post('/admin/settings/social', ['social_instagram' => 'https://instagram.com/basemall'], '/admin/settings/social');
-        $this->post('/admin/settings/seo', ['seo_title' => 'Basemall: shop everything', 'seo_description' => 'Phones, fashion and groceries delivered across Kenya.'], '/admin/settings/seo');
+        $this->assertSame(303, $this->post('/admin/settings/contact', ['store_phone' => '0700 123 456', 'store_email' => 'care@example.test',
+            'whatsapp_number' => '0712 345 678', 'business_address' => "Moi Avenue\nNairobi", 'business_hours' => 'Mon–Sat, 8 am – 6 pm', 'legal_name' => 'Ecommerce Ltd'], '/admin/settings/contact')['status']);
+        $this->post('/admin/settings/social', ['social_instagram' => 'https://instagram.com/ecommerce'], '/admin/settings/social');
+        $this->post('/admin/settings/seo', ['seo_title' => 'Ecommerce: shop everything', 'seo_description' => 'Phones, fashion and groceries delivered across Kenya.'], '/admin/settings/seo');
 
         $home = $this->get('/')['body'];
-        $this->assertStringContainsString('<title>Basemall: shop everything</title>', $home);
+        $this->assertStringContainsString('<title>Ecommerce: shop everything</title>', $home);
         $this->assertStringContainsString('content="Phones, fashion and groceries delivered across Kenya."', $home);
         $this->assertStringNotContainsString('name="robots"', $home);
         $this->assertStringContainsString('href="https://wa.me/254712345678"', $home);
-        $this->assertStringContainsString('href="https://instagram.com/basemall"', $home);
-        $this->assertStringContainsString('&copy; ' . date('Y') . ' Basemall Ltd.', $home);
+        $this->assertStringContainsString('href="https://instagram.com/ecommerce"', $home);
+        $this->assertStringContainsString('&copy; ' . date('Y') . ' Ecommerce Ltd.', $home);
         $contact = $this->get('/contact')['body'];
-        foreach (['0700 123 456', 'care@basemall.test', 'Moi Avenue<br />', 'Mon–Sat, 8 am – 6 pm'] as $t) {
+        foreach (['0700 123 456', 'care@example.test', 'Moi Avenue<br />', 'Mon–Sat, 8 am – 6 pm'] as $t) {
             $this->assertStringContainsString($t, $contact);
         }
 
         // A bad value is refused with a message and nothing changes.
         $bad = $this->post('/admin/settings/social', ['social_instagram' => 'javascript:alert(1)'], '/admin/settings/social');
         $this->assertStringContainsString('Instagram must be a valid http(s) URL', html_entity_decode($this->follow($bad)['body']));
-        $bad = $this->post('/admin/settings/social', ['social_instagram' => 'http://instagram.com/basemall'], '/admin/settings/social');
+        $bad = $this->post('/admin/settings/social', ['social_instagram' => 'http://instagram.com/ecommerce'], '/admin/settings/social');
         $this->assertStringContainsString('Instagram must start with https://', html_entity_decode($this->follow($bad)['body']));
         Settings::flush();
-        $this->assertSame('https://instagram.com/basemall', Settings::get('social_instagram'), 'unchanged after refusals');
+        $this->assertSame('https://instagram.com/ecommerce', Settings::get('social_instagram'), 'unchanged after refusals');
         $this->post('/admin/settings/seo', ['seo_noindex' => '1'], '/admin/settings/seo');
         $this->assertStringContainsString('<meta name="robots" content="noindex, nofollow">', $this->get('/')['body']);
     }
@@ -136,7 +136,7 @@ final class SettingsHttpTest extends FeatureTestCase
         $this->loginStaff('super_admin');
         $exp = $this->get('/admin/settings/export');
         $this->assertStringContainsString('application/json', (string) ($exp['headers']['content-type'] ?? ''));
-        $this->assertStringContainsString('attachment; filename="basemall-settings-', (string) ($exp['headers']['content-disposition'] ?? ''));
+        $this->assertStringContainsString('attachment; filename="ecommerce-settings-', (string) ($exp['headers']['content-disposition'] ?? ''));
         $data = json_decode($exp['body'], true);
         $this->assertArrayNotHasKey('mpesa_till_number', $data['settings']);
 

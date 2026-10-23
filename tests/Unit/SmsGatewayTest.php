@@ -14,7 +14,7 @@ final class SmsGatewayTest extends TestCase
     private array $calls = [];
 
     /** @param array{0:int,1:string}|\Throwable $answer */
-    private function gateway(array|\Throwable $answer, string $token = 'tok-123', string $sender = 'BASEMALL'): SmsGateway
+    private function gateway(array|\Throwable $answer, string $token = 'tok-123', string $sender = 'ECOMMERCE'): SmsGateway
     {
         return new SmsGateway($token, 'https://bulksms.talksasa.com/api/v3', $sender, function (string $m, string $u, array $h, ?string $b) use ($answer) {
             $this->calls[] = [$m, $u, $h, $b];
@@ -33,7 +33,7 @@ final class SmsGatewayTest extends TestCase
         $this->assertSame('POST', $method);
         $this->assertSame('https://bulksms.talksasa.com/api/v3/sms/send', $url);
         $this->assertContains('Authorization: Bearer tok-123', $headers);
-        $this->assertSame(['recipient' => '254712345678', 'sender_id' => 'BASEMALL', 'type' => 'plain', 'message' => 'Hello'], json_decode((string) $body, true));
+        $this->assertSame(['recipient' => '254712345678', 'sender_id' => 'ECOMMERCE', 'type' => 'plain', 'message' => 'Hello'], json_decode((string) $body, true));
     }
 
     public function testErrorsAreReadableAndNeverContainTheToken(): void
@@ -56,7 +56,7 @@ final class SmsGatewayTest extends TestCase
 
     public function testNotSetUpMeansNoRequest(): void
     {
-        $r = $this->gateway([200, '{}'], '', 'BASEMALL')->send('254712345678', 'Hi');
+        $r = $this->gateway([200, '{}'], '', 'ECOMMERCE')->send('254712345678', 'Hi');
         $this->assertFalse($r['ok']);
         $r = $this->gateway([200, '{}'], 'tok', '')->send('254712345678', 'Hi');
         $this->assertFalse($r['ok']);

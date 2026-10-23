@@ -1,4 +1,4 @@
-/* Basemall admin behaviour (CSP-safe, no inline handlers). */
+/* Ecommerce admin behaviour (CSP-safe, no inline handlers). */
 (function () {
     'use strict';
 

@@ -1,4 +1,4 @@
--- Basemall 030: businesses apply to become pickup stations; a super admin verifies and approves or rejects. Additive.
+-- Ecommerce 030: businesses apply to become pickup stations; a super admin verifies and approves or rejects. Additive.
 -- An approved application creates an ordinary pickup point (pickup_points), which then appears at checkout.
 
 INSERT IGNORE INTO permissions (slug, description) VALUES

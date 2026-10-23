@@ -19,3 +19,7 @@
 /storage/updates/
 /storage/updates-test/
 /storage/updater-sandbox/
+
+# The shop owner's own logo files and documents: kept on the server and in the deploy package, never in the code repository.
+/public/assets/brand/
+/docs/*.pdf

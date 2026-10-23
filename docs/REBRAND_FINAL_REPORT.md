@@ -1,8 +1,8 @@
-# Basemall: Final Implementation Report
+# Ecommerce: Final Implementation Report
 
-**Date:** 19 October 2026 · **Branch:** `feature/basemall-rebrand` · **Scope:** the brief "Rebrand the e-commerce platform to Basemall and implement full database-driven management", plus the remaining items of the marketplace upgrade (Phase 10/11).
+**Date:** 19 October 2026 · **Branch:** `feature/rebrand` · **Scope:** the brief "Rebrand the e-commerce platform to Ecommerce and implement full database-driven management", plus the remaining items of the marketplace upgrade (Phase 10/11).
 
-Stage-by-stage detail, with every decision and fix, is in [BASEMALL_REBRAND.md](BASEMALL_REBRAND.md). This report maps the work to the brief's deliverables (section 13) and acceptance criteria.
+Stage-by-stage detail, with every decision and fix, is in [REBRAND_NOTES.md](REBRAND_NOTES.md). This report maps the work to the brief's deliverables (section 13) and acceptance criteria.
 
 ---
 
@@ -17,7 +17,7 @@ Stage-by-stage detail, with every decision and fix, is in [BASEMALL_REBRAND.md](
 | 5 | Secure administrator account management | Stage 5: staff pages with roles, extra permissions, forced password change, reset link, sign out everywhere, two-step reset, recent sign-ins and actions; My account for every staff member. |
 | 6 | Configurable roles and granular permissions | Stage 5: Roles & permissions matrix, custom roles, 8 built-in roles (including Content & Marketing, Delivery & Logistics), 36 permissions, per-person grants, no self-escalation. |
 | 7 | Audit logs | Every admin change is audited with before/after values (no secrets). The audit log and sign-in activity are append-only, enforced by database triggers. Viewing needs `audit.view`, and exports are themselves audited. |
-| 8 | Migrations and schema documentation | Migrations 018–024 (below); `database/rollback/rollback_basemall.sql`, drilled after every stage; [ARCHITECTURE.md](ARCHITECTURE.md) §12–12a. |
+| 8 | Migrations and schema documentation | Migrations 018–024 (below); `database/rollback/rollback_rebrand.sql`, drilled after every stage; [ARCHITECTURE.md](ARCHITECTURE.md) §12–12a. |
 | 9 | List of hardcoded content converted | Section 3 below. |
 | 10 | Test results | Section 4 below. |
 | 11 | Changed files, new modules, outstanding issues, deployment steps | Sections 2, 5 and 6 below. |
@@ -108,7 +108,7 @@ Kept in code on purpose, as the brief allows:
 
 - **Browser sweep** (Microsoft Edge, axe-core accessibility, overflow and console checks at phone 375 px, tablet 768 px and desktop 1366 px):
   - all **103 pages** with a fixed address (63 admin, 11 Seller Centre, 11 customer account, 18 public), signed in as the right kind of user each time;
-  - 0 serious or critical accessibility issues, and no horizontal overflow or console errors after the fixes listed in BASEMALL_REBRAND.md.
+  - 0 serious or critical accessibility issues, and no horizontal overflow or console errors after the fixes listed in REBRAND_NOTES.md.
 - **Rollback drill after every stage:** the pre-upgrade backup migrated 010→024, then both rollbacks run: identical schema and identical data, apart from setting timestamps.
 - **Ledger load test** (`tests/scripts/ledger_load.php`): 100,000 ledger rows across 20 sellers, every balance exact to the cent.
   - Seller balances, summary and statement: **9–20 ms**.
@@ -145,7 +145,7 @@ Kept in code on purpose, as the brief allows:
 3. `php bin/migrate.php`: applies 018–024 in order. Each is additive.
 4. `php bin/check-integrity.php`: everything should be OK except "no active super administrator" if you have none yet.
 5. Complete the owner actions in section 5.
-6. Rollback, if ever needed: restore the backup, or run `database/rollback/rollback_basemall.sql` (then, only if going back before the marketplace, `rollback_marketplace.sql`) together with the matching code version.
+6. Rollback, if ever needed: restore the backup, or run `database/rollback/rollback_rebrand.sql` (then, only if going back before the marketplace, `rollback_marketplace.sql`) together with the matching code version.
 
 New installations follow [INSTALL.md](INSTALL.md). Day-to-day running is in [OPERATIONS.md](OPERATIONS.md), sellers' instructions in [SELLER_GUIDE.md](SELLER_GUIDE.md), backups in [BACKUP_RESTORE.md](BACKUP_RESTORE.md).
 
@@ -153,7 +153,7 @@ New installations follow [INSTALL.md](INSTALL.md). Day-to-day running is in [OPE
 
 | Criterion | Status |
 |---|---|
-| Consistent Basemall identity | Met: settings-driven everywhere; scan shows no visible old name |
+| Consistent Ecommerce identity | Met: settings-driven everywhere; scan shows no visible old name |
 | Supplied logo used correctly | Met: cut from the supplied file, not redrawn; replaceable in admin |
 | Editable content and settings come from the database | Met (section 3) |
 | Admins manage the site without editing code | Met. Exception: server-level items (database password, app key, HTTPS) stay in `config.local.php`, as they should. |

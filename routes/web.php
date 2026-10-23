@@ -177,7 +177,7 @@ use Waimart\Controllers\Admin;
 
 $router->get('/admin/login', [Admin\AuthController::class, 'form'], [], 'admin.login');
 $router->post('/admin/login', [Admin\AuthController::class, 'login'], ['throttle:20,300']);
-// Second step of signing in, for accounts with two-step sign-in (Basemall Stage 5).
+// Second step of signing in, for accounts with two-step sign-in (Ecommerce Stage 5).
 $router->get('/admin/login/two-step', [Admin\AuthController::class, 'verifyForm']);
 $router->post('/admin/login/two-step', [Admin\AuthController::class, 'verify'], ['throttle:20,300']);
 $router->post('/logout', [Admin\AuthController::class, 'logout'], [], 'logout');
@@ -230,7 +230,7 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
         $r->post('/delivery-zones/{id:\d+}', [Admin\DeliveryZoneController::class, 'update']);
         $r->post('/delivery-zones/{id:\d+}/locations', [Admin\DeliveryZoneController::class, 'addLocation']);
         $r->post('/delivery-zones/{id:\d+}/locations/{lid:\d+}/delete', [Admin\DeliveryZoneController::class, 'removeLocation']);
-        // Delivery options, store-wide free delivery, checkout notes and order status names (Basemall Stage 4).
+        // Delivery options, store-wide free delivery, checkout notes and order status names (Ecommerce Stage 4).
         $r->get('/delivery-settings', [Admin\DeliverySettingsController::class, 'show']);
         $r->post('/delivery-settings', [Admin\DeliverySettingsController::class, 'save']);
         $r->post('/delivery-settings/status-names', [Admin\DeliverySettingsController::class, 'saveLabels']);
@@ -291,7 +291,7 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     $r->get('/resolutions', [Admin\PaymentController::class, 'resolutions'], ['can:resolutions.manage']);
     $r->post('/resolutions/{id:\d+}/re-reserve', [Admin\PaymentController::class, 'reReserve'], ['can:resolutions.manage']);
     $r->post('/resolutions/{id:\d+}/cancel', [Admin\PaymentController::class, 'cancelRefund'], ['can:resolutions.manage']);
-    // Payment methods offered at checkout and their customer instructions (Basemall Stage 4).
+    // Payment methods offered at checkout and their customer instructions (Ecommerce Stage 4).
     $r->group(['middleware' => ['can:payments.configure']], function ($r) {
         $r->get('/payment-methods', [Admin\PaymentMethodController::class, 'index']);
         $r->post('/payment-methods/rules', [Admin\PaymentMethodController::class, 'saveRules']);
@@ -312,7 +312,7 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     $r->get('/settings/branding', [Admin\BrandingController::class, 'edit'], ['can:settings.manage']);
     $r->post('/settings/branding', [Admin\BrandingController::class, 'update'], ['can:settings.manage', 'throttle:30,3600']);
 
-    // Email and SMS wording (Basemall Stage 4).
+    // Email and SMS wording (Ecommerce Stage 4).
     $r->group(['middleware' => ['can:messages.manage']], function ($r) {
         $r->get('/messages', [Admin\MessageTemplateController::class, 'index']);
         $r->get('/messages/{code:[a-z_]+}', [Admin\MessageTemplateController::class, 'edit']);
@@ -349,7 +349,7 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
         $r->post('/updates/{uuid:[a-f0-9]{32}}/cancel', [Admin\UpdateController::class, 'cancel']);
         $r->post('/updates/{uuid:[a-f0-9]{32}}/rollback', [Admin\UpdateController::class, 'rollback'], ['throttle:10,900']);
     });
-    // Roles and the permission matrix (Basemall Stage 5).
+    // Roles and the permission matrix (Ecommerce Stage 5).
     $r->group(['middleware' => ['can:roles.manage']], function ($r) {
         $r->get('/roles', [Admin\RoleController::class, 'index']);
         $r->get('/roles/new', [Admin\RoleController::class, 'create']);

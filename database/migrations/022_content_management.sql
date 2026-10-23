@@ -1,4 +1,4 @@
--- Basemall 022: content management — pages, menus and homepage sections in the database (Admin → Content).
+-- Ecommerce 022: content management — pages, menus and homepage sections in the database (Admin → Content).
 -- Additive. Seeds reproduce the current site exactly: the nine information and legal pages (their existing wording, in
 -- the content format rendered by ContentRenderer), the header/footer/mobile menus and the homepage layout.
 -- Live facts are never copied into text: {store}, {return_days}… and [[blocks]] are filled in at display time.

@@ -1,7 +1,7 @@
-# Basemall — Architecture
+# Ecommerce — Architecture
 
 Multi-vendor marketplace inspired by Jumia Kenya (single-store until the marketplace upgrade, docs/MARKETPLACE_PLAN.md).
-Brand: **Basemall**, "Everything You Need. One Marketplace." (formerly Waimart; see docs/BASEMALL_REBRAND.md). Internal identifiers
+Brand: **Ecommerce**, "Everything you need, one store." (formerly Waimart; see docs/REBRAND_NOTES.md). Internal identifiers
 keep the old name on purpose: the `Waimart\` PHP namespace, the `waimart` database, the session cookie and `WAIMART_` environment variables.
 
 ## 1. Environment (inspected 2026-10-17)
@@ -230,7 +230,7 @@ Default reservation window: **30 minutes** (`settings.reservation_minutes`).
   - `must_change_password` and `sessions_revoked_at` gate sessions in `Auth::user()` and the staff middleware.
 - **Sign-in activity:** every attempt is recorded in `auth_events` (masked identifiers; append-only).
 
-## 12a. Managed content and settings (Basemall)
+## 12a. Managed content and settings (Ecommerce)
 
 | Area | Where it lives | Service |
 |---|---|---|

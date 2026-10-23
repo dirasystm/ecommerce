@@ -1,23 +1,23 @@
--- Basemall 018: the store's identity becomes settings-driven, starting as Basemall.
+-- Ecommerce 018: the store's identity becomes settings-driven, starting as Ecommerce.
 -- Values are only changed where they still hold the shipped Waimart defaults, so anything an administrator has
 -- customised is left alone. Historical records (orders, messages already sent, audit entries) are not touched.
 
 -- Name and tagline.
-UPDATE settings SET setting_value = 'Basemall' WHERE setting_key = 'store_name' AND setting_value IN ('Waimart', '');
+UPDATE settings SET setting_value = 'Ecommerce' WHERE setting_key = 'store_name' AND setting_value IN ('Waimart', '');
 INSERT IGNORE INTO settings (setting_key, setting_value) VALUES
-('store_tagline',      'Everything You Need. One Marketplace.'),
+('store_tagline',      'Everything you need, one store.'),
 -- Colours sampled from the supplied logo (green #01623C/#004C2F, orange #FC7502/#FE5D00), matching the brief.
 ('brand_primary',      '#005B3D'),
 ('brand_secondary',    '#FF6A00'),
--- Brand images: the files generated from the supplied logo; replaceable from Admin → Settings → Branding.
-('brand_logo_header',  'assets/brand/logo-wordmark.png'),
-('brand_logo_icon',    'assets/brand/logo-icon.png'),
-('brand_logo_full',    'assets/brand/logo-full.png'),
-('brand_favicon',      'assets/brand/favicon-32.png'),
-('brand_icon_180',     'assets/brand/apple-touch-icon.png'),
-('brand_icon_192',     'assets/brand/icon-192.png'),
-('brand_icon_512',     'assets/brand/icon-512.png'),
-('brand_og_image',     'assets/brand/og-image.png'),
+-- Brand images: neutral defaults; replace them from Admin → Settings → Branding.
+('brand_logo_header',  'assets/brand-default/logo-wordmark.png'),
+('brand_logo_icon',    'assets/brand-default/logo-icon.png'),
+('brand_logo_full',    'assets/brand-default/logo-full.png'),
+('brand_favicon',      'assets/brand-default/favicon-32.png'),
+('brand_icon_180',     'assets/brand-default/apple-touch-icon.png'),
+('brand_icon_192',     'assets/brand-default/icon-192.png'),
+('brand_icon_512',     'assets/brand-default/icon-512.png'),
+('brand_og_image',     'assets/brand-default/og-image.png'),
 -- New orders are numbered BM-XXXXXXXX; existing WM- numbers keep working everywhere.
 ('order_number_prefix', 'BM');
 
@@ -31,13 +31,13 @@ CREATE TABLE seller_slug_aliases (
     CONSTRAINT fk_ssa_seller FOREIGN KEY (seller_id) REFERENCES sellers (id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
--- The platform's own store: Waimart Official Store → Basemall Official Store (only if still at the shipped values).
+-- The platform's own store: Waimart Official Store → Ecommerce Official Store (only if still at the shipped values).
 INSERT INTO seller_slug_aliases (slug, seller_id)
 SELECT slug, id FROM sellers WHERE is_platform = 1 AND slug = 'waimart-official';
-UPDATE sellers SET name = 'Basemall Official Store', slug = 'basemall-official'
+UPDATE sellers SET name = 'Ecommerce Official Store', slug = 'official-store'
  WHERE is_platform = 1 AND name = 'Waimart Official Store' AND slug = 'waimart-official';
-UPDATE sellers SET legal_name = 'Basemall' WHERE is_platform = 1 AND legal_name = 'Waimart';
-UPDATE sellers SET description = 'Products sold and shipped by Basemall.'
+UPDATE sellers SET legal_name = 'Ecommerce' WHERE is_platform = 1 AND legal_name = 'Waimart';
+UPDATE sellers SET description = 'Products sold and shipped by Ecommerce.'
  WHERE is_platform = 1 AND description = 'Products sold and shipped by Waimart.';
-UPDATE commission_rules SET note = 'Basemall Official Store (platform-owned)'
+UPDATE commission_rules SET note = 'Ecommerce Official Store (platform-owned)'
  WHERE scope = 'seller' AND seller_id = 1 AND note = 'Waimart Official Store (platform-owned)' AND is_active = 1;

@@ -15,7 +15,7 @@ use Waimart\Services\RoleService;
 use Waimart\Services\StaffService;
 
 /**
- * Basemall Stage 5: roles and the permission matrix, personal permissions, no self-escalation, two-step sign-in,
+ * Ecommerce Stage 5: roles and the permission matrix, personal permissions, no self-escalation, two-step sign-in,
  * forced password change, signing out everywhere, sign-in activity and the append-only logs.
  */
 final class RolesSecurityTest extends DbTestCase

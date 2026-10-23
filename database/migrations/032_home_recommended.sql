@@ -1,4 +1,4 @@
--- Basemall 032: a "Recommended for you" homepage section (Admin → Content → Homepage), below the flash sale.
+-- Ecommerce 032: a "Recommended for you" homepage section (Admin → Content → Homepage), below the flash sale.
 -- The section type list gains 'recommended' (existing values unchanged), then the section is added once.
 ALTER TABLE home_sections MODIFY type ENUM('hero','quick_categories','flash_sale','top_deals','shop_by_category','featured',
     'category_rails','category_row','values','text','recommended') NOT NULL;

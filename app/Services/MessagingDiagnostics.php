@@ -49,7 +49,7 @@ final class MessagingDiagnostics
         $rules = [
             ['/could not authenticate|535|authentication (failed|data)|incorrect authentication|username and password not accepted/i',
                 'The mail server rejected the username or password.',
-                'Check that Username is the full email address (e.g. noreply@basemall.co.ke) and save the account\'s password again. If unsure, reset it in cPanel → Email Accounts first.'],
+                'Check that Username is the full email address (e.g. noreply@example.co.ke) and save the account\'s password again. If unsure, reset it in cPanel → Email Accounts first.'],
             ['/could not connect to smtp host|failed to connect|connection (refused|timed out)|getaddrinfo|php_network_getaddresses|no such host/i',
                 'The website could not connect to the mail server.',
                 'Check the mail server name (e.g. rs5.rcnoc.com) and the port: 465 with "SSL/TLS", or 587 with "STARTTLS".'],
@@ -58,7 +58,7 @@ final class MessagingDiagnostics
                 'Match the port and encryption: 465 with "SSL/TLS", or 587 with "STARTTLS". Then try again.'],
             ['/sender address rejected|not permitted to relay|relay|from address|invalid address.*from|setfrom/i',
                 'The mail server does not allow this sender address.',
-                'Set "Sender email" to the same address as the email account you sign in with (e.g. noreply@basemall.co.ke).'],
+                'Set "Sender email" to the same address as the email account you sign in with (e.g. noreply@example.co.ke).'],
             ['/recipient|rcpt|mailbox unavailable|user unknown|550/i',
                 'The recipient\'s address was refused.',
                 'Check the email address you are sending the test to.'],

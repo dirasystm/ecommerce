@@ -1,4 +1,4 @@
--- Basemall 027: order journey and arrival estimates (Delivery settings). Additive.
+-- Ecommerce 027: order journey and arrival estimates (Delivery settings). Additive.
 -- Working days (Monday to Saturday) used for the estimated arrival / ready-for-collection dates on order tracking.
 
 INSERT IGNORE INTO settings (setting_key, setting_value) VALUES

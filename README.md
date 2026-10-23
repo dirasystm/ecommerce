@@ -1,12 +1,12 @@
-# Basemall: multi-vendor e-commerce marketplace for Kenya
+# Ecommerce: multi-vendor e-commerce marketplace for Kenya
 
-**Everything You Need. One Marketplace.**
+**Everything you need, one store.**
 
-Basemall is a complete online marketplace built for the Kenyan market. Customers can shop from many sellers in one cart and pay by M-Pesa or cash on delivery, then get their order delivered or collect it from a pickup station. Sellers run their own stores from a Seller Centre. Staff run the platform from an admin dashboard with role-based access, and all content and settings are managed from the admin, with no code changes.
+Ecommerce is a complete online marketplace built for the Kenyan market. Customers can shop from many sellers in one cart and pay by M-Pesa or cash on delivery, then get their order delivered or collect it from a pickup station. Sellers run their own stores from a Seller Centre. Staff run the platform from an admin dashboard with role-based access, and all content and settings are managed from the admin, with no code changes.
 
 Designed and built by **[Duncan Kinyua Gathogo](#author)** · [Dira Systems Ltd](http://dirasystems.co.ke/)
 
-![Basemall storefront](docs/screenshots/storefront-home.png)
+![Ecommerce storefront](docs/screenshots/storefront-home.png)
 
 ## Highlights
 
@@ -55,7 +55,7 @@ Designed and built by **[Duncan Kinyua Gathogo](#author)** · [Dira Systems Ltd]
 | **Payment methods** | **Email & SMS templates** |
 | ![Payment methods](docs/screenshots/admin-payment-methods.png) | ![Message templates](docs/screenshots/admin-message-templates.png) |
 
-<p align="center"><img src="docs/screenshots/mobile-home.png" alt="Basemall on a phone" width="300"></p>
+<p align="center"><img src="docs/screenshots/mobile-home.png" alt="Ecommerce on a phone" width="300"></p>
 
 ## Technology
 
@@ -94,8 +94,8 @@ Then open `http://localhost/ecommerce/` (the shop) and `/admin/login` (the admin
 | [BACKUP_RESTORE](docs/BACKUP_RESTORE.md) | Backups, restore, rebuilding on a new machine |
 | [SELLER_GUIDE](docs/SELLER_GUIDE.md) | How sellers use the Seller Centre |
 | [MARKETPLACE_PLAN](docs/MARKETPLACE_PLAN.md) | The multi-vendor upgrade, phase by phase |
-| [BASEMALL_REBRAND](docs/BASEMALL_REBRAND.md) | The rebrand and the database-driven management work, stage by stage |
-| [BASEMALL_FINAL_REPORT](docs/BASEMALL_FINAL_REPORT.md) | Deliverables, test results and deployment steps |
+| [REBRAND_NOTES](docs/REBRAND_NOTES.md) | The rebrand and the database-driven management work, stage by stage |
+| [REBRAND_FINAL_REPORT](docs/REBRAND_FINAL_REPORT.md) | Deliverables, test results and deployment steps |
 
 ## Author
 

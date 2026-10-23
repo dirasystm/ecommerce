@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /**
- * Old-brand scan (Basemall rebrand): lists every place the old name "Waimart" appears in text a person could see —
+ * Old-brand scan (Ecommerce rebrand): lists every place the old name "Waimart" appears in text a person could see —
  * PHP string literals, inline HTML and JavaScript/CSS strings — ignoring identifiers that intentionally keep the old
  * name (the Waimart\ namespace, WAIMART_ environment variables, the waimart database, test addresses).
  * Usage: php tests/scripts/brand_scan.php   (exit code 1 if anything is found)

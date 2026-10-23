@@ -12,7 +12,8 @@ use Waimart\Core\Settings;
  * Every user-facing mention of the store name goes through Brand::name(), so renaming the store is a settings change.
  *
  * Fallbacks are neutral, never another business's details: the name falls back to config('app.name'); images fall
- * back to the files shipped in public/assets/brand; colours to the shipped palette.
+ * back to the neutral files shipped in public/assets/brand-default; colours to the shipped palette. A shop's own logo
+ * files (uploaded in Branding, or placed in public/assets/brand on its server) are never part of the code repository.
  *
  * Colours: admins choose a primary and a secondary colour. Everything else (light/dark shades, the RGB triplets
  * Bootstrap needs, and a button colour that keeps white text readable) is derived here, so any choice stays accessible.
@@ -21,14 +22,14 @@ final class Brand
 {
     /** setting key => shipped default (paths relative to public/) */
     public const ASSETS = [
-        'brand_logo_header' => 'assets/brand/logo-wordmark.png',   // horizontal wordmark: headers, emails
-        'brand_logo_icon' => 'assets/brand/logo-icon.png',         // the mark on its own: header, compact places
-        'brand_logo_full' => 'assets/brand/logo-full.png',         // stacked logo with tagline: about page, documents
-        'brand_favicon' => 'assets/brand/favicon-32.png',
-        'brand_icon_180' => 'assets/brand/apple-touch-icon.png',
-        'brand_icon_192' => 'assets/brand/icon-192.png',
-        'brand_icon_512' => 'assets/brand/icon-512.png',
-        'brand_og_image' => 'assets/brand/og-image.png',           // social sharing preview (1200×630)
+        'brand_logo_header' => 'assets/brand-default/logo-wordmark.png',   // horizontal wordmark: headers, emails
+        'brand_logo_icon' => 'assets/brand-default/logo-icon.png',         // the mark on its own: header, compact places
+        'brand_logo_full' => 'assets/brand-default/logo-full.png',         // stacked logo with tagline: about page, documents
+        'brand_favicon' => 'assets/brand-default/favicon-32.png',
+        'brand_icon_180' => 'assets/brand-default/apple-touch-icon.png',
+        'brand_icon_192' => 'assets/brand-default/icon-192.png',
+        'brand_icon_512' => 'assets/brand-default/icon-512.png',
+        'brand_og_image' => 'assets/brand-default/og-image.png',           // social sharing preview (1200×630)
     ];
     /** Any order number, whatever prefix it was issued with (WM- before the rebrand, BM- after). Routes use the same shape. */
     public const ORDER_NUMBER_REGEX = '/^[A-Z]{2}-[A-Z0-9]{8}$/';
@@ -41,7 +42,7 @@ final class Brand
         return $n !== '' ? $n : (string) config('app.name', 'Online store');
     }
 
-    /** The name as a lowercase slug ("Basemall Kenya" → "basemall-kenya"), e.g. for downloaded file names. */
+    /** The name as a lowercase slug ("Ecommerce Kenya" → "ecommerce-kenya"), e.g. for downloaded file names. */
     public static function slug(): string
     {
         $s = trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower(self::name())), '-');

@@ -1,4 +1,4 @@
-/* Basemall admin — builds on app.css tokens */
+/* Ecommerce admin — builds on app.css tokens */
 body.wm-admin { background: #f4f6f5; padding-bottom: 0; }
 .wm-admin-top {
     position: sticky; top: 0; z-index: 1030; display: flex; align-items: center; gap: 12px;

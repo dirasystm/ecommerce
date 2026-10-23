@@ -1,6 +1,6 @@
 # Waimart Multi-Vendor Upgrade — Phase 1: Inspection, Impact Analysis and Plan
 
-**Date:** 18 October 2026 · **Status:** All 11 phases complete. Phase 10 part 1 is below; the rest of Phase 10 (browser sweep, ledger load test) and Phase 11 (docs, seller guide, final report) were done in the Basemall rebrand's Stage 6. See docs/BASEMALL_REBRAND.md (Stage 6) and docs/BASEMALL_FINAL_REPORT.md.
+**Date:** 18 October 2026 · **Status:** All 11 phases complete. Phase 10 part 1 is below; the rest of Phase 10 (browser sweep, ledger load test) and Phase 11 (docs, seller guide, final report) were done in the Ecommerce rebrand's Stage 6. See docs/REBRAND_NOTES.md (Stage 6) and docs/REBRAND_FINAL_REPORT.md.
 
 This document is for the client and for whoever builds or reviews the upgrade. It records the current system as inspected, what a multi-vendor marketplace changes, the target design, and the phased plan. No code or data has been changed in Phase 1.
 
@@ -746,7 +746,7 @@ Three new **Settings → Marketplace** fields control this:
 
 ## Phase 10 results, part 1 (18 October 2026): verification and money fixes
 
-Phase 10 was paused here at the owner's request, to start the Basemall rebrand. The remaining Phase 10 items are folded into the rebrand's final verification stage, so the platform is fully verified once, after both changes:
+Phase 10 was paused here at the owner's request, to start the Ecommerce rebrand. The remaining Phase 10 items are folded into the rebrand's final verification stage, so the platform is fully verified once, after both changes:
 - the full browser sweep of every marketplace page;
 - the ledger load test;
 - the docs.

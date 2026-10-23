@@ -24,7 +24,7 @@ final class BrandTest extends TestCase
     {
         $this->assertEqualsWithDelta(21.0, Brand::contrast('#000000', '#FFFFFF'), 0.01);
         $this->assertEqualsWithDelta(1.0, Brand::contrast('#777777', '#777777'), 0.001);
-        $this->assertEqualsWithDelta(8.19, Brand::contrast('#005B3D', '#FFFFFF'), 0.01, 'Basemall green with white text');
+        $this->assertEqualsWithDelta(8.19, Brand::contrast('#005B3D', '#FFFFFF'), 0.01, 'Ecommerce green with white text');
         $this->assertEqualsWithDelta(2.87, Brand::contrast('#FF6A00', '#FFFFFF'), 0.01, 'logo orange is too light for white text');
     }
 

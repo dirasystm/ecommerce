@@ -11,7 +11,7 @@ use Waimart\Core\ValidationException;
 use Waimart\Core\Validator;
 
 /**
- * Payment methods (A4, Basemall Stage 4). The methods the order system can handle are fixed in code (LABELS: manual
+ * Payment methods (A4, Ecommerce Stage 4). The methods the order system can handle are fixed in code (LABELS: manual
  * M-Pesa and cash on delivery); how each is presented and whether it is offered is managed in Admin → Payment methods
  * (`payment_methods`). A method is offered at checkout only when it is switched on, its M-Pesa number is set
  * (Settings, payments group) and the order total is within its limits; cash on delivery also depends on the

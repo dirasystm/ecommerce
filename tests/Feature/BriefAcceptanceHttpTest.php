@@ -7,7 +7,7 @@ namespace Waimart\Tests\Feature;
 use Waimart\Core\Settings;
 
 /**
- * Basemall Stage 6: the brief's acceptance checks (section 11) that are not already a test of their own:
+ * Ecommerce Stage 6: the brief's acceptance checks (section 11) that are not already a test of their own:
  * missing settings never show errors, the tagline and footer change from the admin, delivery charges change the
  * server's totals, and a suspended staff member's open session stops working.
  */
@@ -44,7 +44,7 @@ final class BriefAcceptanceHttpTest extends FeatureTestCase
             $this->assertDoesNotMatchRegularExpression('/Fatal error|Warning:|Notice:|Deprecated:|Uncaught|stack trace/i', $r['body'], $p);
         }
         $home = $this->get('/')['body'];
-        $this->assertStringContainsString('Basemall', $home, 'the built-in brand name is the fallback');
+        $this->assertStringContainsString('Ecommerce', $home, 'the built-in brand name is the fallback');
         $this->assertStringNotContainsString('wa.me/', $home, 'no contact details are invented');
         $this->assertStringNotContainsString('wm-pay-badge mpesa', $home, 'no M-Pesa offered without a number');
         $this->loginStaff('super_admin');

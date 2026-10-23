@@ -1,4 +1,4 @@
-# Basemall: site root. Only public/ is served; everything else is denied.
+# Ecommerce: site root. Only public/ is served; everything else is denied.
 # IMPORTANT on cPanel: this file starts with a dot, so File Manager hides it unless "Show Hidden Files" is ticked.
 # If it is missing, visitors see the setup page in index.php instead of the shop.
 # Every private folder also has its own "Require all denied" .htaccess, so it stays protected even without this file.

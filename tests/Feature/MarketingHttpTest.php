@@ -74,7 +74,7 @@ final class MarketingHttpTest extends FeatureTestCase
         $this->assertSame('/product/' . $slug, $link['destination_path']);
         $studio = $this->follow($r);
         $this->assertSame(200, $studio['status']);
-        foreach (['/go/' . $link['code'], 'KSh 2,499', 'data-qr=', '#Basemall', 'Buy now', 'wa.me'] as $t) {
+        foreach (['/go/' . $link['code'], 'KSh 2,499', 'data-qr=', '#Ecommerce', 'Buy now', 'wa.me'] as $t) {
             $this->assertStringContainsString($t, $studio['body'], $t);
         }
 

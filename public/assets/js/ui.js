@@ -1,4 +1,4 @@
-/* Basemall loading feedback and live tables (CSP-safe, no dependencies). Loaded before app.js on every page.
+/* Ecommerce loading feedback and live tables (CSP-safe, no dependencies). Loaded before app.js on every page.
  *
  *   WM.showGlobalLoader(message) -> id   full-page overlay after a short delay (no flicker on fast requests)
  *   WM.hideGlobalLoader(id)               each caller hides only its own; the overlay stays while any is open

@@ -6,7 +6,7 @@ namespace Waimart\Tests\Feature;
 
 use Waimart\Core\Settings;
 
-/** Basemall Stage 4 over HTTP: who may change payments, delivery, messages and credentials, and what each change does on the shop. */
+/** Ecommerce Stage 4 over HTTP: who may change payments, delivery, messages and credentials, and what each change does on the shop. */
 final class PaymentsDeliveryMessagesHttpTest extends FeatureTestCase
 {
     /** @var array<string,string> */
@@ -150,6 +150,6 @@ final class PaymentsDeliveryMessagesHttpTest extends FeatureTestCase
         $this->assertSame("Thanks for order $number", $n['subject']);
         $this->assertStringStartsWith("Hi Wanjiru, we got order $number. http", $n['body']);
         $this->assertStringContainsString('[redacted]', $n['body'], 'the private tracking link stays out of the stored copy');
-        $this->assertSame('Basemall: we got ' . $number . '.', (string) $this->db->value("SELECT body FROM notifications WHERE template = 'order_placed' AND channel = 'sms'"));
+        $this->assertSame('Ecommerce: we got ' . $number . '.', (string) $this->db->value("SELECT body FROM notifications WHERE template = 'order_placed' AND channel = 'sms'"));
     }
 }

@@ -26,15 +26,15 @@ final class EmailLayoutTest extends DbTestCase
 
     public function testResetEmailHasButtonFallbackLinkAndSecurityPanel(): void
     {
-        $html = EmailLayout::render('Reset your Basemall password',
-            "Hello Dan,\n\nWe received a request to reset your Basemall password.\nUse this link within 60 minutes:\n\nhttps://shop.example/reset-password?token=abc_123\n\nIf you did not ask for this, you can ignore this email.\n\nBasemall",
+        $html = EmailLayout::render('Reset your Ecommerce password',
+            "Hello Dan,\n\nWe received a request to reset your Ecommerce password.\nUse this link within 60 minutes:\n\nhttps://shop.example/reset-password?token=abc_123\n\nIf you did not ask for this, you can ignore this email.\n\nEcommerce",
             'password_reset');
         $this->assertStringContainsString('src="cid:' . EmailLayout::LOGO_CID . '"', $html, 'embedded logo');
         $this->assertStringContainsString('>Reset my password &rarr;</a>', $html, 'the link became the main button');
         $this->assertStringContainsString('href="https://shop.example/reset-password?token=abc_123"', $html);
         $this->assertStringContainsString('Button not working?', $html);
         $this->assertStringContainsString('&#128274;&nbsp; If you did not ask for this', $html, 'security panel');
-        $this->assertStringContainsString('The Basemall team', $html, 'signature');
+        $this->assertStringContainsString('The Ecommerce team', $html, 'signature');
         $this->assertStringContainsString('Your account', $html, 'eyebrow from the template group');
     }
 
@@ -54,7 +54,7 @@ final class EmailLayoutTest extends DbTestCase
         $v = $this->makeVariant(5, '1500.00')['variant_id'];
         $o = $this->placeOrder([[$v, 2]], 'cod');
         $html = EmailLayout::render('Order ' . $o['order_number'] . ': Ready for collection',
-            "Hello Test,\n\nYour order is ready. Collection code: 483920. Bring your ID.\n\nTrack your order at https://shop.example/track-order using your order number and phone number.\n\nBasemall",
+            "Hello Test,\n\nYour order is ready. Collection code: 483920. Bring your ID.\n\nTrack your order at https://shop.example/track-order using your order number and phone number.\n\nEcommerce",
             'order_ready_for_collection', ['order_id' => (int) $o['id'], 'codes' => ['483920']]);
         $this->assertStringContainsString('>483 920</div>', $html, 'code box');
         $this->assertStringContainsString((string) $o['order_number'], $html);
@@ -64,13 +64,13 @@ final class EmailLayoutTest extends DbTestCase
         $this->assertStringNotContainsString('Track your order at <a', $html, 'the plain tracking line is replaced by the card');
 
         // Seller-facing messages never get the customer's order card.
-        $seller = EmailLayout::render('New order', "Hello,\n\nYou have a new order.\n\nBasemall", 'seller_message', ['order_id' => (int) $o['id']]);
+        $seller = EmailLayout::render('New order', "Hello,\n\nYou have a new order.\n\nEcommerce", 'seller_message', ['order_id' => (int) $o['id']]);
         $this->assertStringNotContainsString('&times; 2', $seller);
     }
 
     public function testEmailsAreSentAsHtmlWithThePlainTextKept(): void
     {
-        $id = (new NotificationService())->email('dan@example.com', 'Welcome to Basemall', "Hello Dan,\n\nWelcome.\n\nhttps://shop.example/login\n\nBasemall", 'account_welcome');
+        $id = (new NotificationService())->email('dan@example.com', 'Welcome to Ecommerce', "Hello Dan,\n\nWelcome.\n\nhttps://shop.example/login\n\nEcommerce", 'account_welcome');
         $row = $this->db->one('SELECT status, body FROM notifications WHERE id = ?', [$id]);
         $this->assertSame('logged', $row['status']);
         $this->assertStringStartsWith('Hello Dan,', $row['body'], 'the log keeps the plain text');

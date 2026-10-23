@@ -8,7 +8,7 @@ use Waimart\Core\HttpException;
 use Waimart\Core\ValidationException;
 use Waimart\Services\SiteContentService;
 
-/** Basemall Stage 3: pages (validation, scheduling, revisions), menus and homepage sections. */
+/** Ecommerce Stage 3: pages (validation, scheduling, revisions), menus and homepage sections. */
 final class SiteContentServiceTest extends DbTestCase
 {
     private SiteContentService $svc;
@@ -43,7 +43,7 @@ final class SiteContentServiceTest extends DbTestCase
         }
         $this->assertCount(8, $this->svc->navPages(), 'Help Center menu: all built-in pages except Pickup stations');
         $this->assertSame(['Help Center', 'How to pay', 'Delivery & pickup', 'Returns & refunds', 'Contact us'], array_column($this->svc->menu('help_menu'), 'label'));
-        $this->assertSame('About Basemall', $this->svc->menuTitle('footer_col_3'), '{store} filled in');
+        $this->assertSame('About Ecommerce', $this->svc->menuTitle('footer_col_3'), '{store} filled in');
         $this->assertSame(['hero', 'quick_categories', 'flash_sale', 'recommended', 'top_deals', 'shop_by_category', 'featured', 'category_rails', 'values'], array_column($this->svc->liveSections(), 'type'));
     }
 
@@ -120,9 +120,9 @@ final class SiteContentServiceTest extends DbTestCase
 
         $id = $this->svc->saveMenuItem('footer_col_1', null, ['label' => 'Shipping on {store}', 'link' => '/pages/shipping-policy', 'is_visible' => '1'], $this->staff);
         $items = $this->svc->menu('footer_col_1');
-        $this->assertSame('Shipping on Basemall', end($items)['label'], 'added at the end, {store} filled in');
+        $this->assertSame('Shipping on Ecommerce', end($items)['label'], 'added at the end, {store} filled in');
         $this->svc->moveMenuItem('footer_col_1', $id, 'up', $this->staff);
-        $this->assertSame('Shipping on Basemall', $this->svc->menu('footer_col_1')[3]['label'], 'moved up one place');
+        $this->assertSame('Shipping on Ecommerce', $this->svc->menu('footer_col_1')[3]['label'], 'moved up one place');
         $this->svc->saveMenuItem('footer_col_1', $id, ['label' => 'Shipping', 'link' => '/pages/shipping-policy'], $this->staff);   // is_visible unticked
         $this->assertNotContains('Shipping', array_column($this->svc->menu('footer_col_1'), 'label'), 'hidden items are not shown');
 

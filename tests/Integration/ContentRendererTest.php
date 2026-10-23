@@ -41,9 +41,9 @@ final class ContentRendererTest extends DbTestCase
         $this->assertStringContainsString('<ul><li>one</li><li>two</li></ul>', $html);
         $this->assertStringContainsString('<ol><li>first</li><li>second</li></ol>', $html);
         $this->assertStringContainsString('<div class="wm-callout my-3">Note line one<br>line two</div>', $html);
-        $ext = $this->r('[Facebook](https://facebook.com/basemall) [mail](mailto:care@basemall.test) [call](tel:+254700123456)');
-        $this->assertStringContainsString('href="https://facebook.com/basemall" rel="noopener" target="_blank"', $ext);
-        $this->assertStringContainsString('href="mailto:care@basemall.test"', $ext);
+        $ext = $this->r('[Facebook](https://facebook.com/ecommerce) [mail](mailto:care@example.test) [call](tel:+254700123456)');
+        $this->assertStringContainsString('href="https://facebook.com/ecommerce" rel="noopener" target="_blank"', $ext);
+        $this->assertStringContainsString('href="mailto:care@example.test"', $ext);
         $this->assertStringContainsString('href="tel:+254700123456"', $ext);
     }
 
@@ -87,8 +87,8 @@ final class ContentRendererTest extends DbTestCase
         Settings::set('mpesa_paybill_number', '');
         Settings::set('mpesa_phone_number', '');
         Settings::flush();
-        $this->assertStringContainsString('Return within 14 days at Basemall {unknown}', $this->r('Return within {return_days} days at {store} {unknown}'));
-        $this->assertSame('About Basemall', ContentRenderer::plain('About {store}'));
+        $this->assertStringContainsString('Return within 14 days at Ecommerce {unknown}', $this->r('Return within {return_days} days at {store} {unknown}'));
+        $this->assertSame('About Ecommerce', ContentRenderer::plain('About {store}'));
 
         $contact = $this->r("[[contact_details]]");
         $this->assertStringContainsString('0700 123 456', $contact);

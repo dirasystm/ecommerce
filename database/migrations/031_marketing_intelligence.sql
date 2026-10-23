@@ -1,4 +1,4 @@
--- Basemall 031: marketing intelligence — consent per channel, shopping behaviour, recommendations, promotional links,
+-- Ecommerce 031: marketing intelligence — consent per channel, shopping behaviour, recommendations, promotional links,
 -- leads, attribution and marketing automation. Adds tables and columns; the one data change copies each customer's
 -- existing "deals and offers" choice into the new email-marketing consent (nobody is opted in to anything new).
 

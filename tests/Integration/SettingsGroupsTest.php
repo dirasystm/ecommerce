@@ -10,7 +10,7 @@ use Waimart\Repositories\ProductListing;
 use Waimart\Services\AccountService;
 use Waimart\Services\SettingsService;
 
-/** Basemall Stage 2: grouped settings — isolation, validation, export/import, and the settings taking effect. */
+/** Ecommerce Stage 2: grouped settings — isolation, validation, export/import, and the settings taking effect. */
 final class SettingsGroupsTest extends DbTestCase
 {
     /** @var array<string,string> */
@@ -71,12 +71,12 @@ final class SettingsGroupsTest extends DbTestCase
         Settings::set('reservation_minutes', '45');
         Settings::set('cod_auto_confirm', '1');
         Settings::set('mpesa_till_number', '123456');
-        $this->save('contact', ['store_phone' => '0700 000 111', 'store_email' => 'care@basemall.test', 'whatsapp_number' => '0712 345 678']);
+        $this->save('contact', ['store_phone' => '0700 000 111', 'store_email' => 'care@example.test', 'whatsapp_number' => '0712 345 678']);
         $this->assertSame(['45', '1', '123456'], [Settings::get('reservation_minutes'), Settings::get('cod_auto_confirm'), Settings::get('mpesa_till_number')],
             'orders and payments untouched, including an unrelated checkbox');
         $this->assertSame('254712345678', Settings::get('whatsapp_number'), 'phone normalised');
         $log = (array) $this->db->one("SELECT * FROM audit_logs WHERE action = 'settings.updated' ORDER BY id DESC LIMIT 1");
-        $this->assertStringContainsString('care@basemall.test', (string) $log['after_json']);
+        $this->assertStringContainsString('care@example.test', (string) $log['after_json']);
         $this->assertStringNotContainsString('reservation_minutes', (string) $log['after_json']);
 
         $this->expectException(\InvalidArgumentException::class);
@@ -85,10 +85,10 @@ final class SettingsGroupsTest extends DbTestCase
 
     public function testValidationRules(): void
     {
-        $this->refused('social', ['social_facebook' => 'http://facebook.com/basemall'], 'social_facebook');
+        $this->refused('social', ['social_facebook' => 'http://facebook.com/ecommerce'], 'social_facebook');
         $this->refused('social', ['social_x' => 'javascript:alert(1)'], 'social_x');
-        $this->save('social', ['social_facebook' => 'https://facebook.com/basemall']);
-        $this->assertSame('https://facebook.com/basemall', Settings::get('social_facebook'));
+        $this->save('social', ['social_facebook' => 'https://facebook.com/ecommerce']);
+        $this->assertSame('https://facebook.com/ecommerce', Settings::get('social_facebook'));
 
         foreach (['javascript:alert(1)', '//evil.example', 'http://evil.example', 'data:text/html,x', '/x"onmouseover=1'] as $bad) {
             $this->refused('maintenance', ['announcement_enabled' => '1', 'announcement_text' => 'Hi', 'announcement_link' => $bad], 'announcement_link');
@@ -128,13 +128,13 @@ final class SettingsGroupsTest extends DbTestCase
         $this->assertSame('24', Settings::get('products_per_page'), 'nothing applied');
 
         // Valid: applied and audited; payment numbers and unknown keys are ignored, never applied.
-        $file['settings']['social_x'] = 'https://x.com/basemall';
+        $file['settings']['social_x'] = 'https://x.com/ecommerce';
         $file['settings']['mpesa_till_number'] = '9999999';
         $file['settings']['brand_primary'] = '#FF0000';
         $file['settings']['no_such_setting'] = 'x';
         $r = $svc->import(json_encode($file), $this->staff);
         Settings::flush();
-        $this->assertSame(['36', 'https://x.com/basemall', '5123456'], [Settings::get('products_per_page'), Settings::get('social_x'), Settings::get('mpesa_till_number')]);
+        $this->assertSame(['36', 'https://x.com/ecommerce', '5123456'], [Settings::get('products_per_page'), Settings::get('social_x'), Settings::get('mpesa_till_number')]);
         $this->assertNotSame('#FF0000', Settings::get('brand_primary'), 'branding is not importable through settings');
         $this->assertEqualsCanonicalizing(['mpesa_till_number', 'brand_primary', 'no_such_setting'], $r['ignored']);
         $this->assertSame(1, (int) $this->db->value("SELECT COUNT(*) FROM audit_logs WHERE action = 'settings.imported'"), 'the no-op import wrote no audit entry');

@@ -1,4 +1,4 @@
-/* Basemall storefront behaviour. No inline scripts (CSP: script-src 'self'). */
+/* Ecommerce storefront behaviour. No inline scripts (CSP: script-src 'self'). */
 (function () {
     'use strict';
 

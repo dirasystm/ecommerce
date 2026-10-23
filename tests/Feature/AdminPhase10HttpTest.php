@@ -30,7 +30,7 @@ final class AdminPhase10HttpTest extends FeatureTestCase
         $csv = $this->get('/admin/reports?tab=stock&format=csv');
         $this->assertSame(200, $csv['status']);
         $this->assertStringContainsString('text/csv', $csv['headers']['content-type']);
-        $this->assertStringContainsString('attachment; filename="basemall-stock-', $csv['headers']['content-disposition']);
+        $this->assertStringContainsString('attachment; filename="ecommerce-stock-', $csv['headers']['content-disposition']);
         $this->assertStringContainsString('SKU,Product', $csv['body']);
         $this->assertSame(1, (int) $this->db->value("SELECT COUNT(*) FROM audit_logs WHERE action = 'report.exported'"));
         $this->assertSame(403, $this->get('/admin/audit')['status'], 'finance has no audit.view');

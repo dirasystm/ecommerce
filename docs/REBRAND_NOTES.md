@@ -1,8 +1,8 @@
-# Basemall Rebrand and Database-Driven Management
+# Ecommerce Rebrand and Database-Driven Management
 
-**Started:** 18 October 2026 · **Branch:** `feature/basemall-rebrand` (from `feature/multi-vendor`) · **Status:** All 6 stages complete (plus sign-in with phone or email). Summary: docs/BASEMALL_FINAL_REPORT.md
+**Started:** 18 October 2026 · **Branch:** `feature/rebrand` (from `feature/multi-vendor`) · **Status:** All 6 stages complete (plus sign-in with phone or email). Summary: docs/REBRAND_FINAL_REPORT.md
 
-This is the plan and progress record for the owner's request "Rebrand the e-commerce platform to Basemall and implement full database-driven management". The marketplace work it builds on is recorded in `docs/MARKETPLACE_PLAN.md`.
+This is the plan and progress record for the owner's request "Rebrand the e-commerce platform to Ecommerce and implement full database-driven management". The marketplace work it builds on is recorded in `docs/MARKETPLACE_PLAN.md`.
 
 ---
 
@@ -48,7 +48,7 @@ This is the plan and progress record for the owner's request "Rebrand the e-comm
 
 ## Stage 1 results (18 October 2026): brand foundation
 
-**Brand assets** (`public/assets/brand/`). Made from the supplied logo (kept as `basemall-logo-original.png`) with GD:
+**Brand assets** (`public/assets/brand/`). Made from the supplied logo (kept as `logo-original.png`) with GD:
 
 | File | Size | Use |
 |---|---|---|
@@ -67,7 +67,7 @@ This is the plan and progress record for the owner's request "Rebrand the e-comm
 - eight brand-image paths;
 - `order_number_prefix`.
 
-`store_name` became "Basemall". Values are changed only where they still held the shipped Waimart defaults.
+`store_name` became "Ecommerce". Values are changed only where they still held the shipped Waimart defaults.
 
 - **Names:** every user-facing mention goes through `brand_name()`: pages, e-mails, SMS, flash messages, seller and admin screens, CSV export file names. A tokenizer-based rewrite placed each mention by context: HTML text, PHP strings, and `{store}` placeholders inside class constants (filled by `brand_text()`). Code comments and identifiers were left alone.
 - **Colours:** admins pick a primary and an accent colour. `Brand::palette()` derives the shades, Bootstrap's RGB values, and a button colour that always keeps white text at **4.5:1 or better**. The logo orange #FF6A00 is only 2.87:1 with white text, so buttons use #C85200 automatically. A primary colour too light for white text is refused with an explanation. The palette is printed after `app.css` on every layout; the CSS defaults match it.
@@ -75,9 +75,9 @@ This is the plan and progress record for the owner's request "Rebrand the e-comm
   - theme colour, favicon and app icons;
   - the web app manifest `/manifest.webmanifest`, generated from settings;
   - Open Graph / Twitter preview on storefront pages;
-  - page titles "Page | Basemall" and "Basemall — Everything You Need. One Marketplace."
+  - page titles "Page | Ecommerce" and "Ecommerce — Everything you need, one store."
 - **E-mail sender name** = the store name, unless `mail.from_name` is set in `config.local.php`.
-- **Fallbacks are neutral:** a missing name falls back to `config('app.name')` ("Basemall"); a missing or invalid image or colour falls back to the shipped files and palette. Image paths are checked against path traversal.
+- **Fallbacks are neutral:** a missing name falls back to `config('app.name')` ("Ecommerce"); a missing or invalid image or colour falls back to the shipped files and palette. Image paths are checked against path traversal.
 
 **Admin → Settings → Branding** (`settings.manage`, super admins today):
 - name, tagline and order-number prefix;
@@ -90,13 +90,13 @@ Uploads are checked by content (type, size, dimensions; ImageService) and re-enc
 - replaced uploads are deleted, but shipped files never are;
 - every change is written to the audit log as `branding.updated` with before and after values.
 
-**Official Store:** "Waimart Official Store" is now "Basemall Official Store" at `/store/basemall-official`. The old address `/store/waimart-official` redirects permanently (301) via the new `seller_slug_aliases` table, which keeps any store's old links working after an address change.
+**Official Store:** "Waimart Official Store" is now "Ecommerce Official Store" at `/store/official-store`. The old address `/store/waimart-official` redirects permanently (301) via the new `seller_slug_aliases` table, which keeps any store's old links working after an address change.
 
-**Impersonation guard:** seller store names and addresses may not contain the platform's current name, however it is spelled ("Basemall Deals", "Base Mall Store", "BASE-MALL Outlet", `basemall-deals`), nor the former name. The list follows the name setting.
+**Impersonation guard:** seller store names and addresses may not contain the platform's current name, however it is spelled ("Ecommerce Deals", "E Commerce Store", "E-COMMERCE Outlet", `ecommerce-deals`), nor the former name. The list follows the name setting.
 
 **Order numbers:** new orders are `BM-XXXXXXXX`. Every route and lookup accepts any two-letter prefix, so `WM-` orders, tracking links and receipts keep working, and the prefix can be changed later without breaking anything.
 
-**Rollback:** `database/rollback/rollback_basemall.sql`. Drilled on a copy: the pre-upgrade backup was migrated through 010–018, then this rollback and the marketplace rollback were run. The schema was identical and all data identical except the `updated_at` timestamp of the one restored setting (key/value comparison: all 17 settings identical).
+**Rollback:** `database/rollback/rollback_rebrand.sql`. Drilled on a copy: the pre-upgrade backup was migrated through 010–018, then this rollback and the marketplace rollback were run. The schema was identical and all data identical except the `updated_at` timestamp of the one restored setting (key/value comparison: all 17 settings identical).
 
 **Hardcoded content converted in this stage:**
 
@@ -207,7 +207,7 @@ Still hardcoded, and scheduled:
 ### Database
 
 - Migrations 019 (new settings with today's behaviour as defaults), 020 (unique phone) and 021 (flag format) were applied to the dev database after a backup (`storage/backups/waimart-20261018-210318.sql`).
-- `rollback_basemall.sql` covers 018–021.
+- `rollback_rebrand.sql` covers 018–021.
 - **Re-drilled on a copy of the pre-upgrade backup** (010–021 forward, both rollbacks back): identical schema, and identical data apart from one restored setting's `updated_at` (all 17 settings' keys and values identical). The drill caught the users table's indexes coming back in a different order; the rollback now rebuilds them in the original order.
 
 ### Found and fixed
@@ -282,7 +282,7 @@ Still hardcoded, and scheduled:
 ### Database
 
 - Migration 022 (`content_pages`, `content_page_revisions`, `menus`, `menu_items`, `home_sections`, the `footer_note` setting, and the seeded content) was applied to the dev database after a backup (`storage/backups/waimart-20261018-222159.sql`).
-- `rollback_basemall.sql` covers 018–022. **Re-drilled** on a copy of the pre-upgrade backup: identical schema, and identical settings keys and values.
+- `rollback_rebrand.sql` covers 018–022. **Re-drilled** on a copy of the pre-upgrade backup: identical schema, and identical settings keys and values.
 
 ### Found and fixed
 
@@ -390,7 +390,7 @@ Still hardcoded, and scheduled:
   - the tables `payment_methods` (seeded with today's names and descriptions, all on), `secrets`, `message_templates` and `order_status_labels`;
   - settings for delivery and email;
   - three permissions.
-- `rollback_basemall.sql` covers 018–023. **Re-drilled:** on a copy of the pre-upgrade backup (010–023 forward, both rollbacks back): identical schema, and identical settings keys and values.
+- `rollback_rebrand.sql` covers 018–023. **Re-drilled:** on a copy of the pre-upgrade backup (010–023 forward, both rollbacks back): identical schema, and identical settings keys and values.
 
 ### Found and fixed while building
 
@@ -507,7 +507,7 @@ Still hardcoded, and scheduled:
   - `auth_events`;
   - the four append-only triggers;
   - the two roles, the `roles.manage` permission and the `staff_mfa_required` setting.
-- `rollback_basemall.sql` covers 018–024. **Re-drilled:** on a copy of the pre-upgrade backup (010–024 forward, both rollbacks back): identical schema (8 triggers after migrating, 0 after rolling back), and identical settings keys and values.
+- `rollback_rebrand.sql` covers 018–024. **Re-drilled:** on a copy of the pre-upgrade backup (010–024 forward, both rollbacks back): identical schema (8 triggers after migrating, 0 after rolling back), and identical settings keys and values.
 
 ### Found and fixed while testing
 
@@ -540,7 +540,7 @@ Still hardcoded, and scheduled:
 
 ## Stage 6 results (19 October 2026): verification and documentation
 
-This stage also completes the marketplace upgrade's remaining Phase 10 and 11 items: the full browser sweep, the ledger load test and the docs. The summary for the owner is [BASEMALL_FINAL_REPORT.md](BASEMALL_FINAL_REPORT.md).
+This stage also completes the marketplace upgrade's remaining Phase 10 and 11 items: the full browser sweep, the ledger load test and the docs. The summary for the owner is [REBRAND_FINAL_REPORT.md](REBRAND_FINAL_REPORT.md).
 
 ### Verification added
 
@@ -587,7 +587,7 @@ This stage also completes the marketplace upgrade's remaining Phase 10 and 11 it
   - **BACKUP_RESTORE.md:** what the app key protects now.
 - **New:**
   - **SELLER_GUIDE.md** (marketplace Phase 11);
-  - **BASEMALL_FINAL_REPORT.md** (the brief's deliverables, acceptance criteria, owner actions and deployment steps).
+  - **REBRAND_FINAL_REPORT.md** (the brief's deliverables, acceptance criteria, owner actions and deployment steps).
 
 ### Tests
 

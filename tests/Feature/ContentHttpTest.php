@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Waimart\Tests\Feature;
 
-/** Basemall Stage 3 over HTTP: content admin permissions, and edits to pages, menus and the homepage going live. */
+/** Ecommerce Stage 3 over HTTP: content admin permissions, and edits to pages, menus and the homepage going live. */
 final class ContentHttpTest extends FeatureTestCase
 {
     private function pageId(string $slug): int
@@ -43,7 +43,7 @@ final class ContentHttpTest extends FeatureTestCase
         $page = $this->get('/returns-policy')['body'];
         $this->assertStringContainsString('Return within <strong>7 days</strong>.', $page);
         $this->assertStringContainsString('Can I return shoes?', $page);
-        $this->assertStringContainsString('content="Returns at Basemall"', $page);
+        $this->assertStringContainsString('content="Returns at Ecommerce"', $page);
 
         // A new page as a draft: staff can preview, visitors get 404; once published it is public.
         $this->post('/admin/content/pages/new', ['title' => 'Size guide', 'slug' => 'size-guide', 'body' => 'Measure twice.', 'status' => 'draft', 'sort_order' => '120', 'show_in_nav' => '1'], '/admin/content/pages/new');
@@ -73,7 +73,7 @@ final class ContentHttpTest extends FeatureTestCase
         $home = $this->get('/')['body'];
         $this->assertStringContainsString('<h3>Shop with us</h3>', $home);
         $this->assertStringContainsString('href="/pages/gift-cards">Gift cards</a>', $home);
-        $this->assertStringContainsString('Same-day delivery in Basemall City', $home);
+        $this->assertStringContainsString('Same-day delivery in Ecommerce City', $home);
         $this->assertStringNotContainsString('Evil', $home);
         $this->assertStringNotContainsString('All prices include VAT.', $home, 'the footer note is a setting: managers cannot change it');
         $this->assertStringContainsString('Prices in Kenya Shillings (KSh), VAT inclusive where applicable.', $home);

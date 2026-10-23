@@ -60,7 +60,7 @@ abstract class DbTestCase extends TestCase
         // Marketplace reference rows seeded by migrations 010/013, restored to their shipped values.
         $pdo->exec("UPDATE sellers SET status = 'active', suspended_at = NULL, suspension_reason = NULL WHERE is_platform = 1");
         $pdo->exec("INSERT INTO commission_rules (scope, seller_id, rate, note) VALUES
-            ('default', NULL, 10.00, 'Provisional default'), ('seller', 1, 0.00, 'Basemall Official Store (platform-owned)')");
+            ('default', NULL, 10.00, 'Provisional default'), ('seller', 1, 0.00, 'Ecommerce Official Store (platform-owned)')");
         foreach (self::$contentSeed as $t => $rows) {
             foreach ($rows as $row) {
                 $this->db->insert($t, $row);

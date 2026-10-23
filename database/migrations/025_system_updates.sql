@@ -1,4 +1,4 @@
--- Basemall 025: website updates installed from the admin (System → Website updates). Additive.
+-- Ecommerce 025: website updates installed from the admin (System → Website updates). Additive.
 -- One row per uploaded update package: what it changed, who installed it, and whether it was rolled back.
 -- The detailed journal (file lists, backups, how to undo database additions) lives in storage/updates/<uuid>/.
 

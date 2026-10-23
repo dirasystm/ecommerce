@@ -1,4 +1,4 @@
--- Basemall 019: settings for the grouped settings pages (Admin → Settings). Additive: existing values are kept.
+-- Ecommerce 019: settings for the grouped settings pages (Admin → Settings). Additive: existing values are kept.
 -- Defaults keep today's behaviour: registration open, 24 products per page, shop open, no announcement.
 INSERT IGNORE INTO settings (setting_key, setting_value) VALUES
 ('store_description',     ''),

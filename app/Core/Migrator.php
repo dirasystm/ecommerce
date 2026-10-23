@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace Waimart\Core;
 
 /**
- * Applies numbered .sql files from database/migrations exactly once each.
+ * Applies numbered .sql files from database/migrations exactly once each. A migration is identified by its number
+ * (the digits before the first "_"), so a file can be renamed without being applied again.
  */
 final class Migrator
 {
@@ -26,7 +27,7 @@ final class Migrator
         $done = [];
         foreach ($this->files() as $file) {
             $name = basename($file);
-            if (in_array($name, $applied, true)) {
+            if (self::isApplied($name, $applied)) {
                 continue;
             }
             $out && $out("Applying $name ...");
@@ -41,6 +42,19 @@ final class Migrator
             $done[] = $name;
         }
         return $done;
+    }
+
+    /** Whether a migration file has been applied: same number as a recorded one (or the same name, if unnumbered). @param list<string> $applied */
+    public static function isApplied(string $name, array $applied): bool
+    {
+        $number = static fn (string $n): string => preg_match('/^(\d+)_/', $n, $m) ? $m[1] : $n;
+        $want = $number($name);
+        foreach ($applied as $a) {
+            if ($number((string) $a) === $want) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /** Drops every table in the current database. Callers must guard against production use. */

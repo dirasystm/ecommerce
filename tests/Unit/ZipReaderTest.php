@@ -37,7 +37,7 @@ final class ZipReaderTest extends TestCase
 
     public function testReadsStoredAndDeflatedEntriesExactly(): void
     {
-        $big = str_repeat("Basemall line\n", 5000) . random_bytes(300);
+        $big = str_repeat("Ecommerce line\n", 5000) . random_bytes(300);
         $zip = (new ZipBuilder())->add('app/a.php', "<?php echo 'a';\n")->add('docs/b.txt', $big, false)->add('empty.txt', '')
             ->write($this->dir . '/p.zip');
         $r = new ZipReader($zip);

@@ -2,7 +2,7 @@
 -- together with it (the marketing code reads these tables):
 --   php bin/backup.php
 --   C:\xampp\mysql\bin\mysql.exe -u root waimart < database\rollback\rollback_marketing.sql
--- Run it BEFORE rollback_basemall.sql if both are needed. Removes the shopping activity, campaigns, links, clicks,
+-- Run it BEFORE rollback_rebrand.sql if both are needed. Removes the shopping activity, campaigns, links, clicks,
 -- leads, consent history and marketing messages. Orders, customers, products and the wishlist itself are kept.
 -- Each customer's email-marketing choice is kept in marketing_opt_in (it was mirrored there all along).
 
