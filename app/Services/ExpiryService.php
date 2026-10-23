@@ -36,7 +36,8 @@ final class ExpiryService
      */
     public function run(int $limit = 200): array
     {
-        $stats = ['locked' => false, 'orders_expired' => 0, 'reservations_released' => 0, 'errors' => 0, 'carts_purged' => 0, 'earnings_released' => 0];
+        $stats = ['locked' => false, 'orders_expired' => 0, 'reservations_released' => 0, 'errors' => 0, 'carts_purged' => 0, 'earnings_released' => 0,
+                  'collection_reminders' => 0, 'station_returns' => 0];
         if ((int) $this->db->value('SELECT GET_LOCK(?, 0)', [self::LOCK_NAME]) !== 1) {
             $stats['locked'] = true;          // another worker is running; exit quietly
             return $stats;
@@ -73,6 +74,14 @@ final class ExpiryService
             $stats['carts_purged'] = $this->housekeeping();
             // Seller earnings that now meet the payout policy become available (same scheduled task, under the same lock).
             $stats['earnings_released'] = (new SellerLedgerService($this->db))->releaseEligible();
+            // Pickup parcels: a reminder the day before the last day, then the automatic return once the hold period is over.
+            try {
+                $stations = new StationReturnService($this->db);
+                $stats['collection_reminders'] = $stations->remindDue($limit);
+                $stats['station_returns'] = $stations->returnDue($limit);
+            } catch (\PDOException $e) {
+                Logger::warning('Pickup reminders/returns skipped', ['error' => $e->getMessage()]);   // database update 036 not applied yet
+            }
         } finally {
             $this->db->value('SELECT RELEASE_LOCK(?)', [self::LOCK_NAME]);
         }

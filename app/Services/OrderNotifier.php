@@ -17,6 +17,24 @@ final class OrderNotifier
     /** Statuses customers are told about; the wording is the template order_<status> (MessageTemplates). */
     private const NOTIFY = ['confirmed', 'processing', 'packed', 'dispatched', 'out_for_delivery', 'delivered', 'ready_for_collection', 'collected', 'cancelled', 'expired', 'requires_resolution'];
 
+    /**
+     * Where and until when a pickup order can be collected: the station (name, address, town, hours), the hold period,
+     * and the last day (the day it arrived plus the hold period).
+     * @return array{pickup_location:string,hold_days:string,collect_by:string}
+     */
+    public static function pickupVars(int $orderId): array
+    {
+        $f = App::db()->one('SELECT pickup_name, pickup_address, pickup_town, pickup_hours, ready_at FROM order_fulfilment WHERE order_id = ?', [$orderId]) ?? [];
+        $days = \Waimart\Core\Settings::int('collection_hold_days', 7);
+        $from = !empty($f['ready_at']) ? strtotime((string) $f['ready_at']) : time();
+        $where = implode(', ', array_filter([$f['pickup_name'] ?? '', $f['pickup_address'] ?? '', $f['pickup_town'] ?? ''], fn ($v) => trim((string) $v) !== ''));
+        return [
+            'pickup_location' => $where . (!empty($f['pickup_hours']) ? " ({$f['pickup_hours']})" : ''),
+            'hold_days' => (string) $days,
+            'collect_by' => date('D j M', $from + $days * 86400),
+        ];
+    }
+
     public static function statusChanged(array $order): void
     {
         \Waimart\Services\Marketing\Signals::orderStatus($order);     // campaign and recommendation results (never blocks)
@@ -49,10 +67,8 @@ final class OrderNotifier
             // optional updates only) and the code is redacted from the stored outbox copy.
             if ($order['status'] === 'ready_for_collection') {
                 $code = CollectionService::codeFor($order);
-                $f = $db->one('SELECT pickup_name, pickup_address, pickup_town, pickup_hours FROM order_fulfilment WHERE order_id = ?', [$order['id']]);
                 $vars['collection_code'] = (string) $code;
-                $vars['pickup_location'] = "{$f['pickup_name']}, {$f['pickup_address']}, {$f['pickup_town']} ({$f['pickup_hours']})";
-                $vars['hold_days'] = (string) \Waimart\Core\Settings::int('collection_hold_days', 7);
+                $vars += self::pickupVars((int) $order['id']);
                 $ctx['secrets'] = [(string) $code];
             }
             (new NotificationService())->sendTemplate('order_' . $order['status'], $vars,

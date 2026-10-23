@@ -211,7 +211,10 @@ final class OrderWorkflow
 
             case 'cancelled':
                 $reason = trim((string) ($opts['reason'] ?? '')) ?: 'Cancelled';
-                $this->reservations->releaseForOrder($id, 'released', 'Order cancelled: ' . $reason, $actor['type'], $actorId);
+                // A parcel still out at a pickup station keeps its stock held until it is received back (StationReturnService).
+                if (empty($opts['keep_stock'])) {
+                    $this->reservations->releaseForOrder($id, 'released', 'Order cancelled: ' . $reason, $actor['type'], $actorId);
+                }
                 $this->voidCoupon($id);
                 $sets[] = 'cancelled_at = NOW()';
                 $sets[] = 'cancel_reason = ?';

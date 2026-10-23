@@ -162,6 +162,36 @@ Businesses with existing premises apply on the public page **Become a pickup sta
   - One tap on a suggestion chooses that station.
   - "Use my location" ranks by distance only for stations that have map coordinates; add them on each station's page.
 
+## Pickup stations: arrival, collection and returns (Sales → Collection desk)
+
+The Collection desk has three tabs. Station staff need a staff account with the **Delivery & Logistics** role (Fulfilment Staff and Managers can also use it).
+
+| Tab | What it lists | What staff do |
+|---|---|---|
+| **On the way to the station** | Pickup orders being prepared | When the parcel arrives, click **Arrived, notify customer**. |
+| **Ready to hand over** | Parcels waiting, with each one's last day ("Last day" and "Overdue" are marked) | Open the order: the customer's code and ID, then **Verify code & hand over**. |
+| **Returns to warehouse** | Parcels going back from the stations | When one is back at the warehouse, click **Received back**. |
+
+**When a parcel arrives**, the customer gets an SMS and email at once, with:
+- the station's name, address and opening hours;
+- their private collection code;
+- a reminder to bring their national ID or passport (or a written authorisation and ID if someone collects for them);
+- the **last day to collect** (arrival + the hold period, 7 days by default), and that the parcel is returned otherwise.
+
+**Automatic steps**, done by the scheduled job (`bin/expire-reservations.php`, every minute):
+- **Reminder:** one SMS and email the day before the last day (24 hours before, by default).
+- **Return:** a parcel still not collected after the hold period is returned automatically.
+  - The order is cancelled ("Not collected within 7 days: returned to the warehouse") and the code stops working.
+  - If the customer had paid by M-Pesa, a refund is recorded for Finance (Finance → Refunds).
+  - The customer gets an SMS and email saying so.
+  - The parcel appears under **Returns to warehouse**. Its stock stays held (not sold again) until staff click **Received back**.
+- Both can be changed under **Settings → Orders**: the hold period, the reminder timing, and "Return parcels not collected in time" (if off, overdue parcels are only marked Overdue).
+- Orders with marketplace sellers' parts are not returned automatically: staff handle them on the desk.
+
+**Sending a parcel back early** (for example, the customer refuses it): on the order at the desk, open **Send it back to the warehouse**, choose why, and confirm. The same steps follow.
+
+**Lost code:** anyone at the desk can **Re-issue a new one**. It goes to the customer's own phone and email, with the same last day. The old code stops working.
+
 ## Order tracking numbers
 
 When staff dispatch a seller's part of an order, they can enter the courier's **delivery reference**. This becomes the customer's **tracking number**:

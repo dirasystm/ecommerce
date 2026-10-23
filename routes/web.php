@@ -284,6 +284,9 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
         $r->get('/collections/{id:\d+}', [Admin\CollectionController::class, 'show']);
         $r->post('/collections/{id:\d+}', [Admin\CollectionController::class, 'verify'], ['throttle:30,300']);
         $r->post('/collections/{id:\d+}/reissue', [Admin\CollectionController::class, 'reissue']);
+        $r->post('/collections/{id:\d+}/arrived', [Admin\CollectionController::class, 'arrived']);
+        $r->post('/collections/{id:\d+}/return', [Admin\CollectionController::class, 'startReturn']);
+        $r->post('/collections/returns/{id:\d+}/received', [Admin\CollectionController::class, 'received']);
     });
 
     $r->get('/payments', [Admin\PaymentController::class, 'index'], ['can:payments.view']);

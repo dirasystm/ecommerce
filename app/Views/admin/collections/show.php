@@ -48,6 +48,23 @@ $multi = count(array_unique(array_column($items, 'sub_number'))) > 1;
                     <?= csrf_field() ?><button class="btn btn-link btn-sm px-0" type="submit">Customer lost their code? Re-issue a new one</button>
                 </form>
             <?php endif; ?>
+            <?php if (!empty($canReturn)): ?>
+                <details class="mt-3">
+                    <summary class="small text-danger">Not being collected? Send it back to the warehouse</summary>
+                    <form class="wm-panel wm-panel-body mt-2" method="post" action="<?= e(url('/admin/collections/' . $order['id'] . '/return')) ?>"
+                          data-confirm="Send this parcel back and cancel the order? The customer is told<?= in_array($order['payment_status'], ['verified'], true) ? ' and a refund is recorded' : '' ?>.">
+                        <?= csrf_field() ?>
+                        <label class="form-label small" for="returnReason">Why</label>
+                        <select class="form-select form-select-sm<?= invalid('reason') ?>" id="returnReason" name="reason" required>
+                            <?php foreach (\Waimart\Services\StationReturnService::REASONS as $k => $label): ?><option value="<?= e($k) ?>"><?= e($label) ?></option><?php endforeach; ?>
+                        </select>
+                        <label class="form-label small mt-2" for="returnNote">Note (optional)</label>
+                        <input class="form-control form-control-sm" id="returnNote" name="note" maxlength="200">
+                        <button class="btn btn-sm btn-outline-danger mt-2" type="submit">Return to warehouse and cancel the order</button>
+                        <p class="small text-muted mt-2 mb-0">Parcels not collected within the hold period are sent back automatically.</p>
+                    </form>
+                </details>
+            <?php endif; ?>
         <?php else: ?>
             <div class="alert alert-info">This order is not ready for collection (status: <?= e(OrderPresenter::status($order['status'])) ?>).</div>
         <?php endif; ?>

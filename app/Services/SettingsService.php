@@ -83,7 +83,9 @@ final class SettingsService
         'reservation_minutes' => ['Stock hold for M-Pesa orders (minutes)', 'required|int|gte:5|lte:10080', 'How long items are held while the customer pays and we verify. Default 30.', 'orders', 'number'],
         'reservation_minutes_cod' => ['Stock hold for COD orders (minutes)', 'required|int|gte:5|lte:10080', 'How long items are held until staff confirm a COD order. Default 240.', 'orders', 'number'],
         'cod_auto_confirm' => ['Auto-confirm cash-on-delivery orders', 'bool', 'If on, COD orders are confirmed immediately and hold stock until fulfilment.', 'orders', 'checkbox'],
-        'collection_hold_days' => ['Pickup hold period (days)', 'required|int|gte:1|lte:60', null, 'orders', 'number'],
+        'collection_hold_days' => ['Pickup hold period (days)', 'required|int|gte:1|lte:60', 'How long a parcel waits at the pickup station. The customer is told the last day when it arrives.', 'orders', 'number'],
+        'collection_reminder_hours' => ['Collection reminder (hours before the last day)', 'required|int|gte:1|lte:168', 'One SMS and email reminder while the parcel is still waiting. Default 24.', 'orders', 'number'],
+        'collection_auto_return' => ['Return parcels not collected in time', 'bool', 'If on, a parcel still waiting after the hold period is returned automatically: the order is cancelled, a refund recorded if it was paid, and the customer told.', 'orders', 'checkbox'],
         'return_window_days' => ['Return window (days)', 'required|int|gte:0|lte:90', null, 'orders', 'number'],
 
         'mpesa_till_number' => ['Till number (Buy Goods)', 'nullable|int|min:5|max:8', 'Leave blank to hide this payment method.', 'payments', 'text'],
