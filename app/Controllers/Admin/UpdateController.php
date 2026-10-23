@@ -33,6 +33,8 @@ final class UpdateController extends AdminController
     {
         try {
             $r = (new DatabaseUpdates())->run($this->actor(), (string) ($req->post['password'] ?? ''));
+        } catch (ValidationException $e) {
+            throw $e;   // wrong password, nothing waiting, …: shown on the form as usual
         } catch (\RuntimeException $e) {
             Session::flash('error', 'Database update stopped. ' . $e->getMessage());
             return Response::redirect('/admin/updates#database');
