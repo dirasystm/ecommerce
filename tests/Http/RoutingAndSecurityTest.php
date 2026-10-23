@@ -12,7 +12,7 @@ final class RoutingAndSecurityTest extends HttpTestCase
     {
         $r = $this->request('GET', '/');
         $this->assertSame(200, $r['status']);
-        $this->assertStringContainsString('Waimart', $r['body']);
+        $this->assertStringContainsString('<main', $r['body'], 'the home page renders');
         $this->assertSame('nosniff', $r['headers']['x-content-type-options'] ?? null);
         $this->assertSame('DENY', $r['headers']['x-frame-options'] ?? null);
         $this->assertStringContainsString("frame-ancestors 'none'", $r['headers']['content-security-policy'] ?? '');

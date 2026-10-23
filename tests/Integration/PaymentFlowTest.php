@@ -266,7 +266,7 @@ final class PaymentFlowTest extends DbTestCase
         Settings::set('mpesa_till_number', '');
         $svc = new SettingsService();
         $valid = ['store_name' => (string) Settings::get('store_name'), 'max_payment_submissions' => '3', 'reservation_minutes' => '45', 'reservation_minutes_cod' => '240',
-                  'collection_hold_days' => '7', 'return_window_days' => '7', 'products_per_page' => '24', 'allow_registration' => '1',
+                  'collection_hold_days' => '7', 'collection_reminder_hours' => '24', 'collection_auto_return' => '1', 'return_window_days' => '7', 'products_per_page' => '24', 'allow_registration' => '1',
                   'product_moderation' => '1', 'payout_min_amount' => '500', 'payout_hold_days' => '7', 'payout_requires_fulfilment' => '1',
                   'tracking_consent_mode' => 'opt_in', 'tracking_retention_days' => '180', 'guest_history_days' => '30', 'recs_weight_view' => '1', 'recs_weight_search' => '2',
                   'recs_weight_cart' => '3', 'recs_weight_wishlist' => '4', 'recs_weight_purchase' => '5', 'recs_half_life_days' => '14', 'marketing_max_per_day' => '1',
