@@ -26,10 +26,15 @@ final class CollectionController extends AdminController
         $tab = in_array($tab, ['arriving', 'ready', 'returns'], true) ? $tab : 'ready';
         $point = (string) ($req->query['point'] ?? '');
         $holdDays = Settings::int('collection_hold_days', 7);
+        // (Until database update 036 is applied there is no returns table: the desk works without that tab.)
+        $returnsTable = $db->value("SHOW TABLES LIKE 'station_returns'") !== null;
+        if (!$returnsTable && $tab === 'returns') {
+            $tab = 'ready';
+        }
         $counts = $db->one(
             "SELECT (SELECT COUNT(*) FROM orders WHERE fulfilment_method = 'pickup' AND status = 'processing') AS arriving,
                     (SELECT COUNT(*) FROM orders o WHERE o.status = 'ready_for_collection' OR EXISTS (SELECT 1 FROM seller_orders so WHERE so.order_id = o.id AND so.status = 'ready_for_collection')) AS ready,
-                    (SELECT COUNT(*) FROM station_returns WHERE status = 'awaiting_return') AS returns"
+                    " . ($returnsTable ? "(SELECT COUNT(*) FROM station_returns WHERE status = 'awaiting_return')" : '0') . " AS returns"
         );
         $params = [];
         $where = match ($tab) {
@@ -51,8 +56,9 @@ final class CollectionController extends AdminController
         }
         $rows = $lp->fetch($db, 'SELECT o.id, o.order_number, o.customer_name, o.payment_method, o.payment_status, o.grand_total, o.updated_at,
                     f.pickup_name, f.pickup_code, f.ready_at, f.collection_code_status, (f.ready_at < NOW() - INTERVAL ' . (int) $holdDays . ' DAY) AS overdue,
-                    r.id AS return_id, r.status AS return_status, r.reason AS return_reason, r.created_at AS return_started, r.received_at, r.started_by',
-            'FROM orders o JOIN order_fulfilment f ON f.order_id = o.id ' . ($tab === 'returns' ? 'JOIN' : 'LEFT JOIN') . ' station_returns r ON r.order_id = o.id
+                    ' . ($returnsTable ? 'r.id AS return_id, r.status AS return_status, r.reason AS return_reason, r.created_at AS return_started, r.received_at, r.started_by'
+                        : 'NULL AS return_id, NULL AS return_status, NULL AS return_reason, NULL AS return_started, NULL AS received_at, NULL AS started_by'),
+            'FROM orders o JOIN order_fulfilment f ON f.order_id = o.id ' . ($returnsTable ? ($tab === 'returns' ? 'JOIN' : 'LEFT JOIN') . ' station_returns r ON r.order_id = o.id' : '') . '
               WHERE ' . implode(' AND ', $where), $params, 'o.id');
         return $this->view('collections/index', [
             'title' => 'Collection desk', 'tab' => $tab, 'counts' => $counts, 'rows' => $rows, 'holdDays' => $holdDays, 'lp' => $lp, 'point' => $point,
@@ -79,7 +85,7 @@ final class CollectionController extends AdminController
         return $this->view('collections/show', [
             'title' => 'Collect ' . $order['order_number'], 'order' => $order, 'items' => $items,
             'canReissue' => true,   // anyone at the desk: the new code goes to the customer only
-            'canReturn' => $order['status'] === 'ready_for_collection',
+            'canReturn' => $order['status'] === 'ready_for_collection' && $db->value("SHOW TABLES LIKE 'station_returns'") !== null,
         ]);
     }
 
