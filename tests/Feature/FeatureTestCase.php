@@ -17,7 +17,7 @@ abstract class FeatureTestCase extends DbTestCase
     private static $server = null;
 
     protected string $base = 'http://127.0.0.1:8089';
-    private string $jar = '';
+    protected string $jar = '';
     protected string $lastBody = '';
     /** User-Agent sent with requests (null: none), e.g. to act as a link-preview crawler. */
     protected ?string $userAgent = null;

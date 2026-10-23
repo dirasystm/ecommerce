@@ -14,6 +14,11 @@
                 <input class="form-control" id="password" name="password" type="password" autocomplete="current-password" required>
             </div>
             <div class="text-end mb-3"><a class="small" href="<?= e(url('/forgot-password')) ?>">Forgot your password?</a></div>
+            <div class="form-check mb-3">
+                <input type="hidden" name="remember" value="0">
+                <input class="form-check-input" type="checkbox" id="remember" name="remember" value="1" <?= old('remember', '1') === '1' ? 'checked' : '' ?>>
+                <label class="form-check-label small" for="remember">Keep me signed in on this device <span class="text-muted">(untick on a shared phone or computer)</span></label>
+            </div>
             <button class="btn btn-wm w-100" type="submit">Sign in</button>
         </form>
         <hr>

@@ -18,6 +18,11 @@ final class Kernel
     {
         try {
             Session::start();
+            try {
+                \Waimart\Services\RememberMe::restore();   // "keep me signed in" after the browser or app was closed
+            } catch (\PDOException) {
+                // Database update (035) not applied yet.
+            }
             View::share('request', $req);
             $route = $this->router->match($req->method, $req->path);
             $req->params = $route['params'];

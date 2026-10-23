@@ -86,6 +86,19 @@ Then restart MySQL from the XAMPP Control Panel. Phase 12 measurements are in `d
 - **Credentials** (the SMTP password and the SMS API token) live in the encrypted store, under Settings → Email and Admin → Email & SMS. They are encrypted with the app key in `config.local.php`. If the key changes, the page says the password must be entered again.
 - The **audit log** and **sign-in activity** cannot be edited or deleted, even directly in the database (triggers refuse it).
 
+### Customers stay signed in ("Keep me signed in")
+
+Customers and sellers stay signed in on their phone or computer, in the browser or the app, until they sign out. Closing the browser or app does not sign them out.
+- The box is ticked by default on the sign-in and registration pages. Customers can untick it on a shared device.
+- **What ends it:**
+  - signing out on that device;
+  - changing the password;
+  - "Sign out everywhere";
+  - suspending the account;
+  - a year without use.
+- **Staff are never remembered.** The admin always asks for the password, and two-step sign-in where it is required.
+- Database update `035_remember_tokens.sql` adds the table. Website updates applies it automatically.
+
 ## Email & SMS (System → Email & SMS)
 
 One page for both channels (permission `messaging.manage`; changing the SMS token also needs `secrets.manage`).
@@ -142,7 +155,12 @@ Businesses with existing premises apply on the public page **Become a pickup sta
   - **Approve and create station** creates the pickup point with a suggested code in the usual style (e.g. `LKP-NYK-01`). Adjust any field first; the station is live at checkout straight away.
   - **Reject** needs a reason, which the business sees.
   - The business is told by email and SMS either way.
-- **At checkout**, "Suggested for you" picks the best stations for the customer: same town first, then same county, then distance once the customer taps "Use my location" (for stations with map coordinates). One tap chooses a station.
+- **At checkout**, choosing Pickup asks for the customer's county ("Your county").
+  - It is filled in from the county they typed for delivery, or from their saved address.
+  - Each county shows how many stations it has, or "no station yet".
+  - "Suggested for you" lists that county's stations at once (same town first), and the full list narrows to the county. Typing a town in the search box still searches every station.
+  - One tap on a suggestion chooses that station.
+  - "Use my location" ranks by distance only for stations that have map coordinates; add them on each station's page.
 
 ## Order tracking numbers
 

@@ -34,6 +34,27 @@ final class PickupHttpTest extends FeatureTestCase
         return $o + ['variant_id' => $v];
     }
 
+    public function testCheckoutAsksForTheCustomersCountyToSuggestStations(): void
+    {
+        $this->post('/register', ['first_name' => 'Pick', 'last_name' => 'Up', 'email' => 'pickup.county@example.com', 'phone' => '0712777888',
+            'password' => 'Secret123', 'password_confirmation' => 'Secret123', 'accept_terms' => '1'], '/register');
+        $uid = (int) $this->db->value("SELECT id FROM users WHERE email = 'pickup.county@example.com'");
+        $county = (int) $this->db->value('SELECT county_id FROM pickup_points WHERE is_active = 1 ORDER BY id LIMIT 1');
+        $this->db->insert('user_addresses', ['user_id' => $uid, 'recipient_name' => 'Pick Up', 'phone' => '254712777888', 'county_id' => $county,
+            'town' => 'Somewhere', 'location' => 'Home', 'is_default' => 1]);
+        $v = $this->makeVariant(5);
+        $slug = (string) $this->db->value('SELECT slug FROM products WHERE id = ?', [$v['product_id']]);
+        $this->post('/cart/add', ['variant_id' => (string) $v['variant_id'], 'quantity' => '1'], '/product/' . $slug);
+
+        $page = $this->get('/checkout')['body'];
+        $this->assertStringContainsString('data-county-id="' . $county . '" data-town="Somewhere"', $page, 'the saved address is offered');
+        $this->assertStringContainsString('id="pickup_county"', $page, 'pickup has its own county question');
+        $this->assertMatchesRegularExpression('#<option value="' . $county . '" data-name="[^"]+" selected>[^<]+\(\d+ stations?\)</option>#', $page,
+            "preselected from the customer's saved address, with how many stations it has");
+        $this->assertMatchesRegularExpression('#\(no station yet\)</option>#', $page, 'counties without a station say so');
+        $this->assertStringContainsString('data-county-id="' . $county . '"', $page, 'stations carry their county for the live suggestions');
+    }
+
     public function testDeskFlowWithPermissionsAndNoBypass(): void
     {
         $o = $this->processingPickupOrder();

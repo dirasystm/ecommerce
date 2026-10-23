@@ -64,6 +64,11 @@ final class AuthController
         if ($id) {
             AuthEvents::record('logout', $id, null, $wasStaff);
         }
+        try {
+            \Waimart\Services\RememberMe::forget();
+        } catch (\PDOException) {
+            // Database update (035) not applied yet: nothing remembered to forget.
+        }
         Auth::logout();
         Session::flash('success', 'You have been signed out.');
         return Response::redirect($wasStaff ? '/admin/login' : '/');

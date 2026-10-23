@@ -29,6 +29,9 @@ final class AuthController extends Controller
             return Response::redirect('/admin/login/two-step');   // two-step sign-in is on for this (staff) account
         }
         \Waimart\Services\Marketing\Signals::signedIn((int) $user['id']);
+        if ((string) $req->input('remember', '') === '1') {
+            \Waimart\Services\RememberMe::issue($user);
+        }
         return $this->afterSignIn((int) $user['id'], $guestToken, 'Welcome back, ' . $user['first_name'] . '!');
     }
 
@@ -42,6 +45,9 @@ final class AuthController extends Controller
         $guestToken = CartService::current()->guestToken();
         $user = (new AccountService())->register($req->post, $req->ip());
         Auth::login($user);
+        if ((string) $req->input('remember', '1') === '1') {
+            \Waimart\Services\RememberMe::issue($user);
+        }
         \Waimart\Services\Marketing\Signals::registered((int) $user['id'], $req->post, $req->ip());
         return $this->afterSignIn((int) $user['id'], $guestToken, 'Your account has been created. Welcome to ' . brand_name() . '!');
     }

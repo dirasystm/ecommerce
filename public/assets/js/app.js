@@ -216,18 +216,26 @@
     });
 
     // ---------------------------------------------------------------- pickup station finder (checkout)
-    // Filters the station list as the customer types a town or county; a chosen station always stays visible.
+    // "Your county" narrows the station list to that county; typing a town or county searches all stations instead.
+    // A chosen station always stays visible.
     var finder = document.querySelector('[data-station-finder]');
-    var finderInput = finder ? finder.querySelector('[data-station-search]') : null;
-    if (finderInput) {
+    if (finder) {
+        var finderInput = finder.querySelector('[data-station-search]');
+        var pickupCounty = finder.querySelector('[data-pickup-county]');
         var stationCount = finder.querySelector('[data-station-count]');
         var stationNone = finder.querySelector('[data-station-none]');
         var stations = finder.querySelectorAll('[data-station]');
+        var countyName = function () {
+            var opt = pickupCounty && pickupCounty.value ? pickupCounty.options[pickupCounty.selectedIndex] : null;
+            return opt ? opt.getAttribute('data-name') : '';
+        };
         var filterStations = function () {
-            var q = finderInput.value.trim().toLowerCase();
+            var q = finderInput ? finderInput.value.trim().toLowerCase() : '';
+            var cid = pickupCounty ? pickupCounty.value : '';
             var shown = 0;
             stations.forEach(function (s) {
-                var hit = !q || s.getAttribute('data-station').indexOf(q) !== -1 || s.querySelector('input:checked') !== null;
+                var hit = s.querySelector('input:checked') !== null
+                    || (q ? s.getAttribute('data-station').indexOf(q) !== -1 : (!cid || s.getAttribute('data-county-id') === cid));
                 s.hidden = !hit;
                 if (hit) { shown++; }
             });
@@ -236,20 +244,29 @@
             });
             if (stationNone) { stationNone.hidden = shown > 0; }
             if (stationCount) {
-                stationCount.textContent = q ? shown + ' of ' + stations.length + ' stations match “' + finderInput.value.trim() + '”' : stations.length + ' stations across Kenya';
+                stationCount.textContent = q ? shown + ' of ' + stations.length + ' stations match “' + finderInput.value.trim() + '”'
+                    : (cid ? shown + ' station' + (shown === 1 ? '' : 's') + ' in ' + countyName() + ' · type a town to search all ' + stations.length
+                        : stations.length + ' stations across Kenya');
             }
         };
-        finderInput.addEventListener('input', filterStations);
-        // Switching to pickup starts from the customer's county: the saved address chosen, or the county selected.
-        document.querySelectorAll('input[name="fulfilment_method"]').forEach(function (radio) {
-            radio.addEventListener('change', function () {
-                if (radio.value !== 'pickup' || finderInput.value) { return; }
-                var saved = document.querySelector('input[name="address_id"]:checked[data-county-name]');
-                var county = document.getElementById('county_id');
-                var place = saved ? saved.getAttribute('data-county-name') : (county && county.value ? county.options[county.selectedIndex].text : '');
-                if (place) { finderInput.value = place; filterStations(); }
+        if (finderInput) { finderInput.addEventListener('input', filterStations); }
+        if (pickupCounty) {
+            pickupCounty.addEventListener('change', function () {
+                if (finderInput) { finderInput.value = ''; }
+                filterStations();
             });
-        });
+            // A county typed for home delivery (or a saved address chosen) carries over when the customer switches to pickup.
+            document.querySelectorAll('input[name="fulfilment_method"]').forEach(function (radio) {
+                radio.addEventListener('change', function () {
+                    if (radio.value !== 'pickup' || pickupCounty.value) { return; }
+                    var saved = document.querySelector('input[name="address_id"]:checked[data-county-id]');
+                    var county = document.getElementById('county_id');
+                    var id = saved ? saved.getAttribute('data-county-id') : (county ? county.value : '');
+                    if (id) { pickupCounty.value = id; pickupCounty.dispatchEvent(new Event('change', { bubbles: true })); }
+                });
+            });
+            filterStations();
+        }
     }
 
     // ---------------------------------------------------------------- checkout
@@ -380,6 +397,12 @@
             return 12742 * Math.asin(Math.sqrt(h));
         };
         var place = function () {
+            var pc = document.getElementById('pickup_county');
+            if (pc && pc.value) {
+                var dc = document.getElementById('county_id');
+                var dt = document.getElementById('town');
+                return { county: pc.value, town: dc && dc.value === pc.value && dt ? norm(dt.value) : '' };
+            }
             var saved = document.querySelector('input[name="address_id"]:checked[data-county-id]');
             if (saved) { return { county: saved.getAttribute('data-county-id'), town: norm(saved.getAttribute('data-town')) }; }
             var c = document.getElementById('county_id');
@@ -403,10 +426,18 @@
                     why = (d < 1 ? Math.round(d * 1000) + ' m' : d.toFixed(d < 10 ? 1 : 0) + ' km') + ' away';
                 }
                 return { el: el, score: score, why: why };
-            }).filter(function (r) { return r.score > 0; }).sort(function (a, b) { return b.score - a.score; }).slice(0, 3);
+            }).filter(function (r) { return r.score > 0; }).sort(function (a, b) { return b.score - a.score; }).slice(0, where.county ? 6 : 3);
 
             sList.textContent = '';
             sEmpty.hidden = ranked.length > 0;
+            if (!ranked.length && where.county && !me) {
+                var opt = document.querySelector('#pickup_county option:checked');
+                var cname = opt && opt.value ? opt.getAttribute('data-name') : '';
+                sEmpty.textContent = 'There is no pickup station in ' + (cname || 'your county')
+                    + ' yet. Type a nearby town in the search below, or choose home delivery.';
+            } else if (!ranked.length) {
+                sEmpty.textContent = 'Select your county above, or use your location, and we will suggest the stations near you.';
+            }
             ranked.forEach(function (r) {
                 var input = r.el.querySelector('input[name="pickup_point_id"]');
                 var li = document.createElement('div');
@@ -446,7 +477,7 @@
         ['change', 'input'].forEach(function (ev) {
             document.addEventListener(ev, function (e) {
                 var t = e.target;
-                if (t && (t.name === 'address_id' || t.id === 'county_id' || t.id === 'town' || t.name === 'fulfilment_method' || t.name === 'pickup_point_id')) { render(); }
+                if (t && (t.name === 'address_id' || t.id === 'county_id' || t.id === 'pickup_county' || t.id === 'town' || t.name === 'fulfilment_method' || t.name === 'pickup_point_id')) { render(); }
             });
         });
         if (sNearBtn) {

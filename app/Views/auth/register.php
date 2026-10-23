@@ -46,6 +46,11 @@
                         <label class="form-check-label small" for="accept_terms">I agree to the <a href="<?= e(url('/terms')) ?>" target="_blank">terms</a> and <a href="<?= e(url('/privacy')) ?>" target="_blank">privacy policy</a>.</label>
                         <?= field_error('accept_terms') ?>
                     </div>
+                    <div class="form-check mt-2">
+                        <input type="hidden" name="remember" value="0">
+                        <input class="form-check-input" type="checkbox" id="remember" name="remember" value="1" <?= old('remember', '1') === '1' ? 'checked' : '' ?>>
+                        <label class="form-check-label small" for="remember">Keep me signed in on this device</label>
+                    </div>
                     <fieldset class="mt-2">
                         <legend class="small fw-semibold mb-1">Your choices (optional, change them any time)</legend>
                         <div class="form-check">

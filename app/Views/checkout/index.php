@@ -17,9 +17,13 @@ $method = (string) fv('fulfilment_method', $deliveryAvailable ? 'delivery' : 'pi
 $addrChoice = (string) fv('address_id', $addresses ? (string) $addresses[0]['id'] : 'new');
 $payChoice = (string) fv('payment_method', '');
 $byCounty = [];
+$stationsIn = [];
 foreach ($pickupPoints as $pp) {
     $byCounty[$pp['county_name']][] = $pp;
+    $stationsIn[(int) $pp['county_id']] = ($stationsIn[(int) $pp['county_id']] ?? 0) + 1;
 }
+// The county pickup stations are suggested for: as entered before, else the delivery county, else the saved address.
+$pickupCounty = (string) fv('pickup_county', '') ?: (string) fv('county_id', '') ?: ($addresses ? (string) $addresses[0]['county_id'] : '');
 ?>
 <div class="container-wm">
     <nav class="wm-breadcrumb" aria-label="Breadcrumb">
@@ -143,10 +147,20 @@ foreach ($pickupPoints as $pp) {
                     <?= field_error('pickup_point_id') ?>
                     <fieldset data-station-finder>
                         <legend class="fs-6 fw-semibold">Choose a pickup station</legend>
+                        <div class="mb-3">
+                            <label class="form-label" for="pickup_county">Your county</label>
+                            <select class="form-select" id="pickup_county" name="pickup_county" data-pickup-county aria-describedby="pickupCountyHelp">
+                                <option value="">Select your county…</option>
+                                <?php foreach ($counties as $c): $nSt = $stationsIn[(int) $c['id']] ?? 0; ?>
+                                    <option value="<?= $c['id'] ?>" data-name="<?= e($c['name']) ?>" <?= $pickupCounty === (string) $c['id'] ? 'selected' : '' ?>><?= e($c['name']) ?> (<?= $nSt === 0 ? 'no station yet' : $nSt . ' station' . ($nSt === 1 ? '' : 's') ?>)</option>
+                                <?php endforeach; ?>
+                            </select>
+                            <div class="form-text" id="pickupCountyHelp">We show the pickup stations in your county first.</div>
+                        </div>
                         <div class="wm-station-suggest" data-station-suggest>
                             <h3><i class="bi bi-stars" aria-hidden="true"></i> Suggested for you</h3>
                             <div data-suggest-list role="list"></div>
-                            <p class="small text-muted mb-2" data-suggest-empty>Enter your county and town above (or choose a saved address), or use your location, and we will suggest the nearest stations.</p>
+                            <p class="small text-muted mb-2" data-suggest-empty>Select your county above, or use your location, and we will suggest the stations near you.</p>
                             <button class="btn btn-sm btn-wm-green" type="button" data-near-me><i class="bi bi-crosshair" aria-hidden="true"></i> Use my location</button>
                             <span class="small ms-1" role="status" aria-live="polite" data-near-status></span>
                         </div>
