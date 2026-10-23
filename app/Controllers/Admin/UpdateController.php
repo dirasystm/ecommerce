@@ -8,6 +8,7 @@ use Waimart\Core\Request;
 use Waimart\Core\Response;
 use Waimart\Core\Session;
 use Waimart\Core\ValidationException;
+use Waimart\Services\DatabaseUpdates;
 use Waimart\Services\SiteUpdater;
 
 /**
@@ -23,8 +24,21 @@ final class UpdateController extends AdminController
         $active = $u->active();
         return $this->view('updates/index', [
             'title' => 'Website updates', 'active' => $active ? self::summary($active) : null, 'history' => $u->history(),
-            'maxMb' => (int) (SiteUpdater::MAX_PACKAGE / 1024 / 1024),
+            'maxMb' => (int) (SiteUpdater::MAX_PACKAGE / 1024 / 1024), 'dbPending' => (new DatabaseUpdates())->pending(),
         ]);
+    }
+
+    /** POST /admin/updates/database: back up the database, then run the database updates that are waiting. */
+    public function database(Request $req): Response
+    {
+        try {
+            $r = (new DatabaseUpdates())->run($this->actor(), (string) ($req->post['password'] ?? ''));
+        } catch (\RuntimeException $e) {
+            Session::flash('error', 'Database update stopped. ' . $e->getMessage());
+            return Response::redirect('/admin/updates#database');
+        }
+        return $this->success('Database updated: ' . implode(', ', $r['applied']) . '. A backup taken just before is in storage/backups/' . $r['backup'] . '.',
+            '/admin/updates#database');
     }
 
     public function start(Request $req): Response
@@ -88,7 +102,7 @@ final class UpdateController extends AdminController
             'files' => ['changed' => array_slice($files['changed'], 0, 300), 'added' => array_slice($files['added'], 0, 300),
                         'changed_count' => count($files['changed']), 'added_count' => count($files['added']), 'unchanged' => $files['unchanged'],
                         'skipped' => $j['skipped'] ?? 0],
-            'plan' => $j['plan'] ?? [], 'blocked' => $j['blocked'] ?? [], 'log' => array_slice($j['log'] ?? [], -25),
+            'plan' => $j['plan'] ?? [], 'deferred' => $j['deferred'] ?? [], 'blocked' => $j['blocked'] ?? [], 'log' => array_slice($j['log'] ?? [], -25),
             'final' => in_array($j['status'], SiteUpdater::FINAL, true), 'installing' => in_array($j['status'], SiteUpdater::INSTALL, true),
             'rollback' => $j['rollback'] ?? null,
         ];

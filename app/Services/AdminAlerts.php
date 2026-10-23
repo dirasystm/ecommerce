@@ -64,7 +64,11 @@ final class AdminAlerts
             $cols[] = $sql[1] . ' AS q' . $i++;
         }
         $row = array_values((array) ($db ?? App::db())->one('SELECT ' . implode(', ', $cols)));
-        return self::$cache = array_combine(array_keys($mine), array_map('intval', $row));
+        $counts = array_combine(array_keys($mine), array_map('intval', $row));
+        if (Auth::can('system.update')) {
+            $counts['/admin/updates'] = (new DatabaseUpdates($db))->pendingCount();   // database updates waiting to be run
+        }
+        return self::$cache = $counts;
     }
 
     /**

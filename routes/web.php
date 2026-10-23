@@ -348,6 +348,7 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
         $r->get('/updates/{uuid:[a-f0-9]{32}}', [Admin\UpdateController::class, 'status']);
         $r->post('/updates/{uuid:[a-f0-9]{32}}/approve', [Admin\UpdateController::class, 'approve'], ['throttle:10,900']);
         $r->post('/updates/{uuid:[a-f0-9]{32}}/cancel', [Admin\UpdateController::class, 'cancel']);
+        $r->post('/updates/database', [Admin\UpdateController::class, 'database'], ['throttle:10,900']);
         $r->post('/updates/{uuid:[a-f0-9]{32}}/rollback', [Admin\UpdateController::class, 'rollback'], ['throttle:10,900']);
     });
     // Roles and the permission matrix (Ecommerce Stage 5).

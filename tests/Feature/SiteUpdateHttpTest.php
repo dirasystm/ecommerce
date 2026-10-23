@@ -174,15 +174,77 @@ final class SiteUpdateHttpTest extends FeatureTestCase
         $this->assertSame("<?php\n// v1\n", file_get_contents($this->sandbox . '/app/Core/App.php'));
     }
 
-    public function testBlockedUpdateShowsReasonsAndCanBeCancelled(): void
+    public function testBrokenPhpBlocksTheUpdateAndItCanBeCancelled(): void
     {
         $this->signIn('super_admin');
-        $j = $this->uploadAndPrepare($this->package(['database/migrations/952_upd_risky.sql' => "DELETE FROM settings;\n"]));
+        $j = $this->uploadAndPrepare($this->package(['app/Core/App.php' => "<?php\nfunction (\n"]));
         $this->assertSame('blocked', $j['status']);
-        $this->assertStringContainsString('Deletes existing rows', implode(' ', $j['blocked']));
+        $this->assertStringContainsString('PHP syntax error in app/Core/App.php', implode(' ', $j['blocked']));
         $this->assertSame(303, $this->json('POST', '/admin/updates/' . $j['uuid'] . '/approve', ['password' => 'Secret123'])['status'], 'cannot install');
-        $this->assertGreaterThan(5, (int) $this->db->value('SELECT COUNT(*) FROM settings'), 'settings untouched');
+        $this->assertStringContainsString('// v1', (string) file_get_contents($this->sandbox . '/app/Core/App.php'), 'nothing changed');
         $this->assertContains($this->json('POST', '/admin/updates/' . $j['uuid'] . '/cancel')['status'], [200, 303]);
         $this->assertSame('cancelled', $this->db->value('SELECT status FROM system_updates WHERE uuid = ?', [$j['uuid']]));
+    }
+
+    public function testDataChangesWaitForDatabaseUpdatesWhileNewTablesInstallWithTheUpdate(): void
+    {
+        $this->signIn('super_admin');
+        $this->db->exec("INSERT INTO settings (setting_key, setting_value) VALUES ('upd_probe', 'old') ON DUPLICATE KEY UPDATE setting_value = 'old'");
+        $j = $this->uploadAndPrepare($this->package([
+            'app/Core/App.php' => "<?php\n// v2\n",
+            'database/migrations/951_upd_notes.sql' => "CREATE TABLE upd_http_notes (id INT PRIMARY KEY);\n",
+            'database/migrations/952_upd_rename.sql' => "UPDATE settings SET setting_value = 'new' WHERE setting_key = 'upd_probe';\n",
+            'database/migrations/953_upd_after.sql' => "ALTER TABLE upd_http_notes ADD COLUMN note VARCHAR(20) NULL;\n",
+        ]));
+        $this->assertSame('ready', $j['status'], 'a data change no longer blocks the update');
+        $this->assertSame(['951_upd_notes.sql'], array_column($j['plan'], 'file'), 'the new table installs with it');
+        $this->assertSame(['952_upd_rename.sql', '953_upd_after.sql'], array_column($j['deferred'], 'file'), 'the data change, and what comes after it, wait');
+        $this->assertStringContainsString('Changes existing rows', $j['deferred'][0]['why']);
+        $this->assertStringContainsString('Runs after 952_upd_rename.sql', $j['deferred'][1]['why']);
+
+        $this->json('POST', '/admin/updates/' . $j['uuid'] . '/approve', ['password' => 'Secret123']);
+        $done = $this->stepUntil($j['uuid'], ['verifying', 'completed', 'failed']);
+        if ($done['status'] === 'verifying') {
+            $done = $this->stepUntil($j['uuid'], ['completed', 'failed']);
+        }
+        $this->assertSame('completed', $done['status'], json_encode($done['log']));
+        $this->assertStringContainsString('// v2', (string) file_get_contents($this->sandbox . '/app/Core/App.php'), 'files installed');
+        $this->assertNotNull($this->db->value("SHOW TABLES LIKE 'upd_http_notes'"), 'new table created');
+        $this->assertSame('old', $this->db->value("SELECT setting_value FROM settings WHERE setting_key = 'upd_probe'"), 'existing data untouched');
+
+        // The Database updates panel lists them, with a red count on the menu.
+        $page = $this->get('/admin/updates')['body'];
+        $this->assertStringContainsString('2 waiting', $page);
+        $this->assertStringContainsString('952_upd_rename.sql', $page);
+        $this->assertStringContainsString('changes existing data', $page);
+        $this->assertMatchesRegularExpression('#data-badge-for="/admin/updates">2<#', $page);
+
+        // Wrong password: nothing runs.
+        $this->post('/admin/updates/database', ['password' => 'wrong'], '/admin/updates');
+        $this->assertSame('old', $this->db->value("SELECT setting_value FROM settings WHERE setting_key = 'upd_probe'"));
+
+        // Run them: backup first, then both in order.
+        $before = glob(App::root() . '/storage/backups/before-database-update-*.sql') ?: [];
+        $r = $this->post('/admin/updates/database', ['password' => 'Secret123'], '/admin/updates');
+        $this->assertStringContainsString('Database updated: 952_upd_rename.sql, 953_upd_after.sql', $this->follow($r)['body']);
+        $this->assertSame('new', $this->db->value("SELECT setting_value FROM settings WHERE setting_key = 'upd_probe'"));
+        $this->assertNotNull($this->db->value("SHOW COLUMNS FROM upd_http_notes LIKE 'note'"));
+        $backups = array_values(array_diff(glob(App::root() . '/storage/backups/before-database-update-*.sql') ?: [], $before));
+        $this->assertCount(1, $backups, 'a backup was taken first');
+        $this->assertStringContainsString('upd_probe', (string) file_get_contents($backups[0]), 'the backup holds the data as it was');
+        $this->assertSame(1, (int) $this->db->value("SELECT COUNT(*) FROM audit_logs WHERE action = 'system.db_update_completed'"));
+        $this->assertStringContainsString('Up to date', $this->get('/admin/updates')['body']);
+        array_map('unlink', $backups);
+        $this->db->exec("DELETE FROM settings WHERE setting_key = 'upd_probe'");
+    }
+
+    public function testRenamedMigrationIsNotRunAgain(): void
+    {
+        $this->signIn('super_admin');
+        $this->db->exec("INSERT IGNORE INTO schema_migrations (filename) VALUES ('954_upd_oldname.sql')");
+        $j = $this->uploadAndPrepare($this->package(['database/migrations/954_upd_newname.sql' => "UPDATE settings SET setting_value = 'x' WHERE 1 = 0;\n"]));
+        $this->assertSame([], $j['plan']);
+        $this->assertSame([], $j['deferred'] ?? [], 'same number as an applied migration: already done');
+        $this->db->exec("DELETE FROM schema_migrations WHERE filename = '954_upd_oldname.sql'");
     }
 }

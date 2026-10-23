@@ -76,6 +76,11 @@
             m.statements.forEach(function (s) { li(db, m.file + ': ' + s.summary, s.ok ? '' : 'text-danger'); });
         });
         if (!j.plan.length) { li(db, 'None', 'text-muted'); }
+        var deferred = j.deferred || [];
+        $('[data-deferred]').hidden = deferred.length === 0;
+        var dl = $('[data-deferred-list]');
+        dl.innerHTML = '';
+        deferred.forEach(function (m) { li(dl, m.file + ' — ' + m.why); });
         var blocked = j.blocked.length > 0;
         $('[data-blocked]').hidden = !blocked;
         var bl = $('[data-blocked-list]');

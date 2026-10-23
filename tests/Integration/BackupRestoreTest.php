@@ -29,6 +29,35 @@ final class BackupRestoreTest extends DbTestCase
         }
     }
 
+    /** Shared hosting often has no mysqldump (or does not allow running programs): the built-in backup takes over. */
+    public function testBuiltInBackupWhenMysqldumpIsUnavailable(): void
+    {
+        $v = $this->makeVariant(4, '999.00');
+        $o = $this->makeOrder($v['variant_id'], 1);
+        $item = (int) $this->db->value('SELECT id FROM order_items WHERE order_id = ?', [$o['order_id']]);
+        $this->db->insert('stock_reservations', ['order_id' => $o['order_id'], 'order_item_id' => $item, 'variant_id' => $v['variant_id'], 'quantity' => 1]);   // a generated column
+        $name = (string) config('db.database');
+        $before = $this->checksums($name);
+        $triggers = (int) $this->db->value('SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema = DATABASE()');
+        $this->assertGreaterThan(0, $triggers);
+        $tool = config('paths.mysqldump');
+        \Waimart\Core\App::config()->set('paths.mysqldump', '/nowhere/mysqldump');
+        $file = tempnam(sys_get_temp_dir(), 'wmt') . '.sql';
+        try {
+            Backup::dump($name, $file);
+            $this->assertStringStartsWith('-- Built-in backup', (string) file_get_contents($file, false, null, 0, 40), 'the built-in backup was used');
+            Backup::emptyDatabase($this->db, $name);
+            Backup::import($name, $file);
+            $this->assertSame($before, $this->checksums($name), 'every table restored byte-for-byte');
+            $this->assertSame(1, (int) $this->db->value("SELECT COUNT(*) FROM stock_reservations WHERE status = 'active' AND active_item_key IS NOT NULL"),
+                'generated columns are computed again');
+            $this->assertSame($triggers, (int) $this->db->value('SELECT COUNT(*) FROM information_schema.triggers WHERE trigger_schema = DATABASE()'), 'triggers restored');
+        } finally {
+            \Waimart\Core\App::config()->set('paths.mysqldump', $tool);
+            @unlink($file);
+        }
+    }
+
     public function testImportRejectsMissingFileAndUnsafeNames(): void
     {
         $this->expectException(\RuntimeException::class);

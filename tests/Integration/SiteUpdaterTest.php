@@ -212,18 +212,21 @@ final class SiteUpdaterTest extends DbTestCase
         }
     }
 
-    public function testUnsafeDatabaseChangesAndBrokenCodeAreBlockedBeforeAnythingChanges(): void
+    public function testBrokenCodeBlocksAndUnsafeDatabaseChangesWaitBeforeAnythingChanges(): void
     {
         $j = $this->upload($this->package([
             'app/Core/App.php' => "<?php\n// v2\n",
             'database/migrations/902_upd_risky.sql' => "ALTER TABLE upd_test_base ADD COLUMN note TEXT NULL;\nUPDATE upd_test_base SET name = 'oops';\nALTER TABLE upd_test_base ADD COLUMN must INT NOT NULL;\n",
             'app/Services/Broken.php' => "<?php\nfunction ( {\n",
         ]));
-        $this->assertSame('blocked', $j['status']);
-        $reasons = implode("\n", $j['blocked']);
-        $this->assertStringContainsString('902_upd_risky.sql: Changes existing rows (UPDATE).', $reasons);
-        $this->assertStringContainsString('has no DEFAULT', $reasons);
-        $this->assertStringContainsString('PHP syntax error in app/Services/Broken.php', $reasons);
+        $this->assertSame('blocked', $j['status'], 'broken PHP still blocks');
+        $this->assertCount(1, $j['blocked']);
+        $this->assertStringContainsString('PHP syntax error in app/Services/Broken.php', $j['blocked'][0]);
+        // The risky migration does not block: it is left for Database updates, with its reasons.
+        $this->assertSame([], $j['plan']);
+        $this->assertSame(['902_upd_risky.sql'], array_column($j['deferred'], 'file'));
+        $this->assertStringContainsString('Changes existing rows (UPDATE).', $j['deferred'][0]['why']);
+        $this->assertStringContainsString('has no DEFAULT', $j['deferred'][0]['why']);
         $this->assertSame("<?php\n// app v1\n", file_get_contents($this->root . '/app/Core/App.php'));
         $this->assertSame(['id', 'name'], array_column($this->db->all('SHOW COLUMNS FROM upd_test_base'), 'Field'));
         try {

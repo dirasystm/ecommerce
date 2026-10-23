@@ -178,7 +178,10 @@ Install a new version of the website from a **.zip of the project** while the sh
    - Every file is compared with the live one. **Only changed and new files are used; nothing is ever deleted.**
    - **Never touched:** `config/config.local.php`, `storage/`, `public/uploads/`, `.git/`.
    - Changed PHP files are syntax-checked.
-   - **Database:** only migrations not yet applied are considered. They may only add: new tables, new columns that are optional or have a default, named indexes and constraints, triggers, views and new reference rows. Anything that changes or deletes existing data, or changes existing columns, **blocks** the update before anything happens; install such migrations during a quiet period with `php bin/migrate.php` after a backup.
+   - **Database:** only migrations not yet applied are considered. A migration counts as applied when one with the same number was applied, even under an older file name.
+     - **Installed with the update:** pure additions, such as new tables, new columns that are optional or have a default, named indexes and constraints, triggers, views and new reference rows.
+     - **Left for later:** a migration that changes or deletes existing data, or changes existing columns, is not run and does **not** stop the update. It waits under **Database updates**, together with every migration after it, so they still run in order.
+   - Only a PHP syntax error in the package blocks an update.
 2. **Review:** the number of changed, new and unchanged files, and the database additions (or the reasons it is blocked). Confirm with your password, or cancel.
 3. **Install:** a spinner, the current task and a percentage throughout. In order:
    1. the database is backed up (only if it changes);
@@ -195,6 +198,19 @@ Install a new version of the website from a **.zip of the project** while the sh
 5. **Roll back by hand:** the most recent installed update has a **Roll back** button in the history (password required). Anything saved in tables or columns the update added is removed with them.
 
 **Last resort, on the server:** `php bin/update-rescue.php` lists recent updates; `php bin/update-rescue.php <id> --confirm` rolls one back without the website.
+
+### Database updates (on the same page)
+
+Database changes that an update left for later wait here. When any are waiting, a red count shows on **Website updates** in the menu.
+- **The list:** each waiting change in the order it will run, marked "changes existing data" or "additions only", with what each step does.
+- **Running them:** enter your password and click **Back up and run database updates**. Do it when the shop is quiet.
+  1. A full backup of the database is saved first, to `storage/backups/before-database-update-<date>.sql`.
+  2. The changes run in order.
+  3. The result and the backup's name are shown. Every run is in the audit log (`system.db_update_*`).
+- **If one fails:** it stops there. The ones before it stay done, and the message names the backup. Restore it with `php bin/restore.php` if needed.
+- **Command line:** `php bin/migrate.php` does the same, without the backup.
+
+**Backups without mysqldump:** many shared hosts do not allow running `mysqldump`. The website then makes the backup itself, in PHP, automatically. The file includes tables, rows, views and triggers, and loads with the `mysql` client or phpMyAdmin.
 
 - Each update's journal and backups are in `storage/updates/<id>/`. The three most recent are kept.
 - Every step is in the audit log (`system.update_*`) and the update history.

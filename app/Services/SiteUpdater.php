@@ -355,31 +355,43 @@ final class SiteUpdater
         return $this->status($j, 'planning', 'prepare', 95, 'Checking database changes…');
     }
 
-    /** Pending migrations in the package, checked statement by statement. */
+    /**
+     * Pending migrations in the package, checked statement by statement. Pure additions (new tables, optional columns,
+     * indexes, reference rows) install with the update. A migration that would change existing data is not run here and
+     * does not stop the update: it waits, with every migration after it (they run in order), for Website updates →
+     * Database updates, which the admin runs when ready, after a backup.
+     */
     private function plan(array &$j): array
     {
         $applied = array_column($this->db->all('SELECT filename FROM schema_migrations'), 'filename');
+        $files = glob($this->dir($j['uuid']) . '/staging/database/migrations/*.sql') ?: [];
+        sort($files);
         $plan = [];
+        $deferred = [];
         $blocked = [];
-        foreach (glob($this->dir($j['uuid']) . '/staging/database/migrations/*.sql') ?: [] as $file) {
+        foreach ($files as $file) {
             $name = basename($file);
             if (\Waimart\Core\Migrator::isApplied($name, $applied)) {   // by number, so a renamed migration is not run again
                 continue;
             }
             $statements = UpdateSqlGuard::analyse((string) file_get_contents($file));
-            foreach ($statements as $s) {
-                if (!$s['ok']) {
-                    $blocked[] = "$name: {$s['reason']}";
-                }
+            $unsafe = array_values(array_unique(array_map(fn ($s) => $s['reason'], array_filter($statements, fn ($s) => !$s['ok']))));
+            $entry = ['file' => $name, 'statements' => array_map(fn ($s) => ['summary' => $s['summary'], 'ok' => $s['ok'], 'reason' => $s['reason']], $statements)];
+            if ($unsafe || $deferred) {
+                $deferred[] = $entry + ['why' => $unsafe ? implode(' ', $unsafe) : 'Runs after ' . $deferred[0]['file'] . '.'];
+            } else {
+                $plan[] = $entry;
             }
-            $plan[] = ['file' => $name, 'statements' => array_map(fn ($s) => ['summary' => $s['summary'], 'ok' => $s['ok'], 'reason' => $s['reason']], $statements)];
         }
-        usort($plan, fn ($a, $b) => strcmp($a['file'], $b['file']));
         foreach ($j['lint'] as $l) {
             $blocked[] = "PHP syntax error in $l";
         }
         $j['plan'] = $plan;
+        $j['deferred'] = $deferred;
         $j['blocked'] = $blocked;
+        if ($deferred) {
+            $this->log($j, 'Left for Database updates: ' . implode(', ', array_column($deferred, 'file')));
+        }
         $changes = count($j['files']['changed']) + count($j['files']['added']);
         $this->db->exec('UPDATE system_updates SET files_changed = ?, files_added = ?, db_changes = ? WHERE id = ?',
             [count($j['files']['changed']), count($j['files']['added']), count($plan), $j['db_id']]);
@@ -389,7 +401,8 @@ final class SiteUpdater
             return $this->status($j, 'blocked', 'prepare', 100, 'This update cannot be installed while the website is live. See the reasons below.', false);
         }
         if ($changes === 0 && !$plan) {
-            return $this->status($j, 'nothing', 'done', 100, 'The website already has everything in this package. Nothing to install.');
+            return $this->status($j, 'nothing', 'done', 100, 'The website already has every file in this package. Nothing to install.'
+                . ($deferred ? ' Database updates are waiting: run them under Database updates on this page.' : ''));
         }
         return $this->status($j, 'ready', 'prepare', 100, 'Ready to install.');
     }

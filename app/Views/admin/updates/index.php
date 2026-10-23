@@ -1,7 +1,7 @@
 <?php
 use Waimart\Core\Csrf;
 
-/** @var array<string,mixed>|null $active @var list<array<string,mixed>> $history @var int $maxMb */
+/** @var array<string,mixed>|null $active @var list<array<string,mixed>> $history @var int $maxMb @var list<array<string,mixed>> $dbPending */
 $latestCompleted = null;
 foreach ($history as $h) {
     if ($h['status'] === 'completed') {
@@ -16,8 +16,9 @@ $label = ['completed' => 'Installed', 'rolled_back' => 'Rolled back', 'failed' =
 ?>
 <div class="wm-admin-head"><h1>Website updates</h1></div>
 <p class="small text-muted">Upload a <strong>.zip of the project</strong> to update the website while it stays open. Only files that changed and new files are
-    installed; nothing is deleted. Database changes may only <em>add</em> (new tables, columns, indexes and reference rows): anything that would change or
-    delete existing data is refused before anything happens. Your settings file, uploads and storage are never touched. Every update can be rolled back.</p>
+    installed; nothing is deleted. Database additions (new tables, columns, indexes and reference rows) install with the update. Database changes that
+    would modify existing data are <strong>not</strong> run with it: they wait under <a href="#database">Database updates</a> below, for you to run when
+    ready. Your settings file, uploads and storage are never touched. Every update can be rolled back.</p>
 
 <div data-updater
      data-base="<?= e(url('/admin/updates')) ?>" data-rescue="<?= e(url('/update-rescue.php')) ?>"
@@ -73,13 +74,19 @@ $label = ['completed' => 'Installed', 'rolled_back' => 'Rolled back', 'failed' =
                 <div class="col-6 col-md-3"><div class="wm-update-stat"><span data-count="db">0</span>database changes</div></div>
             </div>
             <div class="alert alert-danger small" data-blocked hidden>
-                <p class="fw-bold mb-1">This update cannot be installed while the website is live:</p>
+                <p class="fw-bold mb-1">This update cannot be installed:</p>
                 <ul class="mb-1" data-blocked-list></ul>
-                <p class="mb-0">Fix the package and upload it again. Database changes that modify existing data must be installed during a quiet period with <code>php bin/migrate.php</code>.</p>
+                <p class="mb-0">Fix the package and upload it again.</p>
+            </div>
+            <div class="alert alert-warning small" data-deferred hidden>
+                <p class="fw-bold mb-1"><i class="bi bi-database-exclamation me-1" aria-hidden="true"></i>Database changes left for later</p>
+                <p class="mb-1">These change existing data, so they are <strong>not</strong> run with this update. The files install now; run these
+                    afterwards under <strong>Database updates</strong> on this page (a backup is taken first). Until then, anything that needs them may not work.</p>
+                <ul class="mb-0" data-deferred-list></ul>
             </div>
             <details class="mb-2"><summary class="small">Files that will change</summary><ul class="small font-monospace mt-2 mb-0" data-list="changed"></ul></details>
             <details class="mb-2"><summary class="small">New files</summary><ul class="small font-monospace mt-2 mb-0" data-list="added"></ul></details>
-            <details class="mb-3"><summary class="small">Database changes (additions only)</summary><ul class="small mt-2 mb-0" data-list="db"></ul></details>
+            <details class="mb-3"><summary class="small">Database additions installed with this update</summary><ul class="small mt-2 mb-0" data-list="db"></ul></details>
             <form class="row g-2 align-items-end" data-install-form novalidate>
                 <div class="col-md-6">
                     <label class="form-label" for="installPassword">Your password, to confirm</label>
@@ -105,6 +112,44 @@ $label = ['completed' => 'Installed', 'rolled_back' => 'Rolled back', 'failed' =
         </div>
     </section>
 </div>
+
+<section class="wm-panel mb-3" id="database" aria-labelledby="dbUpdatesTitle">
+    <div class="wm-panel-head"><span id="dbUpdatesTitle"><i class="bi bi-database-gear me-1" aria-hidden="true"></i>Database updates</span>
+        <?php if ($dbPending): ?><span class="badge text-bg-danger"><?= count($dbPending) ?> waiting</span><?php else: ?><span class="badge badge-soft-success">Up to date</span><?php endif; ?></div>
+    <div class="wm-panel-body">
+        <?php if (!$dbPending): ?>
+            <p class="mb-0 small text-muted"><i class="bi bi-check-circle-fill text-success me-1" aria-hidden="true"></i>The database has every change the installed version needs. Nothing to run.</p>
+        <?php else: ?>
+            <p class="small mb-2">The installed version includes database changes that have not been run yet. They run in this order. A full backup of the
+                database is taken first, and every step is recorded in the audit log.</p>
+            <ol class="small mb-3">
+                <?php foreach ($dbPending as $m): ?>
+                    <li class="mb-1"><strong class="font-monospace"><?= e($m['file']) ?></strong>
+                        <?= $m['changes_data'] ? '<span class="badge badge-soft-warning ms-1">changes existing data</span>' : '<span class="badge badge-soft-success ms-1">additions only</span>' ?>
+                        <details><summary class="text-muted">What it does (<?= count($m['statements']) ?> step<?= count($m['statements']) === 1 ? '' : 's' ?>)</summary>
+                            <ul class="mt-1 mb-0">
+                                <?php foreach ($m['statements'] as $s): ?><li class="<?= $s['ok'] ? '' : 'text-warning-emphasis' ?>"><?= e($s['summary']) ?></li><?php endforeach; ?>
+                            </ul></details>
+                    </li>
+                <?php endforeach; ?>
+            </ol>
+            <?php if ($active): ?>
+                <p class="small text-muted mb-0">Finish or cancel the website update above first.</p>
+            <?php else: ?>
+                <form class="row g-2 align-items-end" method="post" action="<?= e(url('/admin/updates/database')) ?>"
+                      data-confirm="Run <?= count($dbPending) ?> database update<?= count($dbPending) === 1 ? '' : 's' ?> now? A backup is taken first. Best done when the shop is quiet.">
+                    <?= csrf_field() ?>
+                    <div class="col-md-6">
+                        <label class="form-label" for="dbPassword">Your password, to confirm</label>
+                        <input class="form-control<?= invalid('password') ?>" type="password" id="dbPassword" name="password" autocomplete="current-password" required>
+                        <?= field_error('password') ?>
+                    </div>
+                    <div class="col-md-6"><button class="btn btn-wm-green w-100" type="submit" data-loading-text="Backing up and updating the database…"><i class="bi bi-database-check" aria-hidden="true"></i> Back up and run database updates</button></div>
+                </form>
+            <?php endif; ?>
+        <?php endif; ?>
+    </div>
+</section>
 
 <section class="wm-panel">
     <div class="wm-panel-head">Update history</div>
