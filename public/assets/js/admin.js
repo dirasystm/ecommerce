@@ -2,6 +2,38 @@
 (function () {
     'use strict';
 
+    // The menu keeps its scroll position from page to page, so staff carry on where they were instead of starting
+    // from the top. If the current page's link would be out of sight, it is brought into view.
+    (function () {
+        var KEY = 'wm_admin_nav_scroll';
+        var side = document.querySelector('nav.wm-admin-side');
+        if (side) {
+            var saved = null;
+            try { saved = window.sessionStorage.getItem(KEY); } catch (e) { saved = null; }
+            if (saved !== null) { side.scrollTop = parseInt(saved, 10) || 0; }
+            var current = side.querySelector('.wm-admin-nav-link.active');
+            if (current && side.scrollHeight > side.clientHeight) {
+                var box = side.getBoundingClientRect(), link = current.getBoundingClientRect();
+                if (link.top < box.top || link.bottom > box.bottom) {
+                    side.scrollTop += link.top - box.top - (side.clientHeight - link.height) / 2;
+                }
+            }
+            var save = function () {
+                try { window.sessionStorage.setItem(KEY, String(side.scrollTop)); } catch (e) { /* private browsing */ }
+            };
+            side.addEventListener('scroll', function () { window.requestAnimationFrame(save); }, { passive: true });
+            window.addEventListener('pagehide', save);
+        }
+        // Phones: opening the slide-out menu shows the current page's link.
+        var drawer = document.getElementById('wmAdminNav');
+        if (drawer) {
+            drawer.addEventListener('shown.bs.offcanvas', function () {
+                var a = drawer.querySelector('.wm-admin-nav-link.active');
+                if (a) { a.scrollIntoView({ block: 'center' }); }
+            });
+        }
+    })();
+
     // (Confirmation prompts for form[data-confirm] are handled in app.js, loaded first.)
 
     // Wide tables that scroll sideways must be reachable by keyboard (WCAG 2.1.1; audit A-5): focusable, labelled region.
