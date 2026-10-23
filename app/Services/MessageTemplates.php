@@ -31,7 +31,8 @@ final class MessageTemplates
     public const ACCOUNT_VARS = ['store' => 'Store name', 'first_name' => 'First name', 'support_phone' => 'Customer care phone', 'support_email' => 'Customer care email'];
 
     public const GROUPS = ['orders' => 'Orders', 'payments' => 'Payments', 'returns' => 'Returns & refunds', 'cases' => 'Seller cases',
-                           'account' => 'Account', 'sellers' => 'Seller messages', 'stations' => 'Pickup stations', 'marketing' => 'Marketing automations'];
+                           'account' => 'Account', 'sellers' => 'Seller messages', 'stations' => 'Pickup stations', 'marketing' => 'Marketing automations',
+                           'staff' => 'Staff alerts'];
 
     /**
      * code => [
@@ -200,6 +201,23 @@ final class MessageTemplates
             ['reference' => 'Application reference', 'business_name' => 'Business name', 'town' => 'Town', 'county' => 'County', 'review_url' => 'Admin page to review the application'], ['email'], [], true, [],
             'New pickup station application: {business_name}, {town}',
             "Hello {first_name},\n\n{business_name} in {town}, {county} has applied to become a pickup station (reference {reference}). Please verify the details and approve or reject the application.\n\n{review_url}\n\n{store}", ''],
+        // Staff alerts: to super administrators and the staff who confirm orders / verify payments (StaffAlerts).
+        'staff_order_new' => ['New order placed (to staff)', 'staff', 'Sent at once to super administrators and to staff who confirm orders (cash on delivery) or verify payments (M-Pesa).', 'account',
+            ['order_number' => 'Order number', 'customer_name' => 'Customer name', 'customer_phone' => 'Customer phone', 'order_total' => 'Order total',
+             'payment_method' => 'How the customer pays', 'fulfilment' => 'Home delivery or pickup station', 'action' => 'What to do next', 'order_url' => 'Admin page of the order'],
+            ['email', 'sms'], [], true, [],
+            'New order {order_number}: {order_total} ({payment_method})',
+            "Hello {first_name},\n\nA new order has just been placed.\n\nOrder: {order_number}\nCustomer: {customer_name}, {customer_phone}\nTotal: {order_total}\nPayment: {payment_method}\nDelivery: {fulfilment}\n\n{action}\n\n{order_url}\n\n{store}",
+            '{store}: new order {order_number}, {order_total}, {payment_method}. {customer_name} {customer_phone}. Open: {order_url}'],
+        'staff_payment_submitted' => ['M-Pesa code submitted (to staff)', 'staff', 'Sent at once to super administrators and staff who verify payments when a customer submits an M-Pesa transaction code.', 'account',
+            ['order_number' => 'Order number', 'customer_name' => 'Customer name', 'customer_phone' => 'Customer phone', 'order_total' => 'Order total',
+             'payment_method' => 'Till, Paybill or phone', 'fulfilment' => 'Home delivery or pickup station', 'order_url' => 'Admin page of the order',
+             'transaction_code' => 'M-Pesa transaction code', 'amount_claimed' => 'Amount the customer says they paid', 'payer_phone' => 'Phone the customer paid from',
+             'payments_url' => 'Admin page with payments to verify'],
+            ['email', 'sms'], [], true, [],
+            'Verify M-Pesa {transaction_code} for order {order_number}',
+            "Hello {first_name},\n\nThe customer has sent the M-Pesa payment details for order {order_number}.\n\nTransaction code: {transaction_code}\nAmount claimed: {amount_claimed} (order total {order_total})\nPaid from: {payer_phone}\nPaid to: {payment_method}\nCustomer: {customer_name}, {customer_phone}\n\nCheck the code on the M-Pesa statement and verify or reject it, so the order can be confirmed. The stock is held for a limited time.\n\n{payments_url}\n\n{store}",
+            '{store}: verify M-Pesa {transaction_code}, {amount_claimed} for order {order_number} (total {order_total}). {payments_url}'],
     ];
 
     private const STATUS_EMAIL_A = "Hello {customer_name},\n\n";
@@ -326,7 +344,11 @@ final class MessageTemplates
             'refund_reference' => 'SGH7K2L9XR', 'case_number' => 'CS-4MN8P2QR', 'sender' => 'Example Electronics', 'excerpt' => '"We have sent a replacement."',
             'outcome' => 'Refund the customer (KSh 1,200). Item arrived damaged.', 'login_url' => rtrim((string) config('app.url'), '/') . '/login',
             'reset_link' => rtrim((string) config('app.url'), '/') . '/reset-password?token=…', 'minutes' => '60', 'code' => '483920',
-            'subject' => 'New order ' . Brand::orderPrefix() . '-7K2L9XQ4-2 for Example Electronics', 'message' => 'You have a new order to prepare. Open Seller Centre to accept it.'] + self::contactVars();
+            'subject' => 'New order ' . Brand::orderPrefix() . '-7K2L9XQ4-2 for Example Electronics', 'message' => 'You have a new order to prepare. Open Seller Centre to accept it.',
+            'customer_phone' => '0712 345 678', 'payment_method' => 'M-Pesa Till (Buy Goods)', 'fulfilment' => 'Home delivery',
+            'action' => 'The customer pays by M-Pesa. Verify the transaction code as soon as it arrives.',
+            'order_url' => rtrim((string) config('app.url'), '/') . '/admin/orders/123', 'amount_claimed' => Money::format('2450.00'), 'payer_phone' => '0712 345 678',
+            'payments_url' => rtrim((string) config('app.url'), '/') . '/admin/payments'] + self::contactVars();
         return $this->render($code, $sample);
     }
 

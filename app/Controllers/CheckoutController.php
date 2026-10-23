@@ -181,6 +181,7 @@ final class CheckoutController extends Controller
 
         $order = $result['order'];
         \Waimart\Services\Marketing\Signals::orderPlaced($order);
+        \Waimart\Services\StaffAlerts::orderPlaced($order);          // email + SMS to the staff who must confirm it
         OrderAccess::grant((string) $order['order_number'], 'placed');
         if ($result['access_token'] !== null) {
             // Shown once on the confirmation page so guests can bookmark their private tracking link.

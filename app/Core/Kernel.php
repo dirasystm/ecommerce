@@ -91,6 +91,9 @@ final class Kernel
             case 'guest':
                 return Auth::check() ? Response::redirect('/account') : null;
             case 'staff':
+                if ($req->isBackground() && (!Auth::check() || !Auth::isStaff())) {
+                    return Response::json(['signed_in' => false], 401);
+                }
                 if (!Auth::check()) {
                     Session::set('intended', $req->path);
                     return Response::redirect('/admin/login');
@@ -102,6 +105,11 @@ final class Kernel
                 // done, only the staff member's own account page is open.
                 $u = (array) Auth::user();
                 if (!str_starts_with($req->path, '/admin/account')) {
+                    $blocked = (int) ($u['must_change_password'] ?? 0) === 1
+                        || (\Waimart\Services\MfaService::requiredForStaff() && !\Waimart\Services\MfaService::enabled($u));
+                    if ($blocked && $req->isBackground()) {
+                        return Response::json(['signed_in' => false], 401);   // no counts, and no warning used up
+                    }
                     if ((int) ($u['must_change_password'] ?? 0) === 1) {
                         Session::flash('warning', 'Please choose a new password before continuing.');
                         return Response::redirect('/admin/account');

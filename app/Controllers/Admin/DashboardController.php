@@ -37,6 +37,7 @@ final class DashboardController extends AdminController
         $q = $db->one(
             "SELECT
                (SELECT COUNT(*) FROM orders WHERE status = 'pending_confirmation') AS cod_to_confirm,
+               (SELECT COUNT(*) FROM orders WHERE status = 'awaiting_payment') AS awaiting_payment,
                (SELECT COUNT(*) FROM payment_submissions WHERE status = 'pending') AS payments_to_verify,
                (SELECT COUNT(*) FROM order_resolutions WHERE status = 'open') AS resolutions,
                (SELECT COUNT(*) FROM orders WHERE status IN ('confirmed','processing')) AS to_prepare,
@@ -69,5 +70,12 @@ final class DashboardController extends AdminController
             );
         }
         return $this->view('dashboard', $data);
+    }
+
+    /** GET /admin/alerts: the red menu counts and the pending-orders reminder, refreshed by admin.js every 30 seconds. */
+    public function alerts(Request $req): Response
+    {
+        return Response::json(['badges' => \Waimart\Services\AdminAlerts::counts(), 'pending' => \Waimart\Services\AdminAlerts::pendingOrders()])
+            ->withHeader('Cache-Control', 'no-store');
     }
 }

@@ -25,6 +25,7 @@ final class PaymentHttpTest extends FeatureTestCase
     public function testCustomerSubmitsAndFinanceVerifiesWithPermissions(): void
     {
         $v = $this->makeVariant(5)['variant_id'];
+        $verifier = $this->makeStaff('finance');
         $o = $this->placeOrder([[$v, 1]], 'mpesa_till', 'delivery', ['customer_phone' => '0733222111']);
 
         // Guest proves access with number + phone, then submits a code.
@@ -36,6 +37,8 @@ final class PaymentHttpTest extends FeatureTestCase
         $this->assertStringContainsString('confirmed only after verification', $after);
         $this->assertStringContainsString('SGH7K2L9XQ', $after);
         $this->assertStringContainsString('Awaiting verification', $after);
+        $alert = (string) $this->db->value("SELECT body FROM notifications WHERE template = 'staff_payment_submitted' AND channel = 'email' AND recipient = ?", [$verifier['email']]);
+        $this->assertStringContainsString('SGH7K2L9XQ', $alert, 'the payment verifier is told at once, with the code');
         $this->post('/logout', [], $page);
 
         // Support can see the queue but not decide.

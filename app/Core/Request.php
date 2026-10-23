@@ -84,6 +84,12 @@ final class Request
             || str_contains((string) ($this->server['HTTP_ACCEPT'] ?? ''), 'application/json');
     }
 
+    /** A refresh the page makes on its own (admin alert counts): it must not change the session or where sign-in leads. */
+    public function isBackground(): bool
+    {
+        return ($this->server['HTTP_X_WM_BACKGROUND'] ?? '') === '1';
+    }
+
     public function ip(): string
     {
         // REMOTE_ADDR only: forwarded headers are spoofable unless behind a known proxy.

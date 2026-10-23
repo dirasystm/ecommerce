@@ -182,6 +182,52 @@ Install a new version of the website from a **.zip of the project** while the sh
 - Every step is in the audit log (`system.update_*`) and the update history.
 - PHP's zip extension is **not** needed: the updater reads standard .zip files itself.
 
+## Staff alerts for new orders
+
+As soon as a customer places an order, the staff who must act on it get an **email and an SMS**:
+- **M-Pesa orders:** super administrators and everyone who can verify payments (permission `payments.verify`, e.g. Finance and Manager). They are alerted again the moment the customer submits the M-Pesa transaction code, with the code, the amount claimed and the phone it was paid from.
+- **Cash-on-delivery orders:** super administrators and everyone who can confirm orders (`orders.manage`, e.g. Manager and Fulfilment staff).
+
+How it works:
+- Who receives alerts follows **System → Roles & permissions**; suspended staff receive nothing.
+- Staff need a phone number on their account to get the SMS.
+- The alerts are sent after the customer's page has loaded, so checkout is never slowed down.
+- Every alert appears in **Email & SMS → Message log**.
+- Wording: **Messages → Staff alerts** ("New order placed (to staff)", "M-Pesa code submitted (to staff)").
+- SMS needs the gateway to be on; until then, alerts go by email.
+
+### Red counts and the "orders waiting" reminder
+
+While signed in to the admin, a **red number** next to a menu item shows how much work is waiting there.
+
+**Orders** counts the orders not yet acted on, and only the ones you can move on:
+- COD orders to confirm (`orders.manage`);
+- M-Pesa codes to verify (`payments.verify`);
+- orders needing a resolution (`resolutions.manage`).
+
+Other menu items count their own queues, again only for staff who can open them:
+- M-Pesa payments, Collection desk, Seller orders, Returns and Reviews;
+- Resolutions, Cash on delivery, Refunds;
+- Seller applications, Product approvals, Seller cases and Station applications.
+
+While orders are waiting, a **pop-up in the bottom-right corner** says "N orders are waiting for your action" and links to the right orders.
+- **Remind me later** hides the pop-up for 10 minutes. It comes back at once if another order arrives.
+- The counts, and the "(N)" in the browser tab title, refresh every 30 seconds, so a new order appears without reloading the page.
+- These refreshes do not keep an idle admin signed in: the session still times out as usual.
+
+The **Dashboard** opens with **Priority actions**: one coloured, clickable tile per queue that has work waiting, showing how many. The most urgent tiles come first, and each tile opens its list.
+
+| Colour | Tier | Queues |
+|---|---|---|
+| Red | Urgent | COD orders to confirm, M-Pesa payments to verify, orders needing resolution, refunds due |
+| Orange | Do today | Orders to prepare, packed and ready to dispatch, seller parcels to receive, pickups past the hold period, returns |
+| Blue | Approval | Seller applications, products to approve, station applications, reviews, open seller cases |
+| Purple | Follow up | New orders still awaiting payment, COD cash not recorded |
+| Amber | Stock | Variants out of stock or low on stock |
+
+- Empty queues are listed underneath under "All clear".
+- The sales chart now sits below Latest orders.
+
 ## Marketing Intelligence (Admin → Marketing Intelligence)
 
 Recommendations, customer segments, promotional links with results, leads and automated marketing messages. Everything is counted from what happens on this shop; nothing is estimated except where the screen says "est.".

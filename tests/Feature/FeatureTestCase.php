@@ -21,6 +21,8 @@ abstract class FeatureTestCase extends DbTestCase
     protected string $lastBody = '';
     /** User-Agent sent with requests (null: none), e.g. to act as a link-preview crawler. */
     protected ?string $userAgent = null;
+    /** @var list<string> extra request headers, e.g. 'X-WM-Background: 1' */
+    protected array $requestHeaders = [];
 
     public static function setUpBeforeClass(): void
     {
@@ -92,6 +94,9 @@ abstract class FeatureTestCase extends DbTestCase
         ]);
         if ($this->userAgent !== null) {
             curl_setopt($ch, CURLOPT_USERAGENT, $this->userAgent);
+        }
+        if ($this->requestHeaders) {
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $this->requestHeaders);
         }
         if ($method === 'POST') {
             if ($files) {

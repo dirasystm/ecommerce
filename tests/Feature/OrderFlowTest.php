@@ -69,7 +69,13 @@ final class OrderFlowTest extends FeatureTestCase
 
     public function testGuestPlacesOrderAndSeesConfirmation(): void
     {
+        $admin = $this->makeStaff('super_admin');
+        $support = $this->makeStaff('support');
         [$r] = $this->placeOrder();
+        $number = (string) $this->db->value('SELECT order_number FROM orders ORDER BY id DESC LIMIT 1');
+        $this->assertStringContainsString($number, (string) $this->db->value("SELECT subject FROM notifications WHERE template = 'staff_order_new' AND channel = 'email' AND recipient = ?", [$admin['email']]),
+            'the super admin is emailed about the new order at once');
+        $this->assertSame(0, (int) $this->db->value("SELECT COUNT(*) FROM notifications WHERE template = 'staff_order_new' AND recipient = ?", [$support['email']]), 'staff who cannot confirm it are not');
         $this->assertSame(303, $r['status']);
         $this->assertMatchesRegularExpression('#/order/BM-[A-Z0-9]{8}/confirmation$#', $r['headers']['location']);
         $page = $this->follow($r);
@@ -85,12 +91,15 @@ final class OrderFlowTest extends FeatureTestCase
 
     public function testDoubleSubmitAndStaleFormsNeverCreateSecondOrder(): void
     {
+        $admin = $this->makeStaff('super_admin');
         [$first, , $data] = $this->placeOrder();
         $again = $this->http('POST', '/checkout', $data, [], '/checkout');           // double-click / refresh / retry
         $this->assertSame(303, $again['status']);
         $this->assertSame($first['headers']['location'], $again['headers']['location'], 'same confirmation page');
         $this->assertSame(1, (int) $this->db->value('SELECT COUNT(*) FROM orders'));
         $this->assertSame(2, (int) $this->db->value('SELECT reserved FROM inventory WHERE variant_id = ?', [$this->variant]));
+        $this->assertSame(1, (int) $this->db->value("SELECT COUNT(*) FROM notifications WHERE template = 'staff_order_new' AND channel = 'email' AND recipient = ?", [$admin['email']]),
+            'one alert per order, not one per click');
 
         // A forged/unknown token never places an order.
         $this->post('/cart/add', ['variant_id' => (string) $this->variant, 'quantity' => '1'], '/product/' . $this->slug());

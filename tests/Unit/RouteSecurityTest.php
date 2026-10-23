@@ -32,6 +32,9 @@ final class RouteSecurityTest extends TestCase
             if (str_starts_with($r['pattern'], '/admin/account')) {
                 continue;   // every staff member's own account (password, two-step sign-in): staff only, no permission
             }
+            if ($r['pattern'] === '/admin/alerts') {
+                continue;   // the red menu counts: any staff, filtered inside to the queues their permissions open
+            }
             $perms = array_filter($r['middleware'], fn ($m) => str_starts_with($m, 'can:'));
             $this->assertNotEmpty($perms, "{$r['method']} {$r['pattern']} must declare a permission");
         }

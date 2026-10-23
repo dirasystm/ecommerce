@@ -105,3 +105,30 @@ body.wm-admin { background: #f4f6f5; padding-bottom: 0; }
 .wm-creative-head { font-weight: 700; font-size: 1.05rem; line-height: 1.3; margin-bottom: 4px; }
 .wm-qr { width: 200px; height: 200px; }
 .wm-qr img { width: 200px; height: 200px; image-rendering: pixelated; }
+
+/* Work waiting: red counts in the menu and the pending-orders reminder. */
+.wm-nav-badge { margin-left: auto; min-width: 22px; height: 20px; padding: 0 6px; border-radius: 10px; background: #c62828; color: #fff; font-size: .72rem; font-weight: 700; line-height: 20px; text-align: center; }
+.wm-nav-badge[hidden] { display: none; }
+.wm-pending-pop { position: fixed; right: 16px; bottom: 16px; z-index: 1080; display: flex; gap: 12px; align-items: flex-start; width: min(360px, calc(100vw - 32px)); padding: 14px 14px 14px 16px; background: #fff; border-left: 4px solid #c62828; border-radius: var(--wm-radius); box-shadow: 0 8px 28px rgba(0, 0, 0, .22); animation: wm-pop-in .25s ease-out; }
+.wm-pending-pop[hidden] { display: none; }
+.wm-pending-pop-icon { flex: none; width: 36px; height: 36px; border-radius: 50%; background: #fdecea; color: #c62828; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+.wm-pending-pop .btn-close { flex: none; }
+@keyframes wm-pop-in { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .wm-pending-pop { animation: none; } }
+
+/* Dashboard priority actions: one clickable tile per waiting queue; colour = tier, and the tier is also written on it. */
+.wm-priority-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
+.wm-priority-tile { --tier: #c62828; --tier-bg: #fdecea; --tier-ink: #8e1b1b; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: var(--wm-radius); border: 1px solid transparent; border-left: 5px solid var(--tier); background: var(--tier-bg); color: var(--wm-text); text-decoration: none; transition: transform .12s ease, box-shadow .12s ease; }
+.wm-priority-tile:hover, .wm-priority-tile:focus-visible { text-decoration: none; color: var(--wm-text); transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0, 0, 0, .12); border-color: var(--tier); }
+.wm-priority-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.wm-priority-tier { font-size: .6875rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--tier-ink); background: #fff; border-radius: 999px; padding: 2px 8px; }
+.wm-priority-count { font-size: 2rem; font-weight: 800; line-height: 1; color: var(--tier-ink); font-variant-numeric: tabular-nums; }
+.wm-priority-label { font-weight: 700; font-size: .95rem; }
+.wm-priority-hint { font-size: .8125rem; color: #4a4a4a; }
+.wm-tier-action { --tier: #e65100; --tier-bg: #fff1e3; --tier-ink: #9a3600; }
+.wm-tier-approval { --tier: #1a56db; --tier-bg: #e8effd; --tier-ink: #163f9e; }
+.wm-tier-follow { --tier: #7b3fbf; --tier-bg: #f3eafc; --tier-ink: #57288c; }
+.wm-tier-stock { --tier: #b88a00; --tier-bg: #fff7d6; --tier-ink: #5f4700; }
+.wm-tier-urgent .wm-priority-count { animation: wm-pulse 2s ease-in-out 3; }
+@keyframes wm-pulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .wm-priority-tile { transition: none; } .wm-tier-urgent .wm-priority-count { animation: none; } }

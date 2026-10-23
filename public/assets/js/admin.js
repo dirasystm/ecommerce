@@ -223,4 +223,70 @@
             });
         });
     }
+
+    // Work waiting: red menu counts, "(N)" in the tab title and a reminder pop-up while orders wait for action.
+    // Counts refresh every 30 seconds (marked as a background request, so an idle session still times out). A dismissed
+    // reminder comes back after 10 minutes, or at once when another order arrives.
+    (function () {
+        var url = document.body.getAttribute('data-alerts-url');
+        var pop = document.getElementById('wmPendingPop');
+        if (!url || !pop) { return; }
+        var REMIND_MS = 10 * 60 * 1000;
+        var baseTitle = document.title;
+        function store(k, v) {
+            try { if (v === undefined) { return window.sessionStorage.getItem(k); } window.sessionStorage.setItem(k, String(v)); } catch (e) { return null; }
+            return null;
+        }
+        function badges(map) {
+            document.querySelectorAll('[data-badge-for]').forEach(function (b) {
+                var n = parseInt(map[b.getAttribute('data-badge-for')], 10) || 0;
+                b.firstChild.nodeValue = n > 99 ? '99+' : String(n);
+                b.hidden = n <= 0;
+            });
+        }
+        function remind(p) {
+            var n = p ? p.count : 0;
+            document.title = (n > 0 ? '(' + n + ') ' : '') + baseTitle;
+            if (n <= 0) { pop.hidden = true; return; }
+            document.getElementById('wmPendingMsg').textContent = p.message;
+            document.getElementById('wmPendingOpen').setAttribute('href', p.url);
+            var seen = parseInt(store('wm_pending_seen'), 10) || 0;
+            var until = parseInt(store('wm_pending_until'), 10) || 0;
+            if (n > seen || Date.now() >= until) { pop.hidden = false; }
+        }
+        function later() {
+            store('wm_pending_seen', parseInt(pop.getAttribute('data-count'), 10) || 0);
+            store('wm_pending_until', Date.now() + REMIND_MS);
+            pop.hidden = true;
+        }
+        document.getElementById('wmPendingLater').addEventListener('click', later);
+        document.getElementById('wmPendingClose').addEventListener('click', later);
+        document.getElementById('wmPendingOpen').addEventListener('click', function () {
+            store('wm_pending_seen', parseInt(pop.getAttribute('data-count'), 10) || 0);
+            store('wm_pending_until', Date.now() + REMIND_MS);
+        });
+
+        var initial = parseInt(pop.getAttribute('data-count'), 10) || 0;
+        remind(initial > 0 ? { count: initial, message: document.getElementById('wmPendingMsg').textContent, url: document.getElementById('wmPendingOpen').getAttribute('href') } : null);
+
+        var timer = null;
+        function refresh() {
+            if (document.hidden || !window.fetch) { return; }
+            fetch(url, { credentials: 'same-origin', headers: { 'Accept': 'application/json', 'X-WM-Background': '1' } })
+                .then(function (r) {
+                    var json = (r.headers.get('Content-Type') || '').indexOf('application/json') !== -1;
+                    if (!json || r.status === 401) { clearInterval(timer); }   // signed out: stop asking
+                    return json && r.ok ? r.json() : null;
+                })
+                .then(function (d) {
+                    if (!d) { return; }
+                    badges(d.badges || {});
+                    pop.setAttribute('data-count', d.pending ? d.pending.count : 0);
+                    remind(d.pending);
+                })
+                .catch(function () {});                        // offline for a moment: try again next time
+        }
+        timer = setInterval(refresh, 30000);
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) { refresh(); } });
+    })();
 })();

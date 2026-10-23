@@ -91,6 +91,7 @@ final class PaymentService
             return (array) $this->db->one('SELECT * FROM payment_submissions WHERE id = ?', [$id]);
         });
         $this->notify($orderId, 'payment_submitted', ['transaction_code' => $code]);
+        StaffAlerts::paymentSubmitted($orderId, $result);              // the verifiers check it against the statement at once
         return $result;
     }
 

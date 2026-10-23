@@ -184,6 +184,7 @@ $router->post('/logout', [Admin\AuthController::class, 'logout'], [], 'logout');
 
 $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) {
     $r->get('/', [Admin\DashboardController::class, 'index'], ['can:dashboard.view'], 'admin');
+    $r->get('/alerts', [Admin\DashboardController::class, 'alerts']);   // any staff: only the queues they may act on
 
     $r->get('/moderation/products', [Admin\ProductController::class, 'moderation'], ['can:products.moderate']);
     $r->post('/moderation/products/{id:\d+}/approve', [Admin\ProductController::class, 'approve'], ['can:products.moderate']);

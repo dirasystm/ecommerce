@@ -95,7 +95,15 @@ $active = function (string $href) use ($path, $allHrefs): bool {
     }
     return true;
 };
-$renderNav = function () use ($nav, $active): string {
+// Red counts of work waiting for this person (only queues they may act on); admin.js keeps them fresh.
+try {
+    $badges = \Waimart\Services\AdminAlerts::counts();
+    $pending = \Waimart\Services\AdminAlerts::pendingOrders();
+} catch (\Throwable) {
+    $badges = [];
+    $pending = null;
+}
+$renderNav = function () use ($nav, $active, $badges): string {
     ob_start();
     foreach ($nav as [$group, $items]) {
         $visible = array_filter($items, fn ($i) => $i[3] === null || Auth::can($i[3]));
@@ -103,9 +111,10 @@ $renderNav = function () use ($nav, $active): string {
             continue;
         } ?>
         <div class="wm-admin-nav-group"><?= e($group) ?></div>
-        <?php foreach ($visible as [$href, $icon, $label]): ?>
+        <?php foreach ($visible as [$href, $icon, $label]): $n = $badges[$href] ?? null; ?>
             <a class="wm-admin-nav-link<?= $active($href) ? ' active' : '' ?>" href="<?= e(url($href)) ?>" <?= $active($href) ? 'aria-current="page"' : '' ?>>
                 <i class="bi bi-<?= e($icon) ?>" aria-hidden="true"></i><?= e($label) ?>
+                <?php if ($n !== null): ?><span class="wm-nav-badge" data-badge-for="<?= e($href) ?>"<?= $n > 0 ? '' : ' hidden' ?>><?= $n > 99 ? '99+' : (int) $n ?><span class="visually-hidden"> waiting</span></span><?php endif; ?>
             </a>
         <?php endforeach;
     }
@@ -124,7 +133,7 @@ $renderNav = function () use ($nav, $active): string {
     <link rel="stylesheet" href="<?= e(asset('css/admin.css')) ?>">
 <?= \Waimart\Core\View::partial('partials/brand-head', ['ogTitle' => null, 'ogDescription' => null]) ?>
 </head>
-<body class="wm-admin">
+<body class="wm-admin" data-alerts-url="<?= e(url('/admin/alerts')) ?>">
 <a class="skip-link" href="#main">Skip to main content</a>
 <header class="wm-admin-top">
     <button class="btn btn-link text-white d-lg-none p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#wmAdminNav" aria-controls="wmAdminNav" aria-label="Open navigation">
@@ -152,6 +161,17 @@ $renderNav = function () use ($nav, $active): string {
         <?= View::partial('partials/flash') ?>
         <?= $content ?>
     </main>
+</div>
+<div class="wm-pending-pop" id="wmPendingPop" role="status" aria-live="polite" aria-labelledby="wmPendingTitle" hidden
+     data-count="<?= (int) ($pending['count'] ?? 0) ?>">
+    <div class="wm-pending-pop-icon" aria-hidden="true"><i class="bi bi-bell-fill"></i></div>
+    <div class="flex-grow-1">
+        <strong id="wmPendingTitle">Orders waiting for you</strong>
+        <p class="mb-2 small" id="wmPendingMsg"><?= e($pending['message'] ?? '') ?></p>
+        <a class="btn btn-sm btn-danger" id="wmPendingOpen" href="<?= e($pending['url'] ?? url('/admin/orders')) ?>">Open orders</a>
+        <button class="btn btn-sm btn-outline-secondary" type="button" id="wmPendingLater">Remind me later</button>
+    </div>
+    <button class="btn-close" type="button" id="wmPendingClose" aria-label="Dismiss"></button>
 </div>
 <script src="<?= e(asset('vendor/bootstrap/bootstrap.bundle.min.js')) ?>"></script>
 <script src="<?= e(asset('js/ui.js')) ?>"></script>

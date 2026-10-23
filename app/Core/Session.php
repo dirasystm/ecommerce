@@ -36,6 +36,11 @@ final class Session
             self::destroy();
             session_start();
         }
+        // A background refresh (the admin alert counts, every 30 s) neither keeps an idle session alive nor uses up a
+        // flash message meant for the next page the person opens.
+        if (($_SERVER['HTTP_X_WM_BACKGROUND'] ?? '') === '1') {
+            return;
+        }
         $_SESSION['_last_activity'] = $now;
         self::ageFlash();
     }
