@@ -56,6 +56,10 @@ final class OrderNotifier
                      'refund_note' => $order['status'] === 'cancelled' && $order['payment_status'] === 'refund_due'
                         ? ' Because your payment was already received, our team will arrange your refund.' : ''] + MessageTemplates::orderVars($order);
             $ctx = ['user_id' => $order['user_id'] ? (int) $order['user_id'] : null, 'order_id' => (int) $order['id']];
+            if ($order['status'] === 'collected') {
+                $vars['pickup_name'] = (string) $db->value('SELECT pickup_name FROM order_fulfilment WHERE order_id = ?', [$order['id']]);
+                $vars['shop_url'] = rtrim((string) config('app.url'), '/') . '/';
+            }
             if ($order['status'] === 'dispatched') {
                 $vars['tracking_note'] = MessageTemplates::trackingNote((int) $order['id']);
             }

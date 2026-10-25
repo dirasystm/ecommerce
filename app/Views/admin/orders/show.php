@@ -20,7 +20,12 @@ $labels = ['confirmed' => 'Confirm order', 'processing' => 'Start processing', '
         <h1><?= e($order['order_number']) ?> <span class="badge fs-6 align-middle <?= OrderPresenter::badgeClass($order['status']) ?>"><?= e(OrderPresenter::status($order['status'])) ?></span></h1>
         <div class="small text-muted">Placed <?= e(date('d M Y H:i', strtotime($order['placed_at']))) ?> · <?= $order['user_id'] ? 'Registered customer' : 'Guest' ?></div>
     </div>
-    <a class="btn btn-outline-secondary" href="<?= e(url('/admin/orders')) ?>">All orders</a>
+    <div class="d-flex gap-2">
+        <?php if (!in_array($order['status'], ['cancelled', 'expired'], true)): ?>
+            <a class="btn btn-outline-secondary" href="<?= e(url('/admin/orders/' . $order['id'] . '/label', ['print' => 1])) ?>" target="_blank" rel="noopener"><i class="bi bi-printer" aria-hidden="true"></i> Print package label</a>
+        <?php endif; ?>
+        <a class="btn btn-outline-secondary" href="<?= e(url('/admin/orders')) ?>">All orders</a>
+    </div>
 </div>
 
 <div class="row g-3">

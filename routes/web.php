@@ -221,6 +221,8 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     // The step-specific permission (orders.manage / deliver / cancel) is checked in the controller.
     $r->post('/seller-orders/{id:\d+}/status', [Admin\OrderController::class, 'sellerOrderTransition'], ['can:orders.view']);
     $r->get('/orders/{id:\d+}', [Admin\OrderController::class, 'show'], ['can:orders.view']);
+    $r->get('/orders/{id:\d+}/label', [Admin\PackageLabelController::class, 'one'], ['can:orders.view']);
+    $r->get('/labels', [Admin\PackageLabelController::class, 'many'], ['can:orders.view']);
     $r->post('/orders/{id:\d+}/status', [Admin\OrderController::class, 'transition'], ['can:orders.view']);
 
     $r->group(['middleware' => ['can:delivery.manage']], function ($r) {
@@ -281,6 +283,7 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     });
     $r->group(['middleware' => ['can:orders.collect']], function ($r) {
         $r->get('/collections', [Admin\CollectionController::class, 'index']);
+        $r->post('/collections/scan', [Admin\CollectionController::class, 'scan'], ['throttle:120,60']);
         $r->get('/collections/{id:\d+}', [Admin\CollectionController::class, 'show']);
         $r->post('/collections/{id:\d+}', [Admin\CollectionController::class, 'verify'], ['throttle:30,300']);
         $r->post('/collections/{id:\d+}/reissue', [Admin\CollectionController::class, 'reissue']);

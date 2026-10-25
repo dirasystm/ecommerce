@@ -321,4 +321,50 @@
         timer = setInterval(refresh, 30000);
         document.addEventListener('visibilitychange', function () { if (!document.hidden) { refresh(); } });
     })();
+    // Collection desk: the scan box. A USB scanner types the code and presses Enter, which submits the form. On phones
+    // and tablets whose browser can read barcodes, "Camera" scans the label with the camera instead.
+    (function () {
+        var form = document.querySelector('[data-scan-form]');
+        if (!form) { return; }
+        var input = form.querySelector('input[name="code"]');
+        var camBtn = form.querySelector('[data-scan-camera]');
+        var box = form.querySelector('[data-scan-video]');
+        var video = box ? box.querySelector('video') : null;
+        var stream = null, timer = null;
+        form.addEventListener('submit', function (e) {
+            if (input.value.trim() === '') { e.preventDefault(); input.focus(); }
+        });
+        function stop() {
+            if (timer) { clearInterval(timer); timer = null; }
+            if (stream) { stream.getTracks().forEach(function (t) { t.stop(); }); stream = null; }
+            if (box) { box.hidden = true; }
+        }
+        if (camBtn && video && 'BarcodeDetector' in window && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+            window.BarcodeDetector.getSupportedFormats().then(function (formats) {
+                if (formats.indexOf('code_128') === -1) { return; }
+                camBtn.hidden = false;
+                var detector = new window.BarcodeDetector({ formats: ['code_128', 'qr_code'] });
+                camBtn.addEventListener('click', function () {
+                    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function (s) {
+                        stream = s;
+                        video.srcObject = s;
+                        box.hidden = false;
+                        video.play();
+                        timer = setInterval(function () {
+                            detector.detect(video).then(function (codes) {
+                                if (codes.length) {
+                                    input.value = codes[0].rawValue;
+                                    stop();
+                                    form.requestSubmit ? form.requestSubmit() : form.submit();
+                                }
+                            }).catch(function () { /* frame not ready */ });
+                        }, 250);
+                    }).catch(function () {
+                        camBtn.hidden = true;   // no camera, or permission refused: the scanner or typing still work
+                    });
+                });
+                box.querySelector('[data-scan-stop]').addEventListener('click', stop);
+            }).catch(function () { /* barcode reading not available */ });
+        }
+    })();
 })();

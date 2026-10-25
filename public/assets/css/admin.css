@@ -136,3 +136,9 @@ body.wm-admin { background: #f4f6f5; padding-bottom: 0; }
 .wm-tier-urgent .wm-priority-count { animation: wm-pulse 2s ease-in-out 3; }
 @keyframes wm-pulse { 50% { opacity: .55; } }
 @media (prefers-reduced-motion: reduce) { .wm-priority-tile { transition: none; } .wm-tier-urgent .wm-priority-count { animation: none; } }
+
+/* Collection desk: scan box and camera preview */
+.wm-scan .form-control-lg { letter-spacing: .06em; }
+.wm-scan-camera { position: relative; max-width: 420px; }
+.wm-scan-camera video { width: 100%; border-radius: 8px; background: #000; }
+.wm-scan-camera button { position: absolute; top: 8px; right: 8px; }

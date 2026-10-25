@@ -172,6 +172,18 @@ The Collection desk has three tabs. Station staff need a staff account with the 
 | **Ready to hand over** | Parcels waiting, with each one's last day ("Last day" and "Overdue" are marked) | Open the order: the customer's code and ID, then **Verify code & hand over**. |
 | **Returns to warehouse** | Parcels going back from the stations | When one is back at the warehouse, click **Received back**. |
 
+**Package labels:** print one for every parcel when it is packed: **Print package label** on the order page, or on the "On the way" tab (one per row, or "Print all labels on this page").
+- The label is a 100 × 150 mm sticker (the usual label-printer size); it also prints on A4.
+- It shows the store, the pickup station (or delivery address), the customer's name, phone and customer number (or "Guest"), the order number and date, and the contents.
+- It also shows **COLLECT CASH: KSh …** for cash orders ("PAID" otherwise), and a **barcode** of the order number.
+- The customer's national ID number is not printed; the station checks the ID card itself at hand-over.
+
+**Scanning at the station:** the Collection desk has a **Scan a package** box at the top. A USB barcode scanner works like a keyboard: scan the label and it is found at once. On phones whose browser can read barcodes, the **Camera** button scans with the camera. You can also type the order number.
+- **Scan on arrival:** the parcel is marked ready and the customer is texted and emailed (below).
+- **Scan at hand-over:** the parcel's hand-over screen opens. Enter the customer's code, tick the ID check and hand over. The order is then finished, and the customer gets an SMS and email thanking them, with a link to keep shopping. (Scanning alone never hands a parcel over: the customer's code is required, so nobody can collect someone else's parcel.)
+- Scanning an order that was already collected, was cancelled, or is a home-delivery order says so.
+- Every scan is recorded in the audit log.
+
 **When a parcel arrives**, the customer gets an SMS and email at once, with:
 - the station's name, address and opening hours;
 - their private collection code;

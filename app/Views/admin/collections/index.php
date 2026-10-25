@@ -15,6 +15,19 @@ foreach ($points as $p) {
 $tabs = ['arriving' => ['On the way to the station', 'truck'], 'ready' => ['Ready to hand over', 'box-seam'], 'returns' => ['Returns to warehouse', 'arrow-return-left']];
 ?>
 <div class="wm-admin-head"><h1>Collection desk</h1></div>
+<form class="wm-panel wm-panel-body wm-scan mb-3" method="post" action="<?= e(url('/admin/collections/scan')) ?>" data-scan-form>
+    <?= csrf_field() ?>
+    <input type="hidden" name="tab" value="<?= e($tab) ?>">
+    <label class="form-label fw-semibold" for="scanCode"><i class="bi bi-upc-scan" aria-hidden="true"></i> Scan a package</label>
+    <div class="input-group">
+        <input class="form-control form-control-lg font-monospace" id="scanCode" name="code" autocomplete="off" autocapitalize="characters" spellcheck="false" autofocus
+               placeholder="Scan the label's barcode, or type the order number" aria-describedby="scanHelp">
+        <button class="btn btn-outline-secondary" type="button" data-scan-camera hidden><i class="bi bi-camera" aria-hidden="true"></i> Camera</button>
+        <button class="btn btn-wm-green" type="submit">Find</button>
+    </div>
+    <div class="form-text" id="scanHelp">On arrival, scanning marks the parcel ready and texts and emails the customer. At hand-over, scanning opens the parcel: then enter the customer's code.</div>
+    <div class="wm-scan-camera mt-2" data-scan-video hidden><video playsinline muted></video><button class="btn btn-sm btn-light" type="button" data-scan-stop>Stop camera</button></div>
+</form>
 <ul class="nav nav-tabs mb-3">
     <?php foreach ($tabs as $k => [$label, $icon]): $n = (int) ($counts[$k] ?? 0); ?>
         <li class="nav-item"><a class="nav-link<?= $tab === $k ? ' active' : '' ?>" href="<?= e(url($path, ['tab' => $k])) ?>" <?= $tab === $k ? 'aria-current="page"' : '' ?>>
@@ -23,7 +36,8 @@ $tabs = ['arriving' => ['On the way to the station', 'truck'], 'ready' => ['Read
 </ul>
 <p class="small text-muted">
     <?php if ($tab === 'arriving'): ?>
-        Pickup orders being prepared and sent to the stations. When a parcel arrives, click <strong>Arrived</strong>: the customer is sent the station, their collection code, a reminder to bring ID and the last day to collect (<?= (int) $holdDays ?> days).
+        Pickup orders being prepared and sent to the stations. When a parcel arrives, scan its label (or click <strong>Arrived</strong>): the customer is sent the station, their collection code, a reminder to bring ID and the last day to collect (<?= (int) $holdDays ?> days).
+        <?php if ($rows): ?><a class="ms-1" href="<?= e(url('/admin/labels', ['orders' => implode(',', array_column($rows, 'id')), 'print' => 1])) ?>" target="_blank" rel="noopener"><i class="bi bi-printer" aria-hidden="true"></i> Print all labels on this page</a><?php endif; ?>
     <?php elseif ($tab === 'ready'): ?>
         Parcels waiting at the stations. Customers get a reminder the day before their last day; parcels not collected within <?= (int) $holdDays ?> days are returned automatically and the order cancelled.
     <?php else: ?>
@@ -47,7 +61,8 @@ $tabs = ['arriving' => ['On the way to the station', 'truck'], 'ready' => ['Read
                             <td><?= e(OrderPresenter::firstName($r['customer_name'])) ?></td>
                             <td class="small"><?= e($r['pickup_name']) ?></td>
                             <td class="small"><?= $r['payment_method'] === 'cod' ? 'Cash at collection' : e(OrderPresenter::payment($r['payment_status'])) ?></td>
-                            <td class="text-end">
+                            <td class="text-end text-nowrap">
+                                <a class="btn btn-sm btn-outline-secondary" href="<?= e(url('/admin/orders/' . $r['id'] . '/label', ['print' => 1])) ?>" target="_blank" rel="noopener"><i class="bi bi-printer" aria-hidden="true"></i> Label<span class="visually-hidden"> for <?= e($r['order_number']) ?></span></a>
                                 <form method="post" action="<?= e(url('/admin/collections/' . $r['id'] . '/arrived')) ?>" class="d-inline"
                                       data-confirm="Has <?= e($r['order_number']) ?> arrived at <?= e($r['pickup_name']) ?>? The customer will be sent their collection code now.">
                                     <?= csrf_field() ?><button class="btn btn-sm btn-wm-green" type="submit"><i class="bi bi-check2-circle" aria-hidden="true"></i> Arrived<span class="visually-hidden"> <?= e($r['order_number']) ?></span>, notify customer</button>

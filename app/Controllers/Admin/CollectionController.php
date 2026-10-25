@@ -63,7 +63,7 @@ final class CollectionController extends AdminController
         return $this->view('collections/index', [
             'title' => 'Collection desk', 'tab' => $tab, 'counts' => $counts, 'rows' => $rows, 'holdDays' => $holdDays, 'lp' => $lp, 'point' => $point,
             'points' => $db->all('SELECT id, name, code FROM pickup_points ORDER BY name'),
-        ]);
+        ])->withHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=(self)');   // the scan box may use the camera here only
     }
 
     public function show(Request $req): Response
@@ -134,5 +134,50 @@ final class CollectionController extends AdminController
     {
         $r = (new StationReturnService())->receive($this->intParam($req, 'id'), $this->actor(), trim((string) $req->input('note', '')) ?: null);
         return $this->success('Received back. ' . $r['items_released'] . ' item line' . ($r['items_released'] === 1 ? '' : 's') . ' returned to available stock.', '/admin/collections?tab=returns');
+    }
+
+    /**
+     * POST /admin/collections/scan: the station attendant scans a package label (a USB scanner types the code and
+     * presses Enter). On its way -> arrived, and the customer is told it is ready; waiting -> the hand-over screen
+     * (the customer's code and ID are still required); otherwise it says where the parcel stands.
+     */
+    public function scan(Request $req): Response
+    {
+        $code = strtoupper((string) preg_replace('/[^A-Za-z0-9-]/', '', (string) $req->input('code', '')));
+        $db = App::db();
+        $order = $code === '' ? null : ($db->one('SELECT * FROM orders WHERE order_number = ?', [$code])
+            ?? $db->one('SELECT o.* FROM orders o JOIN seller_orders so ON so.order_id = o.id WHERE so.sub_number = ?', [$code]));
+        \Waimart\Services\AuditLogger::log('order.parcel_scanned', 'order', $order ? (int) $order['id'] : null, null,
+            ['code' => mb_substr($code, 0, 40), 'status' => $order['status'] ?? null], $this->actor());
+        $back = '/admin/collections' . (isset($req->post['tab']) && in_array($req->post['tab'], ['arriving', 'ready', 'returns'], true) ? '?tab=' . $req->post['tab'] : '');
+        if ($order === null) {
+            \Waimart\Core\Session::flash('error', $code === '' ? 'Nothing was scanned. Scan the barcode on the package label.' : "No order matches \"$code\". Check the label, or type the order number.");
+            return Response::redirect($back);
+        }
+        $n = $order['order_number'];
+        if ($order['fulfilment_method'] !== 'pickup') {
+            \Waimart\Core\Session::flash('warning', "$n is a home-delivery order, not a pickup parcel. It should not be at a pickup station.");
+            return Response::redirect($back);
+        }
+        switch ($order['status']) {
+            case 'processing':
+                $o = (new StationReturnService())->arrived((int) $order['id'], $this->actor());
+                $f = $db->one('SELECT pickup_name FROM order_fulfilment WHERE order_id = ?', [$o['id']]);
+                return $this->success("Scanned: $n has arrived at {$f['pickup_name']}. The customer has been sent an SMS and email with their collection code.", '/admin/collections?tab=ready');
+            case 'ready_for_collection':
+                \Waimart\Core\Session::flash('info', "Scanned: $n is waiting here. Ask the customer for their collection code and ID, then hand over.");
+                return Response::redirect('/admin/collections/' . $order['id']);
+            case 'collected':
+                $at = (string) $db->value('SELECT collected_at FROM order_fulfilment WHERE order_id = ?', [$order['id']]);
+                \Waimart\Core\Session::flash('warning', "$n was already collected" . ($at !== '' ? ' on ' . date('j M Y \a\t H:i', strtotime($at)) : '') . '.');
+                return Response::redirect($back);
+            case 'cancelled':
+                $returning = $db->value("SELECT status FROM station_returns WHERE order_id = ?", [$order['id']]);
+                \Waimart\Core\Session::flash('warning', "$n was cancelled" . ($returning === 'awaiting_return' ? ': send this parcel back to the warehouse (Returns to warehouse tab).' : '. Do not hand it over.'));
+                return Response::redirect($returning === 'awaiting_return' ? '/admin/collections?tab=returns' : $back);
+            default:
+                \Waimart\Core\Session::flash('warning', "$n is \"" . \Waimart\Services\OrderPresenter::status((string) $order['status']) . '": it has not been sent to the station yet.');
+                return Response::redirect($back);
+        }
     }
 }
