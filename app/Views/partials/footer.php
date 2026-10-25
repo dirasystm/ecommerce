@@ -62,12 +62,20 @@ try {
                     </div>
                 <?php endforeach; ?>
                 <div class="col-6 col-md-3">
-                    <?php if ($payBadges['names']): ?>
+                    <?php if ($payBadges['mpesa'] || $payBadges['names']): ?>
                         <h3>Payment methods</h3>
                         <div class="wm-pay-badges mb-3">
                             <?php if ($payBadges['mpesa']): ?><span class="wm-pay-badge mpesa">M-PESA</span><?php endif; ?>
                             <?php foreach ($payBadges['names'] as $badge): ?><span class="wm-pay-badge"><?= e($badge) ?></span><?php endforeach; ?>
                         </div>
+                    <?php endif; ?>
+                    <?php $siteUrl = rtrim((string) config('app.url', ''), '/') . '/'; ?>
+                    <?php if (preg_match('#^https?://#', $siteUrl)): ?>
+                        <figure class="wm-site-qr mb-3">
+                            <div class="wm-site-qr-code" data-site-qr="<?= e($siteUrl) ?>" data-qr-lib="<?= e(asset('vendor/qrcode/qrcode.js')) ?>"
+                                 role="img" aria-label="QR code for <?= e(preg_replace('#^https?://(www\.)?#', '', rtrim($siteUrl, '/'))) ?>"></div>
+                            <figcaption>Scan to shop on your phone<br><a href="<?= e($siteUrl) ?>"><?= e(preg_replace('#^https?://(www\.)?#', '', rtrim($siteUrl, '/'))) ?></a></figcaption>
+                        </figure>
                     <?php endif; ?>
                     <?php if ($storePhone !== '' || $storeEmail !== '' || $whatsapp !== ''): ?>
                         <h3>Contact</h3>

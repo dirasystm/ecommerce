@@ -107,15 +107,22 @@ final class PaymentOptions
         return null;
     }
 
-    /** Footer badges: the methods currently offered. @return array{mpesa:bool,names:list<string>} */
+    /**
+     * Footer badges for the methods currently offered: one "M-PESA" badge stands for every M-Pesa option (Till,
+     * Paybill, Send Money), and the other methods (e.g. Cash on Delivery) are listed by name.
+     * @return array{mpesa:bool,names:list<string>}
+     */
     public static function badges(): array
     {
         $names = [];
         $mpesa = false;
         foreach (self::all() as $code => $m) {
             if (isset(self::LABELS[$code]) && self::offered($code)) {
-                $names[] = (string) $m['short_name'];
-                $mpesa = $mpesa || str_starts_with($code, 'mpesa_');
+                if (str_starts_with($code, 'mpesa_')) {
+                    $mpesa = true;
+                } else {
+                    $names[] = (string) $m['short_name'];
+                }
             }
         }
         return ['mpesa' => $mpesa, 'names' => $names];

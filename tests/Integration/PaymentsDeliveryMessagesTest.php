@@ -81,7 +81,7 @@ final class PaymentsDeliveryMessagesTest extends DbTestCase
         $v = $this->makeVariant(20, '1000.00')['variant_id'];
         $svc = new PaymentOptions();
         $this->assertSame(['mpesa_till', 'cod'], array_keys(PaymentOptions::forFulfilment(true)), 'only methods with a number (and COD)');
-        $this->assertSame(['mpesa' => true, 'names' => ['Till', 'Cash on Delivery']], PaymentOptions::badges());
+        $this->assertSame(['mpesa' => true, 'names' => ['Cash on Delivery']], PaymentOptions::badges(), 'one M-PESA badge stands for the M-Pesa options');
 
         // Switched off: gone from checkout and the footer, and refused if posted anyway.
         $svc->save('mpesa_till', $this->methodForm('mpesa_till', ['is_enabled' => '']), $this->staff);

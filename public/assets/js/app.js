@@ -578,4 +578,33 @@
             if (rail && rail.focus) { rail.focus(); }
         }).catch(function () { window.WM.clearButtonLoading(dismissBtn); form.submit(); });
     });
+    // ---------------------------------------------------------------- footer QR code to the website
+    // The QR library loads only when the footer comes near the screen, so pages are not slowed down.
+    var siteQr = document.querySelector('[data-site-qr]');
+    if (siteQr) {
+        var drawQr = function () {
+            if (!window.qrcode || siteQr.firstChild) { return; }
+            var qr = window.qrcode(0, 'M');
+            qr.addData(siteQr.getAttribute('data-site-qr'));
+            qr.make();
+            siteQr.innerHTML = qr.createSvgTag({ cellSize: 3, margin: 2, scalable: true });
+            var svg = siteQr.querySelector('svg');
+            if (svg) { svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('focusable', 'false'); }
+        };
+        var loadQr = function () {
+            if (window.qrcode) { drawQr(); return; }
+            var tag = document.createElement('script');
+            tag.src = siteQr.getAttribute('data-qr-lib');
+            tag.onload = drawQr;
+            document.body.appendChild(tag);
+        };
+        if ('IntersectionObserver' in window) {
+            var seen = new IntersectionObserver(function (entries) {
+                if (entries[0].isIntersecting) { seen.disconnect(); loadQr(); }
+            }, { rootMargin: '400px' });
+            seen.observe(siteQr);
+        } else {
+            loadQr();
+        }
+    }
 })();
