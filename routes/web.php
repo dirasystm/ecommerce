@@ -223,6 +223,8 @@ $router->group(['prefix' => '/admin', 'middleware' => ['staff']], function ($r) 
     $r->get('/orders/{id:\d+}', [Admin\OrderController::class, 'show'], ['can:orders.view']);
     $r->get('/orders/{id:\d+}/label', [Admin\PackageLabelController::class, 'one'], ['can:orders.view']);
     $r->get('/labels', [Admin\PackageLabelController::class, 'many'], ['can:orders.view']);
+    // The QR code on a package label: staff scan it with their phone (sign-in required; the page shows the next step).
+    $r->get('/parcel/{code:[A-Za-z0-9-]{3,40}}', [Admin\CollectionController::class, 'parcel'], ['can:orders.view']);
     $r->post('/orders/{id:\d+}/status', [Admin\OrderController::class, 'transition'], ['can:orders.view']);
 
     $r->group(['middleware' => ['can:delivery.manage']], function ($r) {

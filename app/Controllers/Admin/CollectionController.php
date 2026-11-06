@@ -117,7 +117,7 @@ final class CollectionController extends AdminController
         $id = $this->intParam($req, 'id');
         $o = (new StationReturnService())->arrived($id, $this->actor());
         return $this->success("{$o['order_number']} is ready for collection. The customer has been sent the station, their collection code, a reminder to bring ID and the last day to collect.",
-            '/admin/collections?tab=arriving');
+            (string) $req->input('from', '') === 'parcel' ? '/admin/parcel/' . $o['order_number'] : '/admin/collections?tab=arriving');
     }
 
     /** POST /admin/collections/{id}/return: send a waiting parcel back to the warehouse now (e.g. the customer refused it). */
@@ -143,10 +143,10 @@ final class CollectionController extends AdminController
      */
     public function scan(Request $req): Response
     {
-        $code = strtoupper((string) preg_replace('/[^A-Za-z0-9-]/', '', (string) $req->input('code', '')));
+        $raw = (string) $req->input('code', '');
+        $code = strtoupper((string) preg_replace('/[^A-Za-z0-9-]/', '', preg_match('#/parcel/([A-Za-z0-9-]+)#', $raw, $m) ? $m[1] : $raw));
         $db = App::db();
-        $order = $code === '' ? null : ($db->one('SELECT * FROM orders WHERE order_number = ?', [$code])
-            ?? $db->one('SELECT o.* FROM orders o JOIN seller_orders so ON so.order_id = o.id WHERE so.sub_number = ?', [$code]));
+        $order = self::findParcel($raw);
         \Waimart\Services\AuditLogger::log('order.parcel_scanned', 'order', $order ? (int) $order['id'] : null, null,
             ['code' => mb_substr($code, 0, 40), 'status' => $order['status'] ?? null], $this->actor());
         $back = '/admin/collections' . (isset($req->post['tab']) && in_array($req->post['tab'], ['arriving', 'ready', 'returns'], true) ? '?tab=' . $req->post['tab'] : '');
@@ -179,5 +179,44 @@ final class CollectionController extends AdminController
                 \Waimart\Core\Session::flash('warning', "$n is \"" . \Waimart\Services\OrderPresenter::status((string) $order['status']) . '": it has not been sent to the station yet.');
                 return Response::redirect($back);
         }
+    }
+
+    /**
+     * GET /admin/parcel/{code}: where the QR code on a package label leads. Staff scan it with their phone's camera;
+     * signing in is required (the staff check sends anyone else to the sign-in page, then back here). Opening the link
+     * never changes anything: the page shows the parcel and the one next step, which the attendant confirms.
+     */
+    public function parcel(Request $req): Response
+    {
+        $order = self::findParcel((string) $req->param('code'));
+        if ($order === null) {
+            \Waimart\Core\Session::flash('error', 'No order matches this label. Check the code, or scan the barcode at the Collection desk.');
+            return Response::redirect(Auth::can('orders.collect') ? '/admin/collections' : '/admin/orders');
+        }
+        $canDesk = Auth::can('orders.collect');
+        \Waimart\Services\AuditLogger::log('order.parcel_scanned', 'order', (int) $order['id'], null, ['via' => 'qr', 'status' => $order['status']], $this->actor());
+        $db = App::db();
+        return $this->view('collections/parcel', [
+            'title' => 'Parcel ' . $order['order_number'], 'order' => $order, 'canDesk' => $canDesk,
+            'f' => $db->one('SELECT pickup_name, pickup_town, town, county_name, collected_at FROM order_fulfilment WHERE order_id = ?', [$order['id']]),
+            'units' => (int) $db->value('SELECT COALESCE(SUM(quantity), 0) FROM order_items WHERE order_id = ?', [$order['id']]),
+            'returning' => $db->value("SHOW TABLES LIKE 'station_returns'") !== null ? $db->value('SELECT status FROM station_returns WHERE order_id = ?', [$order['id']]) : null,
+        ]);
+    }
+
+    /** An order by its number or a seller part's number, as printed on the label (case and spaces ignored). */
+    private static function findParcel(string $raw): ?array
+    {
+        // A QR code read by a desk scanner gives the whole link: keep only the code at its end.
+        if (preg_match('#/parcel/([A-Za-z0-9-]+)#', $raw, $m)) {
+            $raw = $m[1];
+        }
+        $code = strtoupper((string) preg_replace('/[^A-Za-z0-9-]/', '', $raw));
+        if ($code === '') {
+            return null;
+        }
+        $db = App::db();
+        return $db->one('SELECT * FROM orders WHERE order_number = ?', [$code])
+            ?? $db->one('SELECT o.* FROM orders o JOIN seller_orders so ON so.order_id = o.id WHERE so.sub_number = ?', [$code]);
     }
 }

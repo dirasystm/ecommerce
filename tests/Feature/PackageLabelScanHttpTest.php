@@ -105,6 +105,65 @@ final class PackageLabelScanHttpTest extends FeatureTestCase
         $this->assertSame(3, (int) $this->db->value("SELECT COUNT(*) FROM audit_logs WHERE action = 'order.parcel_scanned' AND entity_id = ?", [$o['id']]), 'every scan is recorded');
     }
 
+    public function testPhoneScanOfTheLabelQrOpensTheParcelAfterStaffSignIn(): void
+    {
+        $o = $this->preparing();
+        $link = '/admin/parcel/' . $o['order_number'];
+
+        // The label carries the QR code of that link.
+        $this->loginStaff('fulfilment_staff');
+        $label = $this->get('/admin/orders/' . $o['id'] . '/label')['body'];
+        $this->assertMatchesRegularExpression('#data-parcel-qr="https?://[^"]+' . preg_quote($link, '#') . '"#', $label);
+        $this->assertStringContainsString('vendor/qrcode/qrcode.js', $label);
+        $this->post('/logout', [], '/admin');
+
+        // A phone that is not signed in is sent to the staff sign-in, then back to the parcel.
+        $r = $this->get($link);
+        $this->assertContains($r['status'], [302, 303]);
+        $this->assertStringEndsWith('/admin/login', $r['headers']['location']);
+        $u = $this->makeStaff('delivery_logistics');
+        $r = $this->post('/admin/login', ['email' => $u['email'], 'password' => $u['password']], '/admin/login');
+        $this->assertStringEndsWith($link, $r['headers']['location'], 'straight back to the scanned parcel');
+
+        // Opening the link shows the next step but changes nothing by itself.
+        $page = $this->get($link)['body'];
+        $this->assertStringContainsString('Confirm arrival at Station', $page);
+        $this->assertStringContainsString('Collect KSh 900 cash', $page, 'cash to collect');
+        $this->assertSame('processing', $this->db->value('SELECT status FROM orders WHERE id = ?', [$o['id']]), 'a link preview cannot mark it arrived');
+
+        // One tap confirms arrival; the customer is told; the page then offers the hand-over.
+        $r = $this->post('/admin/collections/' . $o['id'] . '/arrived', ['from' => 'parcel'], $link);
+        $this->assertStringEndsWith($link, $r['headers']['location']);
+        $after = $this->follow($r)['body'];
+        $this->assertStringContainsString('is ready for collection', $after);
+        $this->assertStringContainsString('Hand over to the customer', $after);
+        $this->assertSame('ready_for_collection', $this->db->value('SELECT status FROM orders WHERE id = ?', [$o['id']]));
+        $this->assertNotSame('', $this->sent((int) $o['id'], 'order_ready_for_collection'));
+
+        // A scanned link typed into the desk's scan box (a USB scanner reading the QR) works too.
+        $r = $this->post('/admin/collections/scan', ['code' => 'http://example.test' . strtolower($link)], '/admin/collections');
+        $this->assertStringEndsWith('/admin/collections/' . $o['id'], $r['headers']['location']);
+    }
+
+    public function testParcelPageRespectsRoles(): void
+    {
+        $o = $this->preparing();
+        $this->loginStaff('support');   // sees orders, cannot use the desk
+        $page = $this->get('/admin/parcel/' . $o['order_number'])['body'];
+        $this->assertStringContainsString('Your role cannot use the Collection desk', $page);
+        $this->assertStringNotContainsString('Confirm arrival', $page);
+        $this->assertSame(403, $this->post('/admin/collections/' . $o['id'] . '/arrived', ['from' => 'parcel'], '/admin')['status']);
+        $this->post('/logout', [], '/admin');
+
+        $this->loginStaff('content_marketing');   // no access to orders at all
+        $this->assertSame(403, $this->get('/admin/parcel/' . $o['order_number'])['status']);
+        $this->post('/logout', [], '/admin');
+
+        $this->loginStaff('delivery_logistics');
+        $r = $this->get('/admin/parcel/XX-NOTHING1');
+        $this->assertStringContainsString('No order matches this label', $this->follow($r)['body']);
+    }
+
     public function testScanningTheWrongThingIsExplained(): void
     {
         $this->loginStaff('delivery_logistics');

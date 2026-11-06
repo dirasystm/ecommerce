@@ -36,7 +36,11 @@ $storePhone = (string) \Waimart\Core\Settings::get('store_phone', '');
     .dest .sub { font-size: 9pt; margin-top: .6mm; }
     .who { display: grid; grid-template-columns: 22mm 1fr; row-gap: .8mm; font-size: 10pt; border-bottom: .3mm solid #000; padding-bottom: 2mm; }
     .who b { font-size: 11pt; }
+    .mid { display: flex; gap: 3mm; flex: 1; min-height: 0; }
     .items { font-size: 8.5pt; line-height: 1.3; flex: 1; overflow: hidden; }
+    .qr { width: 27mm; text-align: center; font-size: 6pt; line-height: 1.2; color: #222; }
+    .qr-code { width: 27mm; height: 27mm; }
+    .qr-code svg { display: block; width: 100%; height: 100%; }
     .items ul { margin: .8mm 0 0; padding-left: 4mm; }
     .pay { font-weight: 800; font-size: 11pt; text-align: center; padding: 1.2mm; border: .5mm solid #000; }
     .pay.cod { background: #000; color: #fff; }
@@ -83,12 +87,18 @@ $storePhone = (string) \Waimart\Core\Settings::get('store_phone', '');
             <span class="label">Customer no.</span><span><?= $o['user_id'] ? 'C-' . str_pad((string) $o['user_id'], 6, '0', STR_PAD_LEFT) : 'Guest' ?></span>
             <span class="label">Order</span><span><?= e($o['order_number']) ?> · <?= e(date('j M Y', strtotime((string) $o['placed_at']))) ?></span>
         </div>
+        <div class="mid">
         <div class="items">
             <div class="label">Contents (<?= $units ?> item<?= $units === 1 ? '' : 's' ?>)</div>
             <ul>
                 <?php foreach ($shown as $it): ?><li><?= (int) $it['quantity'] ?> × <?= e($it['product_name']) ?><?= $it['variant_name'] && $it['variant_name'] !== 'Default' ? ' (' . e($it['variant_name']) . ')' : '' ?></li><?php endforeach; ?>
                 <?php if (count($items) > count($shown)): ?><li>+ <?= count($items) - count($shown) ?> more line<?= count($items) - count($shown) === 1 ? '' : 's' ?></li><?php endif; ?>
             </ul>
+        </div>
+        <div class="qr">
+            <div class="qr-code" data-parcel-qr="<?= e(rtrim((string) config('app.url', ''), '/') . '/admin/parcel/' . $o['order_number']) ?>" role="img" aria-label="QR code: open this parcel (staff sign-in)"></div>
+            <div>Staff: scan with your phone</div>
+        </div>
         </div>
         <?php if ($o['payment_method'] === 'cod'): ?>
             <div class="pay cod">COLLECT CASH: <?= e(Money::format((string) $o['amount_due'])) ?></div>
@@ -103,6 +113,7 @@ $storePhone = (string) \Waimart\Core\Settings::get('store_phone', '');
             <?= $storePhone !== '' ? ' · ' . e($store) . ' ' . e($storePhone) : '' ?></div>
     </section>
 <?php endforeach; ?>
+<script src="<?= e(asset('vendor/qrcode/qrcode.js')) ?>"></script>
 <script src="<?= e(asset('js/label.js')) ?>"></script>
 </body>
 </html>
