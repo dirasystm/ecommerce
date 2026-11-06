@@ -51,6 +51,8 @@ final class ProductController extends Controller
             'reviews' => (new \Waimart\Services\ReviewService())->approvedFor((int) $product['id']),
             'title' => $product['name'],
             'metaDescription' => (string) ($product['short_description'] ?: $product['name']),
+            'ogUrl' => full_url(url('/product/' . $product['slug'])),
+            'ogImage' => full_url(media($product['images'][0]['path'] ?? null)),
             'product' => $product,
             'selected' => $selected,
             'related' => \Waimart\Services\Marketing\Recommender::enabled('similar')

@@ -54,7 +54,7 @@ final class CatalogueAdminServiceTest extends DbTestCase
             'compare_at_price' => ['sku' => 'X1', 'compare_at_price' => '9999'],  // not above price
             'price' => ['sku' => 'X2', 'price' => '0'],
             'category_id' => ['sku' => 'X3', 'category_id' => '99999'],
-            'specifications' => ['sku' => 'X4', 'specifications' => 'no colon here'],
+            'specifications' => ['sku' => 'X4', 'specifications' => str_repeat('x', 2001)],   // lines without a colon are key features; only absurd lines fail
         ];
         foreach ($cases as $field => $override) {
             try {

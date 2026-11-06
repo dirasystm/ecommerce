@@ -175,7 +175,12 @@ The Collection desk has three tabs. Station staff need a staff account with the 
 **Package labels:** print one for every parcel when it is packed: **Print package label** on the order page, or on the "On the way" tab (one per row, or "Print all labels on this page").
 - The label is a 100 × 150 mm sticker (the usual label-printer size); it also prints on A4.
 - It shows the store, the pickup station (or delivery address), the customer's name, phone and customer number (or "Guest"), the order number and date, and the contents.
-- It also shows **COLLECT CASH: KSh …** for cash orders ("PAID" otherwise), and a **barcode** of the order number.
+- It also shows **COLLECT CASH: KSh …** for cash orders ("PAID" otherwise), a **barcode** of the order number (for USB scanners), and a **QR code** for phones.
+
+**Scanning with a phone (no scanner needed):** staff point the phone's ordinary camera at the label's QR code and tap the link. It opens the parcel's page in the browser (`/admin/parcel/<order number>`).
+- **Staff credentials are always checked:** someone not signed in gets the staff sign-in page first (with two-step sign-in where required), then the parcel; roles without access to orders are refused.
+- The page shows the parcel and its one next step: **Confirm arrival at <station>** (on its way), **Hand over to the customer** (waiting: then the customer's code and ID), or its status (collected, cancelled, returning).
+- Opening the link never changes anything by itself: the attendant confirms with a tap. Link previews in chat apps cannot mark a parcel arrived.
 - The customer's national ID number is not printed; the station checks the ID card itself at hand-over.
 
 **Scanning at the station:** the Collection desk has a **Scan a package** box at the top. A USB barcode scanner works like a keyboard: scan the label and it is found at once. On phones whose browser can read barcodes, the **Camera** button scans with the camera. You can also type the order number.
@@ -203,6 +208,19 @@ The Collection desk has three tabs. Station staff need a staff account with the 
 **Sending a parcel back early** (for example, the customer refuses it): on the order at the desk, open **Send it back to the warehouse**, choose why, and confirm. The same steps follow.
 
 **Lost code:** anyone at the desk can **Re-issue a new one**. It goes to the customer's own phone and email, with the same last day. The old code stops working.
+
+## Product photos and specifications (Catalogue → Products, and Seller Centre)
+
+- **Photos when adding a product:** the new-product form has a **Photos** panel. Tap **Attach photos** (or drag photos onto it) and choose up to 10 at once.
+  - Previews appear straight away. The first one is marked **Main**; use the arrows to change the order, or × to remove one.
+  - JPEG, PNG or WebP. Large phone photos are made smaller in the browser before upload; the shop stores each as WebP at 1000 px.
+  - If the form comes back with a mistake, every mistake is listed together and the photos must be attached again (browsers do not keep chosen files).
+- **More photos later:** the product's edit page takes several photos in one upload, up to 10 in total. **Make main** and **Remove** work as before.
+- **Specifications:** one per line. `Label: value` lines (also `Label：value` or `Label<Tab>value`) go into the specifications table. Other lines appear as **Key features** above it. Pasted bullets such as •, ★ or - are removed.
+- **Prices and quantities** may be typed as `KSh 1,500` or `1,000`. The URL slug is made from whatever is typed, e.g. "My Charger" becomes `my-charger`.
+- **On the product page:** customers see the main photo with arrows, a counter and thumbnails. On a phone they can swipe; on a computer the photo zooms under the mouse. Tapping it opens a full-screen viewer (arrows, thumbnails, ← → and Esc).
+  - **Share this product** (Facebook, X, WhatsApp, Telegram, Copy link, and the phone's own share menu) uses the address in `app.url`. Link previews show the product's main photo.
+- **Upload limit:** the server's `post_max_size` caps one form's total size. If it is exceeded, the form shows a clear message instead of "session expired". On the live host keep it at 40M or more.
 
 ## Order tracking numbers
 

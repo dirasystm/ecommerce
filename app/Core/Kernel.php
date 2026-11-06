@@ -30,6 +30,11 @@ final class Kernel
                 return $this->secure($this->maintenanceResponse($req));
             }
 
+            if ($req->method === 'POST' && !$req->post && self::postTooLarge($req)) {
+                // PHP drops the whole form (CSRF token included) when it is bigger than post_max_size.
+                throw ValidationException::withMessage('The photos or files you attached are too large together (limit '
+                    . (int) round(self::iniBytes((string) ini_get('post_max_size')) / 1048576) . ' MB). Attach fewer or smaller files and try again.');
+            }
             if (in_array($req->method, ['POST', 'PUT', 'PATCH', 'DELETE'], true)
                 && !in_array('no_csrf', $route['middleware'], true)
                 && !Csrf::verify(is_string($req->post['_csrf'] ?? null) ? $req->post['_csrf'] : ($req->server['HTTP_X_CSRF_TOKEN'] ?? null))
@@ -161,6 +166,26 @@ final class Kernel
         }
     }
 
+    /** True when the browser sent more than post_max_size, so PHP discarded the form and its files. */
+    private static function postTooLarge(Request $req): bool
+    {
+        $limit = self::iniBytes((string) ini_get('post_max_size'));
+        return $limit > 0 && (int) ($req->server['CONTENT_LENGTH'] ?? 0) > $limit;
+    }
+
+    /** "40M" -> 41943040 */
+    public static function iniBytes(string $v): int
+    {
+        $v = trim($v);
+        $n = (int) $v;
+        return match (strtoupper(substr($v, -1))) {
+            'G' => $n * 1073741824,
+            'M' => $n * 1048576,
+            'K' => $n * 1024,
+            default => $n,
+        };
+    }
+
     /**
      * Maintenance mode (Admin → Settings → Maintenance): customers get a 503 page. Staff browse the shop as normal,
      * and the admin, Seller Centre, sign-in and health check stay open so the shop can be worked on.
@@ -212,7 +237,7 @@ final class Kernel
             'X-Frame-Options' => 'DENY',
             'Referrer-Policy' => 'strict-origin-when-cross-origin',
             'Permissions-Policy' => 'camera=(), microphone=(), geolocation=(self)',
-            'Content-Security-Policy' => "default-src 'self'; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; "
+            'Content-Security-Policy' => "default-src 'self'; img-src 'self' data: blob: https:; style-src 'self' 'unsafe-inline'; "
                 . "script-src 'self'; font-src 'self' data:; frame-ancestors 'none'; form-action 'self'; base-uri 'self'",
         ];
         // HTTPS deployments (secure cookies on) also pin HTTPS in the browser.

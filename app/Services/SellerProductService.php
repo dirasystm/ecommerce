@@ -60,7 +60,7 @@ final class SellerProductService
     /** Seller SKUs are stored as S{sellerId}-{CODE}: unique per seller, and no seller can probe another's codes. */
     public static function internalSku(int $sellerId, string $code): string
     {
-        $code = strtoupper(trim($code));
+        $code = strtoupper((string) preg_replace('/\s+/', '-', trim($code)));
         if ($code === '' || mb_strlen($code) > 50 || !preg_match('/^[A-Z0-9][A-Z0-9._-]*$/', $code)) {
             throw new ValidationException(['sku' => 'Your SKU may contain letters, numbers, dots, dashes and underscores (max 50).']);
         }
@@ -173,11 +173,11 @@ final class SellerProductService
      * New product (always starts as draft unless submitted straight away).
      * @param array<string,mixed> $in
      */
-    public function create(int $sellerId, int $actorId, array $in, bool $submit = false): int
+    public function create(int $sellerId, int $actorId, array $in, bool $submit = false, array $images = []): int
     {
         $in = $this->sellerInput($sellerId, $in, null);
         $in['sku'] = self::internalSku($sellerId, (string) ($in['sku'] ?? ''));
-        $id = $this->catalogue()->createProduct($in, $actorId, $sellerId, 'draft');
+        $id = $this->catalogue()->createProduct($in, $actorId, $sellerId, 'draft', $images);
         if ($submit) {
             $this->submit($sellerId, $id, $actorId);
         }
@@ -229,6 +229,16 @@ final class SellerProductService
         $id = $this->catalogue()->addImage($productId, $file, $alt, $actorId);
         $this->contentChanged($p, $actorId, 'Image added');
         return $id;
+    }
+
+    /** @param list<array<string,mixed>> $files */
+    public function addImages(int $sellerId, int $productId, int $actorId, array $files, ?string $alt): int
+    {
+        $p = $this->owned($sellerId, $productId);
+        $this->assertEditable($p);
+        $n = $this->catalogue()->addImages($productId, $files, $alt, $actorId);
+        $this->contentChanged($p, $actorId, $n === 1 ? 'Image added' : "$n images added");
+        return $n;
     }
 
     public function deleteImage(int $sellerId, int $productId, int $imageId, int $actorId): void

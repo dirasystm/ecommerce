@@ -72,8 +72,8 @@ $pi = fn (string $k) => $mine ? invalid($k) : "";
 </div>
 <div class="mb-3">
     <label class="form-label" for="specifications">Specifications</label>
-    <textarea class="form-control<?= $pi('specifications') ?>" id="specifications" name="specifications" rows="5" placeholder="Screen: 6.6 inches&#10;Battery: 5000 mAh"><?= e($pv('specifications', CatalogueAdminService::pairsToText($product['specifications'] ?? null))) ?></textarea>
-    <div class="form-text">One per line as <code>Label: value</code>.</div>
+    <textarea class="form-control<?= $pi('specifications') ?>" id="specifications" name="specifications" rows="5" placeholder="Screen: 6.6 inches&#10;Battery: 5000 mAh&#10;Fast charging in 30 minutes"><?= e($pv('specifications', CatalogueAdminService::pairsToText($product['specifications'] ?? null))) ?></textarea>
+    <div class="form-text">One per line. <code>Label: value</code> lines (e.g. <code>Battery: 5000 mAh</code>) show in the specifications table; other lines show as key features. Pasted bullets (•, ★, -) are removed automatically.</div>
     <?= $pe('specifications') ?>
 </div>
 <div class="d-flex flex-wrap gap-4 mb-3">

@@ -36,18 +36,128 @@
         });
     }
 
-    // Product gallery: thumbnails swap the main image.
-    var mainImg = document.getElementById('wmMainImage');
-    document.querySelectorAll('[data-gallery-src]').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            if (!mainImg) { return; }
-            mainImg.src = btn.getAttribute('data-gallery-src');
-            mainImg.alt = btn.getAttribute('data-gallery-alt') || '';
-            document.querySelectorAll('[data-gallery-src]').forEach(function (b) {
-                b.classList.toggle('active', b === btn);
-                if (b === btn) { b.setAttribute('aria-current', 'true'); } else { b.removeAttribute('aria-current'); }
+    // Product gallery: thumbnails, arrows and swipe change the main photo; hovering zooms (mouse only); tapping opens
+    // the full-screen viewer, which has its own arrows, thumbnails, swipe and keyboard (← → Esc).
+    (function () {
+        var gallery = document.querySelector('[data-gallery]');
+        var mainImg = document.getElementById('wmMainImage');
+        if (!gallery || !mainImg) { return; }
+        var thumbs = Array.prototype.slice.call(gallery.querySelectorAll('[data-gallery-src]'));
+        var photos = thumbs.length ? thumbs.map(function (b) { return { src: b.getAttribute('data-gallery-src'), alt: b.getAttribute('data-gallery-alt') || '' }; })
+            : [{ src: mainImg.getAttribute('src'), alt: mainImg.alt }];
+        var count = gallery.querySelector('[data-gallery-count]');
+        var lbEl = document.querySelector('[data-lightbox]');
+        var lbImg = lbEl && lbEl.querySelector('[data-lb-img]');
+        var lbCount = lbEl && lbEl.querySelector('[data-lb-count]');
+        var lbThumbs = lbEl ? Array.prototype.slice.call(lbEl.querySelectorAll('[data-lb-index]')) : [];
+        var current = 0;
+
+        function mark(list, i) {
+            list.forEach(function (b, j) {
+                b.classList.toggle('active', j === i);
+                if (j === i) { b.setAttribute('aria-current', 'true'); } else { b.removeAttribute('aria-current'); }
             });
+        }
+        function show(i) {
+            var n = photos.length;
+            current = ((i % n) + n) % n;
+            var ph = photos[current];
+            mainImg.src = ph.src;
+            mainImg.alt = ph.alt;
+            mark(thumbs, current);
+            if (count) { count.textContent = (current + 1) + ' / ' + n; }
+            if (lbImg) { lbImg.src = ph.src; lbImg.alt = ph.alt; }
+            if (lbCount && n > 1) { lbCount.textContent = (current + 1) + ' / ' + n; }
+            mark(lbThumbs, current);
+            var t = lbThumbs[current];
+            if (t && t.scrollIntoView && lbEl.classList.contains('show')) { t.scrollIntoView({ block: 'nearest', inline: 'center' }); }
+        }
+        function swipe(el, onStep) {
+            var x0 = null, y0 = null;
+            el.addEventListener('touchstart', function (e) { x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+            el.addEventListener('touchend', function (e) {
+                if (x0 === null) { return; }
+                var dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+                x0 = null;
+                if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) { el.setAttribute('data-swiped', '1'); onStep(dx < 0 ? 1 : -1); }
+            });
+        }
+
+        thumbs.forEach(function (b, i) {
+            b.addEventListener('click', function () { show(i); });
+            b.addEventListener('mouseenter', function () { if (window.matchMedia('(hover: hover)').matches) { show(i); } });
         });
+        gallery.querySelectorAll('[data-gallery-step]').forEach(function (b) {
+            b.addEventListener('click', function () { show(current + parseInt(b.getAttribute('data-gallery-step'), 10)); });
+        });
+        var main = gallery.querySelector('.wm-gallery-main');
+        if (photos.length > 1) { swipe(main, function (d) { show(current + d); }); }
+
+        // Hover zoom (desktop): the photo follows the mouse at 2x.
+        var opener = gallery.querySelector('[data-lb-open]');
+        if (opener && window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches) {
+            opener.addEventListener('mousemove', function (e) {
+                var r = opener.getBoundingClientRect();
+                mainImg.style.transformOrigin = ((e.clientX - r.left) / r.width * 100) + '% ' + ((e.clientY - r.top) / r.height * 100) + '%';
+                opener.classList.add('is-zoom');
+            });
+            opener.addEventListener('mouseleave', function () { opener.classList.remove('is-zoom'); });
+        }
+
+        if (opener && lbEl && window.bootstrap) {
+            var modal = window.bootstrap.Modal.getOrCreateInstance(lbEl);
+            opener.addEventListener('click', function () {
+                if (main.getAttribute('data-swiped')) { main.removeAttribute('data-swiped'); return; }
+                show(current);
+                modal.show();
+            });
+            lbEl.querySelectorAll('[data-lb-step]').forEach(function (b) {
+                b.addEventListener('click', function () { show(current + parseInt(b.getAttribute('data-lb-step'), 10)); });
+            });
+            lbThumbs.forEach(function (b, i) { b.addEventListener('click', function () { show(i); }); });
+            lbEl.addEventListener('keydown', function (e) {
+                if (photos.length < 2) { return; }
+                if (e.key === 'ArrowRight') { e.preventDefault(); show(current + 1); }
+                if (e.key === 'ArrowLeft') { e.preventDefault(); show(current - 1); }
+            });
+            var stage = lbEl.querySelector('[data-lb-stage]');
+            if (stage && photos.length > 1) { swipe(stage, function (d) { show(current + d); }); }
+        }
+    })();
+
+    // "Share this product": copy link, and the phone's own share sheet where the browser offers one.
+    document.querySelectorAll('[data-share]').forEach(function (box) {
+        var link = box.getAttribute('data-share-url');
+        var title = box.getAttribute('data-share-title') || document.title;
+        var status = box.querySelector('[data-share-status]');
+        var say = function (msg) { if (status) { status.textContent = msg; window.setTimeout(function () { status.textContent = ''; }, 3000); } };
+        var copyBtn = box.querySelector('[data-share-copy]');
+        if (copyBtn) {
+            copyBtn.addEventListener('click', function () {
+                var fallback = function () {
+                    var t = document.createElement('textarea');
+                    t.value = link; t.setAttribute('readonly', ''); t.style.position = 'fixed'; t.style.opacity = '0';
+                    document.body.appendChild(t); t.select();
+                    var ok = false;
+                    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+                    document.body.removeChild(t);
+                    say(ok ? 'Link copied.' : link);
+                };
+                if (navigator.clipboard && window.isSecureContext) {
+                    var done = false;
+                    var finish = function (fn) { return function () { if (!done) { done = true; fn(); } }; };
+                    navigator.clipboard.writeText(link).then(finish(function () { say('Link copied.'); }), finish(fallback));
+                    window.setTimeout(finish(fallback), 1500);   // a permission prompt left unanswered
+                } else { fallback(); }
+            });
+        }
+        var nativeBtn = box.querySelector('[data-share-native]');
+        if (nativeBtn && navigator.share) {
+            nativeBtn.classList.remove('d-none');
+            nativeBtn.addEventListener('click', function () {
+                navigator.share({ title: title, url: link }).catch(function () { /* cancelled */ });
+            });
+        }
     });
 
     // Variant chips update price, stock, SKU and quantity limits (display only;

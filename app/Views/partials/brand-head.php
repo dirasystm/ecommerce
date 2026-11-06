@@ -17,6 +17,7 @@ $ogTitle ??= null;
 <?php if ($ogTitle !== null): ?>
     <meta property="og:site_name" content="<?= e(brand_name()) ?>">
     <meta property="og:type" content="website">
+    <?php if (!empty($ogUrl)): ?><meta property="og:url" content="<?= e($ogUrl) ?>"><link rel="canonical" href="<?= e($ogUrl) ?>"><?php endif; ?>
     <meta property="og:title" content="<?= e($ogTitle) ?>">
     <?php if (!empty($ogDescription)): ?><meta property="og:description" content="<?= e($ogDescription) ?>"><?php endif; ?>
     <meta property="og:image" content="<?= e($ogImage ?? Brand::absoluteAsset('brand_og_image')) ?>">

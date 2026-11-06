@@ -39,7 +39,15 @@ final class ProductRepository
         }
         $p['images'] = $this->db->all('SELECT id, path, alt_text FROM product_images WHERE product_id = ? ORDER BY sort_order, id', [$p['id']]);
         $specs = $p['specifications'] ? json_decode((string) $p['specifications'], true) : [];
-        $p['specs'] = is_array($specs) ? $specs : [];
+        $p['specs'] = $p['features'] = [];
+        foreach (is_array($specs) ? $specs : [] as $k => $v) {
+            // Lines without a "Label: value" shape are stored as numbered key features ("• 1" => text).
+            if (preg_match(\Waimart\Services\CatalogueAdminService::FEATURE_KEY, (string) $k)) {
+                $p['features'][] = (string) $v;
+            } else {
+                $p['specs'][(string) $k] = (string) $v;
+            }
+        }
         $p['breadcrumbs'] = $this->breadcrumbs((int) $p['category_id']);
         return $p;
     }

@@ -21,6 +21,38 @@ final class ImageService
     private const ALLOWED = ['image/jpeg', 'image/png', 'image/webp'];
 
     /**
+     * Turns $_FILES entries (a single input, or a multiple one like images[]) into a flat list of files,
+     * skipping empty slots. Several names may be given; their files are joined in that order.
+     * @param array<string,mixed> $files the request's $_FILES
+     * @return list<array{name:string,type:string,tmp_name:string,error:int,size:int}>
+     */
+    public static function uploadedList(array $files, string ...$names): array
+    {
+        $out = [];
+        foreach ($names as $name) {
+            $f = $files[$name] ?? null;
+            if (!is_array($f) || !array_key_exists('name', $f)) {
+                continue;
+            }
+            $slots = is_array($f['name']) ? array_keys($f['name']) : [null];
+            foreach ($slots as $k) {
+                $get = static fn (string $part) => $k === null ? ($f[$part] ?? null) : ($f[$part][$k] ?? null);
+                $one = [
+                    'name' => is_string($get('name')) ? $get('name') : '',
+                    'type' => is_string($get('type')) ? $get('type') : '',
+                    'tmp_name' => is_string($get('tmp_name')) ? $get('tmp_name') : '',
+                    'error' => is_scalar($get('error')) ? (int) $get('error') : UPLOAD_ERR_NO_FILE,
+                    'size' => is_scalar($get('size')) ? (int) $get('size') : 0,
+                ];
+                if ($one['error'] !== UPLOAD_ERR_NO_FILE) {
+                    $out[] = $one;
+                }
+            }
+        }
+        return $out;
+    }
+
+    /**
      * @param array{name?:string,tmp_name?:string,error?:int,size?:int} $file one entry from $_FILES
      * @return string public relative path, e.g. uploads/products/2026/10/abc.webp
      */

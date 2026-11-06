@@ -24,7 +24,7 @@ $noindex = \Waimart\Core\Settings::bool('seo_noindex');
     <link rel="stylesheet" href="<?= e(asset('vendor/bootstrap/bootstrap.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('vendor/bootstrap-icons/bootstrap-icons.min.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset('css/app.css')) ?>">
-<?= \Waimart\Core\View::partial('partials/brand-head', ['ogTitle' => $pageTitle, 'ogDescription' => $metaDescription]) ?>
+<?= \Waimart\Core\View::partial('partials/brand-head', ['ogTitle' => $pageTitle, 'ogDescription' => $metaDescription, 'ogImage' => $ogImage ?? null, 'ogUrl' => $ogUrl ?? null]) ?>
 </head>
 <body<?= !empty($bodyClass) ? ' class="' . e($bodyClass) . '"' : '' ?>>
 <a class="skip-link" href="#main">Skip to main content</a>

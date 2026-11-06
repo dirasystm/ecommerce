@@ -10,6 +10,7 @@ use Waimart\Core\Request;
 use Waimart\Core\Response;
 use Waimart\Services\InventoryService;
 use Waimart\Services\SellerProductService;
+use Waimart\Services\ImageService;
 
 /**
  * The seller's own products. Product ids in URLs are only ever looked up within the current seller
@@ -50,8 +51,11 @@ final class ProductController extends SellerController
 
     public function store(Request $req): Response
     {
-        $id = $this->service()->create($this->sellerId(), (int) Auth::id(), $req->post);
-        return $this->success('Product saved as a draft. Add photos, then submit it for approval.', "/seller/products/$id");
+        $images = ImageService::uploadedList($req->files, 'images');
+        $id = $this->service()->create($this->sellerId(), (int) Auth::id(), $req->post, false, $images);
+        return $this->success($images
+            ? 'Product saved as a draft with ' . count($images) . ' photo' . (count($images) === 1 ? '' : 's') . '. Check the details, then submit it for approval.'
+            : 'Product saved as a draft. Add photos, then submit it for approval.', "/seller/products/$id");
     }
 
     public function edit(Request $req): Response
@@ -129,8 +133,8 @@ final class ProductController extends SellerController
     public function uploadImage(Request $req): Response
     {
         $id = $this->id($req);
-        $this->service()->addImage($this->sellerId(), $id, (int) Auth::id(), (array) ($req->files['image'] ?? []), (string) $req->input('alt_text', ''));
-        return $this->success('Photo uploaded.', "/seller/products/$id#images");
+        $n = $this->service()->addImages($this->sellerId(), $id, (int) Auth::id(), ImageService::uploadedList($req->files, 'images', 'image'), (string) $req->input('alt_text', ''));
+        return $this->success($n === 1 ? 'Photo uploaded.' : "$n photos uploaded.", "/seller/products/$id#images");
     }
 
     public function deleteImage(Request $req): Response

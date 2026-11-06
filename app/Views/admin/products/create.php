@@ -5,12 +5,16 @@ use Waimart\Core\View;
     <h1>New product</h1>
     <a class="btn btn-outline-secondary" href="<?= e(url('/admin/products')) ?>">Back</a>
 </div>
-<form method="post" action="<?= e(url('/admin/products')) ?>" class="row g-3">
+<form method="post" action="<?= e(url('/admin/products')) ?>" class="row g-3" enctype="multipart/form-data" data-first-error>
     <?= csrf_field() ?>
     <div class="col-xl-8">
         <div class="wm-panel">
             <div class="wm-panel-head">Product details</div>
             <div class="wm-panel-body"><?= View::partial('admin/products/_fields', get_defined_vars()) ?></div>
+        </div>
+        <div class="wm-panel mt-3" id="photos">
+            <div class="wm-panel-head">Photos</div>
+            <div class="wm-panel-body"><?= View::partial('admin/products/_photo_picker', ['max' => 10, 'isNew' => true]) ?></div>
         </div>
     </div>
     <div class="col-xl-4">

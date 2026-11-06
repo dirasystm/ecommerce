@@ -126,15 +126,13 @@ $pid = (int) $product['id'];
                     <?php if (!$images): ?><p class="text-muted small mb-0">No images yet. A placeholder is shown in the store.</p><?php endif; ?>
                 </div>
                 <?php if (count($images) < 10): ?>
-                    <form method="post" action="<?= e(url("/admin/products/$pid/images")) ?>" enctype="multipart/form-data">
+                    <form method="post" action="<?= e(url("/admin/products/$pid/images")) ?>" enctype="multipart/form-data" data-first-error>
                         <?= csrf_field() ?>
-                        <label class="form-label" for="image">Upload image</label>
-                        <input class="form-control<?= invalid('image') ?>" type="file" id="image" name="image" accept="image/jpeg,image/png,image/webp" required>
+                        <?= View::partial('admin/products/_photo_picker', ['max' => 10 - count($images)]) ?>
                         <?= field_error('image') ?>
-                        <div class="form-text">JPEG, PNG or WebP up to 5 MB. Images are resized and converted to WebP.</div>
-                        <label class="form-label mt-2" for="alt_text">Image description (alt text)</label>
+                        <label class="form-label mt-2" for="alt_text">Image description (alt text) <span class="text-muted small">(optional, used for every photo in this upload)</span></label>
                         <input class="form-control" id="alt_text" name="alt_text" maxlength="200" placeholder="e.g. Front view in black">
-                        <button class="btn btn-sm btn-wm-green mt-2" type="submit">Upload</button>
+                        <button class="btn btn-sm btn-wm-green mt-2" type="submit" data-photo-submit><i class="bi bi-upload" aria-hidden="true"></i> Upload photos</button>
                     </form>
                 <?php endif; ?>
             </div>

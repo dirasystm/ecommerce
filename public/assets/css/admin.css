@@ -142,3 +142,26 @@ body.wm-admin { background: #f4f6f5; padding-bottom: 0; }
 .wm-scan-camera { position: relative; max-width: 420px; }
 .wm-scan-camera video { width: 100%; border-radius: 8px; background: #000; }
 .wm-scan-camera button { position: absolute; top: 8px; right: 8px; }
+
+/* Product photo chooser (admin/products/_photo_picker.php, js/photo-picker.js) */
+.wm-photo-input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.wm-photo-drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; text-align: center;
+    padding: 22px 16px; border: 2px dashed var(--wm-border); border-radius: 10px; background: #fafbfc; cursor: pointer; margin: 0;
+    transition: border-color .15s, background .15s; }
+.wm-photo-drop .bi { font-size: 1.8rem; color: var(--wm-green, #198754); }
+.wm-photo-drop:hover, .wm-photo-drop.is-over { border-color: var(--wm-green, #198754); background: #f1f8f4; }
+.wm-photo-drop.is-invalid { border-color: var(--bs-danger, #dc3545); }
+.wm-photo-drop.is-full { opacity: .55; pointer-events: none; }
+.wm-photo-input:focus-visible + .invalid-feedback, .wm-photo-picker:focus-within .wm-photo-drop { outline: 2px solid var(--wm-green, #198754); outline-offset: 2px; }
+.wm-photo-previews { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 8px; margin-top: 10px; }
+.wm-photo-previews:empty { display: none; }
+.wm-photo-previews [data-photo-status] { grid-column: 1 / -1; }
+.wm-photo-tile { position: relative; border: 1px solid var(--wm-border); border-radius: 8px; background: #fff; padding: 4px; }
+.wm-photo-tile img { width: 100%; aspect-ratio: 1 / 1; object-fit: contain; display: block; border-radius: 4px; }
+.wm-photo-main { position: absolute; top: 6px; left: 6px; }
+.wm-photo-tools { display: flex; justify-content: space-between; gap: 2px; margin-top: 4px; }
+.wm-photo-tools .btn { padding: 1px 6px; line-height: 1.3; }
+.wm-photo-cap { font-size: .72rem; color: var(--bs-secondary-color, #6c757d); text-align: center; }
+
+/* Parcel page (opened from a label's QR code, usually on a phone) */
+.wm-parcel { max-width: 520px; }

@@ -101,11 +101,17 @@ final class CatalogueAdminService
      * Creates a product with its default variant and optional opening stock.
      * @param array<string,mixed> $in
      */
-    public function createProduct(array $in, int $actorId, ?int $sellerId = null, string $moderation = 'published'): int
+    public function createProduct(array $in, int $actorId, ?int $sellerId = null, string $moderation = 'published', array $images = []): int
     {
-        $product = $this->validateProduct($in, null);
-        $variant = $this->validateVariant($in, null);
-        $stock = $this->validateOpeningStock($in);
+        // Every section is checked so the form shows all mistakes at once, not one per attempt.
+        $errors = [];
+        $product = $this->collectErrors($errors, fn () => $this->validateProduct($in, null));
+        $variant = $this->collectErrors($errors, fn () => $this->validateVariant($in, null));
+        $stock = $this->collectErrors($errors, fn () => $this->validateOpeningStock($in));
+        $this->collectErrors($errors, fn () => $this->checkImages($images));
+        if ($errors) {
+            throw new ValidationException($errors);
+        }
         // Admin-created products belong to the Waimart Official Store and go live directly;
         // SellerProductService passes the owning seller and a draft/pending state.
         $product += [
@@ -114,12 +120,111 @@ final class CatalogueAdminService
             'submitted_at' => $moderation === 'pending' ? date('Y-m-d H:i:s') : null,
         ];
 
-        return $this->db->transaction(function () use ($product, $variant, $stock, $actorId) {
-            $productId = $this->db->insert('products', $product);
-            $this->insertVariant($productId, $variant + ['is_default' => 1], $stock, $actorId);
-            AuditLogger::log('catalogue.product_created', 'product', $productId, null, $product + ['variant' => $variant], $actorId);
-            return $productId;
-        });
+        $stored = [];
+        try {
+            return $this->db->transaction(function () use ($product, $variant, $stock, $actorId, $images, &$stored) {
+                $productId = $this->db->insert('products', $product);
+                $this->insertVariant($productId, $variant + ['is_default' => 1], $stock, $actorId);
+                foreach (array_values($images) as $i => $file) {   // the first photo becomes the main one
+                    $stored[] = $path = $this->images->storeProductImage($file);
+                    $this->db->insert('product_images', ['product_id' => $productId, 'path' => $path, 'alt_text' => null, 'sort_order' => $i]);
+                }
+                AuditLogger::log('catalogue.product_created', 'product', $productId, null, $product + ['variant' => $variant, 'images' => $stored], $actorId);
+                return $productId;
+            });
+        } catch (\Throwable $e) {
+            foreach ($stored as $path) {
+                $this->images->delete($path);
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Checks chosen photos before anything is saved: count (with $existing already on the product) and each file's
+     * size, type and dimensions. The message names the file that failed.
+     * @param list<array<string,mixed>> $files
+     */
+    public function checkImages(array $files, int $existing = 0, string $field = 'images'): void
+    {
+        if (!$files) {
+            return;
+        }
+        if ($existing + count($files) > self::MAX_IMAGES) {
+            $left = max(0, self::MAX_IMAGES - $existing);
+            throw new ValidationException([$field => 'A product can have at most ' . self::MAX_IMAGES . ' photos. '
+                . ($existing ? "It already has $existing, so you can add $left more." : 'You chose ' . count($files) . '.')]);
+        }
+        foreach ($files as $file) {
+            try {
+                $this->images->decode($file, $field);
+            } catch (ValidationException $e) {
+                $name = basename(str_replace('\\', '/', (string) ($file['name'] ?? '')));
+                throw new ValidationException([$field => ($name !== '' ? "\"$name\": " : '') . ($e->errors[$field] ?? $e->getMessage())]);
+            }
+        }
+    }
+
+    /**
+     * Uploads several photos to an existing product (edit page). All are checked first, so either all are added or none.
+     * @param list<array<string,mixed>> $files
+     */
+    public function addImages(int $productId, array $files, ?string $alt, int $actorId): int
+    {
+        if (!$this->db->value('SELECT id FROM products WHERE id = ?', [$productId])) {
+            throw ValidationException::withMessage('Product not found.');
+        }
+        if (!$files) {
+            throw new ValidationException(['images' => 'Choose one or more photos to upload.']);
+        }
+        $this->checkImages($files, (int) $this->db->value('SELECT COUNT(*) FROM product_images WHERE product_id = ?', [$productId]));
+        foreach ($files as $file) {
+            $this->addImage($productId, $file, $alt, $actorId);
+        }
+        return count($files);
+    }
+
+    /**
+     * @param array<string,string> $errors
+     * @template T
+     * @param callable():T $fn
+     * @return T|null
+     */
+    private function collectErrors(array &$errors, callable $fn): mixed
+    {
+        try {
+            return $fn();
+        } catch (ValidationException $e) {
+            $errors += $e->errors;
+            return null;
+        }
+    }
+
+    /**
+     * Accepts what people naturally type: "KSh 1,500" as a price, "1,000" as a quantity, "My Phone Case" as a URL
+     * slug and "AB 12" as a SKU.
+     * @param array<string,mixed> $in
+     * @return array<string,mixed>
+     */
+    private static function tidyInput(array $in): array
+    {
+        foreach (['price', 'compare_at_price'] as $k) {
+            if (isset($in[$k]) && is_string($in[$k])) {
+                $in[$k] = (string) preg_replace(['/^\s*(ksh|kes|sh)\.?\s*/i', '/[\s,]+/'], '', $in[$k]);
+            }
+        }
+        foreach (['opening_stock', 'low_stock_threshold', 'max_per_order', 'quantity'] as $k) {
+            if (isset($in[$k]) && is_string($in[$k])) {
+                $in[$k] = (string) preg_replace('/[\s,]+/', '', $in[$k]);
+            }
+        }
+        if (isset($in['slug']) && is_string($in['slug'])) {
+            $in['slug'] = trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower(trim($in['slug']))), '-');
+        }
+        if (isset($in['sku']) && is_string($in['sku'])) {
+            $in['sku'] = (string) preg_replace('/\s+/', '-', trim($in['sku']));
+        }
+        return $in;
     }
 
     /** @param array<string,mixed> $in */
@@ -198,8 +303,8 @@ final class CatalogueAdminService
         if (!$this->db->value('SELECT id FROM products WHERE id = ?', [$productId])) {
             throw ValidationException::withMessage('Product not found.');
         }
-        if ((int) $this->db->value('SELECT COUNT(*) FROM product_images WHERE product_id = ?', [$productId]) >= 10) {
-            throw new ValidationException(['image' => 'A product can have at most 10 images.']);
+        if ((int) $this->db->value('SELECT COUNT(*) FROM product_images WHERE product_id = ?', [$productId]) >= self::MAX_IMAGES) {
+            throw new ValidationException(['image' => 'A product can have at most ' . self::MAX_IMAGES . ' photos.']);
         }
         $path = $this->images->storeProductImage($file);
         try {
@@ -247,6 +352,7 @@ final class CatalogueAdminService
     /** @param array<string,mixed> $in @return array<string,mixed> */
     private function validateProduct(array $in, ?int $id): array
     {
+        $in = self::tidyInput($in);
         Validator::validate($in, [
             'name' => 'required|max:200',
             'slug' => 'nullable|slug|max:220',
@@ -254,7 +360,7 @@ final class CatalogueAdminService
             'brand_id' => 'nullable|int',
             'short_description' => 'nullable|max:500',
             'description' => 'nullable|max:20000',
-            'specifications' => 'nullable|max:5000',
+            'specifications' => 'nullable|max:20000',
             'max_per_order' => 'required|int|gte:1|lte:100',
         ], ['category_id' => 'Category', 'brand_id' => 'Brand', 'max_per_order' => 'Maximum per order']);
 
@@ -282,6 +388,7 @@ final class CatalogueAdminService
     /** @param array<string,mixed> $in @return array<string,mixed> */
     private function validateVariant(array $in, ?int $variantId): array
     {
+        $in = self::tidyInput($in);
         Validator::validate($in, [
             'sku' => 'required|max:64',
             'variant_name' => 'nullable|max:120',
@@ -324,6 +431,7 @@ final class CatalogueAdminService
     /** @param array<string,mixed> $in */
     private function validateOpeningStock(array $in): int
     {
+        $in = self::tidyInput($in);
         Validator::validate($in, ['opening_stock' => 'nullable|int|gte:0|lte:100000'], ['opening_stock' => 'Opening stock']);
         return (int) ($in['opening_stock'] ?? 0);
     }
@@ -390,11 +498,12 @@ final class CatalogueAdminService
      * Parses "Label: value" lines into an ordered map.
      * @return array<string,string>
      */
+    /** Variant attributes ("Colour: Blue"): every line needs a short label, because the store shows them as choices. */
     public static function parsePairs(string $text, string $field, int $max = 30): array
     {
         $out = [];
         foreach (preg_split('/\R/', $text) ?: [] as $i => $line) {
-            $line = trim($line);
+            $line = trim(str_replace(['：', '﹕'], ':', $line));   // full-width colons, common in pasted text
             if ($line === '') {
                 continue;
             }
@@ -413,17 +522,60 @@ final class CatalogueAdminService
         return $out;
     }
 
+    /** Key of a specification line that has no label (a feature), e.g. "• 3"; shown as a bullet list in the store. */
+    public const MAX_IMAGES = 10;
+    public const FEATURE_KEY = '/^• \d+$/u';
+
+    /**
+     * Specifications as people paste them (from a supplier, Jumia or Amazon): "Label: value" lines become a table row;
+     * lines without a short label (a feature sentence, a bullet) are kept as "Key features". Bullets (★ • - ✔ …),
+     * full-width colons and blank lines are handled; nothing pasted is refused for its layout.
+     * @return array<string,string>
+     */
+    public static function parseSpecs(string $text, string $field = 'specifications', int $max = 60): array
+    {
+        $out = [];
+        $features = 0;
+        foreach (preg_split('/\R/', $text) ?: [] as $i => $line) {
+            $line = trim(str_replace(['：', '﹕', "\t"], [':', ':', ': '], $line));
+            $line = trim((string) preg_replace('/^[\s\x{2605}\x{2606}\x{2022}\x{25CF}\x{25CB}\x{25AA}\x{25A0}\x{25C6}\x{2756}\x{27A4}\x{25BA}\x{2192}\x{2713}\x{2714}\x{2705}\x{1F539}\x{1F538}*>·-]+/u', '', $line));
+            if ($line === '') {
+                continue;
+            }
+            if (mb_strlen($line) > 2000) {
+                throw new ValidationException([$field => 'Line ' . ($i + 1) . ' is longer than 2,000 characters.']);
+            }
+            $pos = mb_strpos($line, ':');
+            $label = $pos === false ? '' : trim(mb_substr($line, 0, $pos));
+            $value = $pos === false ? '' : trim(mb_substr($line, $pos + 1));
+            // A real label is short and is not a time or a ratio ("Charges in 10:30", "16:9 screen").
+            if ($label !== '' && $value !== '' && mb_strlen($label) <= 80 && !preg_match('/\d$/u', $label)) {
+                $key = $label;
+                for ($n = 2; isset($out[$key]); $n++) {
+                    $key = "$label ($n)";
+                }
+                $out[$key] = $value;
+            } else {
+                $out['• ' . (++$features)] = $line;
+            }
+        }
+        if (count($out) > $max) {
+            throw new ValidationException([$field => "At most $max lines are allowed."]);
+        }
+        return $out;
+    }
+
     private static function encodePairs(string $text, string $field): ?string
     {
-        $pairs = self::parsePairs($text, $field);
+        $pairs = self::parseSpecs($text, $field);
         return $pairs ? json_encode($pairs, JSON_UNESCAPED_UNICODE) : null;
     }
 
-    /** "Label: value" lines from stored JSON, for editing. */
+    /** The specification lines from stored JSON, for editing (features as their plain line). */
     public static function pairsToText(?string $json): string
     {
         $arr = $json ? json_decode($json, true) : [];
-        return is_array($arr) ? implode("\n", array_map(fn ($k, $v) => "$k: $v", array_keys($arr), $arr)) : '';
+        return is_array($arr) ? implode("\n", array_map(fn ($k, $v) => preg_match(self::FEATURE_KEY, (string) $k) ? (string) $v : "$k: $v", array_keys($arr), $arr)) : '';
     }
 
     /** @param array<string,mixed> $before @param array<string,mixed> $after */

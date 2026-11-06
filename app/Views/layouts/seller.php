@@ -97,5 +97,6 @@ $renderNav = function () use ($nav, $active, $seller): string {
 <script src="<?= e(asset('js/ui.js')) ?>"></script>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <script src="<?= e(asset('js/admin.js')) ?>"></script>
+<script src="<?= e(asset('js/photo-picker.js')) ?>"></script>
 </body>
 </html>

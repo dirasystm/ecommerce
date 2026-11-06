@@ -9,6 +9,7 @@ use Waimart\Core\HttpException;
 use Waimart\Core\Request;
 use Waimart\Core\Response;
 use Waimart\Services\CatalogueAdminService;
+use Waimart\Services\ImageService;
 
 final class ProductController extends AdminController
 {
@@ -92,8 +93,11 @@ final class ProductController extends AdminController
 
     public function store(Request $req): Response
     {
-        $id = (new CatalogueAdminService())->createProduct($req->post, $this->actor());
-        return $this->success('Product created. Add images and more variants below.', "/admin/products/$id");
+        $images = ImageService::uploadedList($req->files, 'images');
+        $id = (new CatalogueAdminService())->createProduct($req->post, $this->actor(), null, 'published', $images);
+        return $this->success($images
+            ? 'Product created with ' . count($images) . ' photo' . (count($images) === 1 ? '' : 's') . '. Add more variants below if needed.'
+            : 'Product created. Add photos and more variants below.', "/admin/products/$id");
     }
 
     public function edit(Request $req): Response
@@ -145,8 +149,8 @@ final class ProductController extends AdminController
     public function uploadImage(Request $req): Response
     {
         $id = $this->intParam($req, 'id');
-        (new CatalogueAdminService())->addImage($id, (array) ($req->files['image'] ?? []), (string) $req->input('alt_text', ''), $this->actor());
-        return $this->success('Image uploaded.', "/admin/products/$id#images");
+        $n = (new CatalogueAdminService())->addImages($id, ImageService::uploadedList($req->files, 'images', 'image'), (string) $req->input('alt_text', ''), $this->actor());
+        return $this->success($n === 1 ? 'Photo uploaded.' : "$n photos uploaded.", "/admin/products/$id#images");
     }
 
     public function deleteImage(Request $req): Response

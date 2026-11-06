@@ -28,22 +28,45 @@ $qtyMax = max(1, min($selected['available'], $maxPerOrder));
         <div class="col-lg-9">
             <section class="wm-card p-3" aria-label="Product">
                 <div class="row g-4">
-                    <!-- Gallery -->
+                    <!-- Gallery: main photo (arrows, swipe, hover zoom), thumbnails, full-screen viewer and sharing -->
                     <div class="col-md-5">
-                        <div class="wm-gallery-main">
-                            <img id="wmMainImage" src="<?= e(media($images[0]['path'])) ?>" alt="<?= e($images[0]['alt_text'] ?: $p['name']) ?>" width="600" height="600">
-                        </div>
-                        <?php if (count($images) > 1): ?>
-                            <div class="wm-gallery-thumbs" role="list" aria-label="Product images">
-                                <?php foreach ($images as $i => $img): ?>
-                                    <button type="button" role="listitem" class="wm-thumb<?= $i === 0 ? ' active' : '' ?>"
-                                            data-gallery-src="<?= e(media($img['path'])) ?>" data-gallery-alt="<?= e($img['alt_text'] ?: $p['name']) ?>"
-                                            aria-label="Show image <?= $i + 1 ?>" <?= $i === 0 ? 'aria-current="true"' : '' ?>>
-                                        <img src="<?= e(media($img['path'])) ?>" alt="" width="64" height="64" loading="lazy">
-                                    </button>
-                                <?php endforeach; ?>
+                        <?php $multiImg = count($images) > 1; $shareUrl = full_url(url('/product/' . $p['slug'])); ?>
+                        <div class="wm-gallery" data-gallery data-count="<?= count($images) ?>">
+                            <div class="wm-gallery-main">
+                                <button type="button" class="wm-gallery-open" data-lb-open aria-label="View photo full screen"<?= $p['images'] ? '' : ' disabled' ?>>
+                                    <img id="wmMainImage" src="<?= e(media($images[0]['path'])) ?>" alt="<?= e($images[0]['alt_text'] ?: $p['name']) ?>" width="600" height="600">
+                                </button>
+                                <?php if ($multiImg): ?>
+                                    <button type="button" class="wm-gallery-arrow prev" data-gallery-step="-1" aria-label="Previous photo"><i class="bi bi-chevron-left" aria-hidden="true"></i></button>
+                                    <button type="button" class="wm-gallery-arrow next" data-gallery-step="1" aria-label="Next photo"><i class="bi bi-chevron-right" aria-hidden="true"></i></button>
+                                    <span class="wm-gallery-count" data-gallery-count aria-hidden="true">1 / <?= count($images) ?></span>
+                                <?php endif; ?>
                             </div>
-                        <?php endif; ?>
+                            <?php if ($multiImg): ?>
+                                <div class="wm-gallery-thumbs" role="list" aria-label="Product photos">
+                                    <?php foreach ($images as $i => $img): ?>
+                                        <button type="button" role="listitem" class="wm-thumb<?= $i === 0 ? ' active' : '' ?>" data-gallery-index="<?= $i ?>"
+                                                data-gallery-src="<?= e(media($img['path'])) ?>" data-gallery-alt="<?= e($img['alt_text'] ?: $p['name']) ?>"
+                                                aria-label="Show photo <?= $i + 1 ?> of <?= count($images) ?>" <?= $i === 0 ? 'aria-current="true"' : '' ?>>
+                                            <img src="<?= e(media($img['path'])) ?>" alt="" width="64" height="64" loading="lazy">
+                                        </button>
+                                    <?php endforeach; ?>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="wm-share" data-share data-share-url="<?= e($shareUrl) ?>" data-share-title="<?= e($p['name']) ?>">
+                            <div class="wm-share-title">Share this product</div>
+                            <div class="wm-share-links">
+                                <a class="wm-share-btn fb" href="https://www.facebook.com/sharer/sharer.php?u=<?= e(rawurlencode($shareUrl)) ?>" target="_blank" rel="noopener noreferrer" aria-label="Share on Facebook" title="Facebook"><i class="bi bi-facebook" aria-hidden="true"></i></a>
+                                <a class="wm-share-btn x" href="https://twitter.com/intent/tweet?url=<?= e(rawurlencode($shareUrl)) ?>&amp;text=<?= e(rawurlencode($p['name'])) ?>" target="_blank" rel="noopener noreferrer" aria-label="Share on X" title="X"><i class="bi bi-twitter-x" aria-hidden="true"></i></a>
+                                <a class="wm-share-btn wa" href="https://wa.me/?text=<?= e(rawurlencode($p['name'] . ' ' . $shareUrl)) ?>" target="_blank" rel="noopener noreferrer" aria-label="Share on WhatsApp" title="WhatsApp"><i class="bi bi-whatsapp" aria-hidden="true"></i></a>
+                                <a class="wm-share-btn tg" href="https://t.me/share/url?url=<?= e(rawurlencode($shareUrl)) ?>&amp;text=<?= e(rawurlencode($p['name'])) ?>" target="_blank" rel="noopener noreferrer" aria-label="Share on Telegram" title="Telegram"><i class="bi bi-telegram" aria-hidden="true"></i></a>
+                                <button type="button" class="wm-share-btn copy" data-share-copy aria-label="Copy link" title="Copy link"><i class="bi bi-link-45deg" aria-hidden="true"></i></button>
+                                <button type="button" class="wm-share-btn more d-none" data-share-native aria-label="More ways to share" title="More"><i class="bi bi-share" aria-hidden="true"></i></button>
+                            </div>
+                            <div class="small text-success mt-1" data-share-status role="status" aria-live="polite"></div>
+                        </div>
                     </div>
 
                     <!-- Buy box -->
@@ -155,7 +178,14 @@ $qtyMax = max(1, min($selected['available'], $maxPerOrder));
                         <div class="wm-description"><?= $p['description'] ? nl2br(e($p['description'])) : '<p class="text-muted">No description yet.</p>' ?></div>
                     </div>
                     <div class="tab-pane fade" id="tabSpecs" role="tabpanel" tabindex="0">
+                        <?php if (!empty($p['features'])): ?>
+                            <h2 class="wm-specs-head">Key features</h2>
+                            <ul class="wm-features">
+                                <?php foreach ($p['features'] as $f): ?><li><?= e($f) ?></li><?php endforeach; ?>
+                            </ul>
+                        <?php endif; ?>
                         <?php if ($p['specs']): ?>
+                            <?php if (!empty($p['features'])): ?><h2 class="wm-specs-head">Specifications</h2><?php endif; ?>
                             <table class="table table-sm wm-specs mb-0">
                                 <tbody>
                                 <?php foreach ($p['specs'] as $k => $v): ?>
@@ -163,7 +193,7 @@ $qtyMax = max(1, min($selected['available'], $maxPerOrder));
                                 <?php endforeach; ?>
                                 </tbody>
                             </table>
-                        <?php else: ?>
+                        <?php elseif (empty($p['features'])): ?>
                             <p class="text-muted mb-0">No specifications listed.</p>
                         <?php endif; ?>
                     </div>
@@ -235,3 +265,31 @@ $qtyMax = max(1, min($selected['available'], $maxPerOrder));
         <?php endif; ?>
     <?php endforeach; ?>
 </div>
+
+<?php if ($p['images']): ?>
+<div class="modal fade wm-lightbox" id="wmLightbox" tabindex="-1" aria-labelledby="wmLightboxTitle" aria-hidden="true" data-lightbox>
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-fullscreen-md-down">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <h2 class="modal-title fs-6 text-truncate" id="wmLightboxTitle"><?= e($p['name']) ?></h2>
+                <span class="wm-lb-count ms-auto me-3" data-lb-count><?= count($images) > 1 ? '1 / ' . count($images) : '' ?></span>
+                <button type="button" class="btn-close m-0" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="wm-lb-stage" data-lb-stage>
+                    <?php if (count($images) > 1): ?><button type="button" class="wm-lb-arrow prev" data-lb-step="-1" aria-label="Previous photo"><i class="bi bi-chevron-left" aria-hidden="true"></i></button><?php endif; ?>
+                    <img data-lb-img src="<?= e(media($images[0]['path'])) ?>" alt="<?= e($images[0]['alt_text'] ?: $p['name']) ?>">
+                    <?php if (count($images) > 1): ?><button type="button" class="wm-lb-arrow next" data-lb-step="1" aria-label="Next photo"><i class="bi bi-chevron-right" aria-hidden="true"></i></button><?php endif; ?>
+                </div>
+                <?php if (count($images) > 1): ?>
+                    <div class="wm-lb-thumbs">
+                        <?php foreach ($images as $i => $img): ?>
+                            <button type="button" class="wm-thumb<?= $i === 0 ? ' active' : '' ?>" data-lb-index="<?= $i ?>" aria-label="Photo <?= $i + 1 ?> of <?= count($images) ?>"><img src="<?= e(media($img['path'])) ?>" alt="" width="64" height="64" loading="lazy"></button>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>

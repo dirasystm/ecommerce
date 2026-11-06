@@ -69,6 +69,20 @@ function flash(string $type): ?string
 }
 
 /** Public URL for a stored media path (e.g. uploads/products/x.webp), with a placeholder fallback. */
+/** Turns an app path from url()/media()/asset() into a full link using app.url, for sharing and Open Graph tags. */
+function full_url(string $appPath): string
+{
+    if (preg_match('#^https?://#i', $appPath)) {
+        return $appPath;
+    }
+    $base = rtrim((string) config('app.url', ''), '/');
+    $basePath = rtrim((string) config('app.base_path', ''), '/');
+    if ($basePath !== '' && ($appPath === $basePath || str_starts_with($appPath, $basePath . '/'))) {
+        $appPath = substr($appPath, strlen($basePath));
+    }
+    return $base . '/' . ltrim($appPath, '/');
+}
+
 function media(?string $path): string
 {
     if ($path === null || $path === '' || str_contains($path, '..')) {

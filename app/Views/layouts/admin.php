@@ -178,5 +178,6 @@ $renderNav = function () use ($nav, $active, $badges): string {
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 <?php if (str_starts_with($path, '/admin/marketing/links/')): ?><script src="<?= e(asset('vendor/qrcode/qrcode.js')) ?>"></script><?php endif; ?>
 <script src="<?= e(asset('js/admin.js')) ?>"></script>
+<script src="<?= e(asset('js/photo-picker.js')) ?>"></script>
 </body>
 </html>

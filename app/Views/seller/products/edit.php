@@ -179,15 +179,13 @@ $live = $status === 'published' && (int) $product['is_active'] === 1 && $active;
                     <?php if (!$images): ?><p class="text-muted small mb-0">No photos yet. At least one is needed before you can submit.</p><?php endif; ?>
                 </div>
                 <?php if ($canEdit && count($images) < 10): ?>
-                    <form method="post" action="<?= e(url("/seller/products/$pid/images")) ?>" enctype="multipart/form-data" novalidate>
+                    <form method="post" action="<?= e(url("/seller/products/$pid/images")) ?>" enctype="multipart/form-data" data-first-error novalidate>
                         <?= csrf_field() ?>
-                        <label class="form-label" for="image">Upload photo</label>
-                        <input class="form-control<?= invalid('image') ?>" type="file" id="image" name="image" accept="image/jpeg,image/png,image/webp">
+                        <?= View::partial('admin/products/_photo_picker', ['max' => 10 - count($images)]) ?>
                         <?= field_error('image') ?>
-                        <div class="form-text">JPEG, PNG or WebP up to 5 MB. Photos are resized and converted automatically.</div>
-                        <label class="form-label mt-2" for="alt_text">Photo description</label>
+                        <label class="form-label mt-2" for="alt_text">Photo description <span class="text-muted small">(optional, used for every photo in this upload)</span></label>
                         <input class="form-control" id="alt_text" name="alt_text" maxlength="200" placeholder="e.g. Front view in black">
-                        <button class="btn btn-sm btn-wm-green mt-2" type="submit">Upload</button>
+                        <button class="btn btn-sm btn-wm-green mt-2" type="submit" data-photo-submit><i class="bi bi-upload" aria-hidden="true"></i> Upload photos</button>
                     </form>
                 <?php endif; ?>
             </div>
